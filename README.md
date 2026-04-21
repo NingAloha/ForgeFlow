@@ -1,250 +1,94 @@
-# **ForgeFlow**
+# ForgeFlow / ForgeShell
 
-### A Multi-Agent Software Engineering Pipeline
+## A Multi-Agent Software Engineering Pipeline with Chat TUI
 
 ---
 
 ## 1. Overview
 
-**ForgeFlow** 是一个多 Agent 协同的软件工程流水线系统，用于将用户需求从自然语言逐步转化为：
+**ForgeFlow** 是一个多 Agent 软件工程执行系统，用于将用户需求逐步转化为：
 
-* 结构化需求（Specification）
+* 需求规格（Specification）
 * 技术方案（Solution）
-* 系统结构（System Design）
+* 系统结构（Design）
 * 代码实现（Implementation）
 * 测试验证（Testing）
 
-系统核心特征：
-
-* **分层明确（Spec → Solution → Design → Implementation → Testing）**
-* **强契约驱动（Contract-driven）**
-* **可回流（Rollback-capable）**
-* **状态可追踪（Stateful pipeline）**
+**ForgeShell** 是其终端交互界面（TUI），提供类似 Copilot CLI 的**聊天式体验**，但具备更强的工程流程控制能力。
 
 ---
 
-## 2. Core Principles
+## 2. Core Design Principles
 
-### 2.1 Separation of Concerns
-
-每个 Agent 仅负责单一职责，禁止跨层决策。
-
-### 2.2 Contract First
-
-所有阶段通过**结构化契约（Schema）**衔接，而非自由文本。
-
-### 2.3 Controlled Feedback Loop
-
-系统支持回流，但必须通过调度器控制。
-
-### 2.4 Single Source of Truth
-
-所有状态与文档由统一状态管理层维护。
+* **Separation of Concerns**：每个 Agent 只负责一层职责
+* **Contract-driven**：所有阶段通过结构化数据衔接
+* **Implicit Orchestration**：默认自动调度
+* **Explicit Control (Optional)**：用户可手动干预
+* **State Transparency**：状态可见但不打扰
 
 ---
 
 ## 3. System Architecture
 
-### 3.1 Pipeline Structure
-
-```
+```text
 User
- ↓
-Requirements Engineer
- ↓
-Solution Engineer
- ↓
-System Designer
- ↓
-Implementation Engineer
- ↓
-Test & Validation Engineer
-```
-
-### 3.2 Control Layer
-
-```
-Orchestrator (流程控制)
-State Manager (状态与文档管理)
+  ↓
+ForgeShell (Chat TUI)
+  ↓
+Project Orchestrator
+  ├── State Manager
+  ├── Requirements Engineer
+  ├── Solution Engineer
+  ├── System Designer
+  ├── Implementation Engineer
+  └── Test & Validation Engineer
 ```
 
 ---
 
-## 4. Agent Definitions
-
----
+## 4. Agent Roles
 
 ### 4.1 Requirements Engineer
 
-**Objective**
-将用户需求转化为结构化、可验证的需求规格。
-
-**Input**
-
-* 用户原始需求
-* 多轮澄清结果
-
-**Output (Spec)**
-
-* project_goal
-* functional_requirements
-* non_functional_requirements
-* constraints
-* acceptance_criteria
-* open_questions
-
-**Boundary**
-
-* 不涉及技术实现
-* 不设计系统结构
-
----
+将用户需求转化为结构化需求规格。
 
 ### 4.2 Solution Engineer
 
-**Objective**
-基于需求规格设计技术方案与技术选型。
-
-**Input**
-
-* 需求规格（Spec）
-
-**Output**
-
-* 技术栈选择
-* 模块能力映射
-* 技术风险与替代方案
-
-**Boundary**
-
-* 不涉及具体代码
-* 不定义接口细节
-
----
+根据需求规格设计技术方案与技术选型。
 
 ### 4.3 System Designer
 
-**Objective**
-将技术方案转化为系统结构与接口契约。
-
-**Input**
-
-* 技术方案
-
-**Output**
-
-* 模块划分
-* 接口契约（Contracts）
-* 数据流设计
-* 项目骨架（Scaffold）
-* MVP（最小可运行验证）
-
-**Boundary**
-
-* 不实现业务逻辑
-* 只做结构与契约
-
----
+将技术方案转化为系统结构、接口契约与项目骨架。
 
 ### 4.4 Implementation Engineer
 
-**Objective**
-根据模块契约实现代码并完成单元测试。
-
-**Input**
-
-* 模块契约
-* 项目结构
-
-**Output**
-
-* 模块代码
-* 单元测试
-* 实现说明
-* 阻塞问题
-
-**Boundary**
-
-* 不修改需求或架构
-* 必须遵守契约
-
----
+实现模块代码并负责单元测试。
 
 ### 4.5 Test & Validation Engineer
 
-**Objective**
-验证模块功能与系统联动，并进行问题归因。
-
-**Input**
-
-* 模块代码
-* 单元测试结果
-* 接口契约
-
-**Output**
-
-* 功能测试
-* 集成测试
-* 测试报告
-* 问题归因报告
-
-**Boundary**
-
-* 不修改代码
-* 负责归因与反馈
+执行功能测试、集成测试并进行问题归因。
 
 ---
 
 ## 5. Control Layer
 
----
+### 5.1 Project Orchestrator
 
-### 5.1 Orchestrator
-
-**Role**
-控制系统执行流程。
-
-**Responsibilities**
-
-* 阶段推进（forward）
-* 回流（rollback）
-* 重试（retry）
-* 终止（terminate）
-
-**Decision Examples**
-
-* 测试失败 → 回 Implementation 或 System Design
-* 结构不合理 → 回 Solution Engineer
-
----
+* 自动选择当前执行角色
+* 控制流程推进 / 回流 / 重试
+* 基于「用户语义 × 当前状态」做决策
 
 ### 5.2 State Manager
 
-**Role**
-维护所有文档与状态。
-
-**Responsibilities**
-
-* 版本控制
-* 文档存储
-* 状态查询
-* diff 分析
-
-**Managed Artifacts**
-
-* spec.json
-* solution.json
-* system_design.json
-* implementation_status.json
-* test_report.json
+* 维护所有文档（Spec / Solution / Design / Test）
+* 版本管理与 diff
+* 提供统一状态读取
 
 ---
 
 ## 6. State Machine
 
-### 6.1 Main Flow
-
-```
+```text
 INIT
 → REQUIREMENTS_READY
 → SOLUTION_READY
@@ -256,91 +100,240 @@ INIT
 
 ---
 
-### 6.2 Rollback Rules
+## 7. Data Contracts
 
-| Failure Type | Rollback Target         |
-| ------------ | ----------------------- |
-| Spec 不完整     | Requirements Engineer   |
-| 技术不可行        | Solution Engineer       |
-| 结构不支持实现      | System Designer         |
-| 单模块错误        | Implementation Engineer |
-| 多模块联动错误      | System Designer         |
-| 架构问题         | Solution Engineer       |
+所有阶段必须输出结构化数据（JSON / Schema），禁止依赖纯文本。
 
 ---
 
-## 7. Data Contracts (Schemas)
+## 8. ForgeShell (TUI)
 
-所有 Agent 之间的数据必须结构化，例如：
+### 8.1 Design Goal
 
-```json
-{
-  "module": "auth_service",
-  "inputs": {"username": "string"},
-  "outputs": {"token": "string"},
-  "constraints": ["must validate password"]
-}
+提供一个：
+
+* 聊天式交互
+* 自动调度
+* 状态可视化
+* 可控但不复杂
+
+的终端体验。
+
+---
+
+## 8.2 Layout（关键改动）
+
+采用**上下对称布局（Centered Layout）**：
+
+```text
+┌──────────────────────────────────────────────────────────┐
+│ ForgeShell                                               │
+├──────────────────────────────────────────────────────────┤
+│ Stage: DESIGN | Role: System Designer | Mode: AUTO       │
+├──────────────────────────────────────────────────────────┤
+│                                                          │
+│                  Chat / Event Stream                     │
+│                                                          │
+│   用户输入                                                │
+│   Agent 输出                                              │
+│   调度决策                                                │
+│   错误 / 回流原因                                          │
+│                                                          │
+│                                                          │
+├──────────────────────────────────────────────────────────┤
+│ Status: RUNNING | Next: TESTING | Blocker: None          │
+├──────────────────────────────────────────────────────────┤
+│ > 输入需求或命令                                           │
+└──────────────────────────────────────────────────────────┘
 ```
 
-禁止使用非结构化自由文本作为核心数据。
+---
+
+### 8.3 Layout 特点
+
+* ❌ 无左右分栏（避免视线偏移）
+* ✅ 用户视线始终集中在中轴
+* ✅ 上下结构对称
+* ✅ 状态信息集中在顶部与底部
 
 ---
 
-## 8. Minimal Implementation Strategy
+## 9. Status Bar Design
 
-### 技术建议
+### 顶部状态栏（主状态）
+
+```text
+Stage: IMPLEMENTING | Role: Implementation Engineer | Mode: AUTO
+```
+
+### 底部状态栏（运行信息）
+
+```text
+Status: RUNNING | Next: TESTING | Blocker: None
+```
+
+---
+
+## 10. Interaction Model
+
+### 默认模式（AUTO）
+
+* 用户只需自然语言输入
+* Orchestrator 自动选择角色
+* 角色切换对用户隐式
+
+---
+
+### 显式控制模式（可选）
+
+用户可手动控制：
+
+```bash
+/role
+/switch solution
+/lock
+/unlock
+/trace
+/why
+```
+
+---
+
+## 11. Role Visibility Policy
+
+* 不在聊天流中频繁提示角色切换
+* 当前角色仅在状态栏显示
+* 用户可随时查询或控制
+
+---
+
+## 12. Command System
+
+### 查询
+
+```bash
+/status
+/role
+/why
+/trace
+/history
+```
+
+### 控制
+
+```bash
+/switch <role>
+/lock
+/unlock
+```
+
+### 流程
+
+```bash
+/plan
+/run
+/retry
+/rollback
+/terminate
+```
+
+### 文档
+
+```bash
+/open spec
+/open solution
+/open design
+/open test
+```
+
+---
+
+## 13. Orchestration Logic
+
+调度器决策基于：
+
+### 1. 用户语义
+
+* 提需求 / 改需求
+* 问技术
+* 修 bug
+* 查测试
+
+### 2. 当前状态
+
+* REQUIREMENTS
+* SOLUTION
+* DESIGN
+* IMPLEMENTING
+* TESTING
+
+---
+
+## 14. Approval Points
+
+关键阶段建议用户确认：
+
+* 需求 → 技术方案
+* 技术方案 → 系统设计
+* 批量实现
+* 回滚
+
+---
+
+## 15. Tech Stack (Suggested)
 
 * Python
-* Pydantic（Schema定义）
-* JSON（状态存储）
-* 自定义 Orchestrator（状态机）
+* Pydantic（Schema）
+* JSON / SQLite（状态）
+* Textual（TUI）
+* Rich（渲染）
 
 ---
 
-### 推荐目录结构
+## 16. Project Structure
 
-```
-project/
+```text
+forgeflow/
 ├── agents/
 ├── schemas/
 ├── state/
+├── tui/
 ├── orchestrator/
 ├── main.py
+└── README.md
 ```
 
 ---
 
-## 9. Key Advantages
+## 17. MVP Scope
 
-* 清晰的职责划分
-* 可扩展的 Agent 架构
-* 可回溯的工程流程
-* 接近真实软件工程体系
+第一版只需实现：
 
----
-
-## 10. Limitations
-
-* 初期实现复杂度较高
-* 需要严格的契约约束
-* Agent 协调成本较高
+* 聊天输入
+* 自动角色调度
+* 状态栏显示
+* 基础 Spec → Solution → Design 流程
 
 ---
 
-## 11. Future Extensions
+## 18. Summary
 
-* 自动化测试生成
-* RAG 知识增强
-* UI 可视化流程
-* 多项目并行调度
-* Agent 自学习能力
+ForgeFlow 不是一个聊天工具，而是：
+
+> **一个由多 Agent 协同驱动的软件工程执行引擎**
+
+ForgeShell 提供：
+
+> **一个对用户透明、对系统可控的终端交互界面**
 
 ---
 
-## 12. Summary
+## 19. Key Insight
 
-ForgeFlow 的本质不是“AI 对话系统”，而是：
+该系统的核心设计在于：
 
-> **一个结构化的软件工程执行引擎，由多个具备明确职责的 Agent 协同完成复杂任务。**
+* **复杂性隐藏在后台**
+* **状态暴露在前台**
+* **控制权随时可取回**
 
 ---

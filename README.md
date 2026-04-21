@@ -295,10 +295,31 @@ Status: RUNNING | Next: TESTING | Blocker: None
 ```text
 forgeflow/
 ├── agents/
+│   ├── requirements_engineer.py
+│   ├── solution_engineer.py
+│   ├── system_designer.py
+│   ├── implementation_engineer.py
+│   ├── test_validation_engineer.py
+│   ├── orchestrator.py
+│   └── state_manager.py
 ├── schemas/
+│   ├── spec.py
+│   ├── solution.py
+│   ├── design.py
+│   ├── implementation.py
+│   └── testing.py
 ├── state/
+│   ├── spec.json
+│   ├── solution.json
+│   ├── system_design.json
+│   ├── implementation_status.json
+│   └── test_report.json
 ├── tui/
-├── orchestrator/
+│   ├── app.py
+│   ├── screens.py
+│   ├── widgets.py
+│   ├── commands.py
+│   └── event_stream.py
 ├── main.py
 └── README.md
 ```

@@ -1,0 +1,12 @@
+{
+  "selected_stack": {
+    "frontend": "",
+    "backend": "",
+    "database": "",
+    "agent_framework": "",
+    "deployment": ""
+  },
+  "module_mapping": [],
+  "risks": [],
+  "alternatives": []
+}

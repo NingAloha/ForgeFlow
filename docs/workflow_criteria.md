@@ -27,6 +27,7 @@ INIT
 * [workflow_scope.md](./workflow_scope.md)：当前工作流适用场景与边界，回答“这套规则主要适用于什么，不适用于什么”。
 * [workflow_stage_criteria.md](./workflow_stage_criteria.md)：正向阶段进入条件，回答“什么时候可以进入下一阶段”。
 * [workflow_backflow_rules.md](./workflow_backflow_rules.md)：回流规则与状态失效处理，回答“什么时候应该退回上游阶段，以及回流后哪些结论失效”。
+* [orchestrator_implementation_notes.md](./orchestrator_implementation_notes.md)：当前 orchestrator 的代码级判定模型与简化策略，回答“规则是如何落到当前实现里的”。
 * [state_contracts.md](./state_contracts.md)：各状态文件的字段契约，回答“每个阶段状态里应该写什么”。
 
 推荐阅读顺序：
@@ -35,7 +36,8 @@ INIT
 2. [workflow_scope.md](./workflow_scope.md)
 3. [workflow_stage_criteria.md](./workflow_stage_criteria.md)
 4. [workflow_backflow_rules.md](./workflow_backflow_rules.md)
-5. [state_contracts.md](./state_contracts.md)
+5. [orchestrator_implementation_notes.md](./orchestrator_implementation_notes.md)
+6. [state_contracts.md](./state_contracts.md)
 
 ## 快速索引
 

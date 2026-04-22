@@ -8,7 +8,8 @@
 2. [workflow_scope.md](./workflow_scope.md)
 3. [workflow_stage_criteria.md](./workflow_stage_criteria.md)
 4. [workflow_backflow_rules.md](./workflow_backflow_rules.md)
-5. [state_contracts.md](./state_contracts.md)
+5. [orchestrator_implementation_notes.md](./orchestrator_implementation_notes.md)
+6. [state_contracts.md](./state_contracts.md)
 
 如果你想从目录职责入手，再看：
 

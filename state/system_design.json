@@ -3,7 +3,51 @@
     "directories": [],
     "modules": []
   },
-  "contracts": [],
-  "data_flow": [],
-  "mvp_plan": {}
+  "contracts": [
+    {
+      "name": "",
+      "contract_type": "",
+      "producer": "",
+      "consumers": [],
+      "input": [
+        {
+          "name": "",
+          "description": "",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "",
+          "description": "",
+          "required": true
+        }
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "failure_handling": []
+    }
+  ],
+  "data_flow": [
+    {
+      "step": 1,
+      "contract_name": "",
+      "from": "",
+      "to": [],
+      "trigger": "",
+      "notes": ""
+    }
+  ],
+  "mvp_plan": {
+    "in_scope": [],
+    "out_of_scope": [],
+    "milestones": [
+      {
+        "name": "",
+        "goal": "",
+        "deliverables": []
+      }
+    ],
+    "first_deliverable": ""
+  }
 }

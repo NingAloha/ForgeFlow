@@ -6,7 +6,15 @@
     "agent_framework": "",
     "deployment": ""
   },
-  "module_mapping": [],
+  "module_mapping": [
+    {
+      "module": "",
+      "responsibilities": [],
+      "covers_requirements": [],
+      "depends_on": [],
+      "tech_note": ""
+    }
+  ],
   "risks": [],
   "alternatives": []
 }

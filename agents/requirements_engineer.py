@@ -5,7 +5,7 @@ from .base import AgentContext, AgentResult, BaseAgent
 
 class RequirementsEngineerAgent(BaseAgent):
     agent_name = "Requirements Engineer"
-    stage_name = "REQUIREMENTS_READY"
+    stage_name = "REQUIREMENTS"
     state_key = "spec"
 
     def run(self, context: AgentContext) -> AgentResult:

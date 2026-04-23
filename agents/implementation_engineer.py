@@ -5,7 +5,7 @@ from .base import AgentContext, AgentResult, BaseAgent
 
 class ImplementationEngineerAgent(BaseAgent):
     agent_name = "Implementation Engineer"
-    stage_name = "IMPLEMENTING"
+    stage_name = "IMPLEMENTATION"
     state_key = "implementation_status"
 
     def run(self, context: AgentContext) -> AgentResult:

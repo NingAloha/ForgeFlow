@@ -70,7 +70,7 @@
 字段说明：
 
 * `status`：当前提问状态，当前使用 `idle`、`awaiting_user`、`answered`、`resolved`。
-* `stage_name`：发起提问的阶段，例如 `REQUIREMENTS_READY` 或 `SOLUTION_READY`。
+* `stage_name`：发起提问的阶段，例如 `REQUIREMENTS` 或 `SOLUTION`。
 * `state_key`：本次提问主要关联的状态文件，例如 `spec` 或 `solution`。
 * `blocking`：该组问题是否阻塞当前阶段继续推进。
 * `questions`：当前待回答的问题列表。

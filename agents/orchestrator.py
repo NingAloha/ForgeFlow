@@ -22,10 +22,10 @@ from .test_validation_engineer import TestValidationEngineerAgent
 
 class Stage(StrEnum):
     INIT = "INIT"
-    REQUIREMENTS_READY = "REQUIREMENTS_READY"
-    SOLUTION_READY = "SOLUTION_READY"
-    DESIGN_READY = "DESIGN_READY"
-    IMPLEMENTING = "IMPLEMENTING"
+    REQUIREMENTS = "REQUIREMENTS"
+    SOLUTION = "SOLUTION"
+    DESIGN = "DESIGN"
+    IMPLEMENTATION = "IMPLEMENTATION"
     TESTING = "TESTING"
     DONE = "DONE"
 
@@ -67,10 +67,10 @@ class Orchestrator:
     def __init__(self, state_manager: StateManager | None = None) -> None:
         self.state_manager = state_manager or StateManager()
         self.agents = {
-            Stage.REQUIREMENTS_READY: RequirementsEngineerAgent(),
-            Stage.SOLUTION_READY: SolutionEngineerAgent(),
-            Stage.DESIGN_READY: SystemDesignerAgent(),
-            Stage.IMPLEMENTING: ImplementationEngineerAgent(),
+            Stage.REQUIREMENTS: RequirementsEngineerAgent(),
+            Stage.SOLUTION: SolutionEngineerAgent(),
+            Stage.DESIGN: SystemDesignerAgent(),
+            Stage.IMPLEMENTATION: ImplementationEngineerAgent(),
             Stage.TESTING: TestValidationEngineerAgent(),
         }
 
@@ -254,7 +254,7 @@ class Orchestrator:
             and mvp_plan.get("first_deliverable")
         )
 
-    def is_implementing(self, states: dict[str, dict[str, Any]]) -> bool:
+    def has_active_implementation(self, states: dict[str, dict[str, Any]]) -> bool:
         if not self.is_design_ready(states):
             return False
 
@@ -265,8 +265,8 @@ class Orchestrator:
             in {"in_progress", "blocked", "done"}
         )
 
-    def is_testing(self, states: dict[str, dict[str, Any]]) -> bool:
-        if not self.is_implementing(states):
+    def has_validation_context(self, states: dict[str, dict[str, Any]]) -> bool:
+        if not self.has_active_implementation(states):
             return False
 
         implementation_status = states.get("implementation_status", {})
@@ -279,7 +279,7 @@ class Orchestrator:
         )
 
     def is_done(self, states: dict[str, dict[str, Any]]) -> bool:
-        if not self.is_testing(states):
+        if not self.has_validation_context(states):
             return False
 
         test_report = states.get("test_report", {})
@@ -298,8 +298,8 @@ class Orchestrator:
         requirements_ready = self.is_requirements_ready(states)
         solution_ready = requirements_ready and self.is_solution_ready(states)
         design_ready = solution_ready and self.is_design_ready(states)
-        implementing_active = design_ready and self.is_implementing(states)
-        testing_active = implementing_active and self.is_testing(states)
+        implementing_active = design_ready and self.has_active_implementation(states)
+        testing_active = implementing_active and self.has_validation_context(states)
         done_ready = testing_active and self.is_done(states)
 
         return StageFlags(
@@ -317,13 +317,13 @@ class Orchestrator:
         if flags.testing_active:
             return Stage.TESTING
         if flags.implementing_active:
-            return Stage.IMPLEMENTING
+            return Stage.IMPLEMENTATION
         if flags.design_ready:
-            return Stage.DESIGN_READY
+            return Stage.DESIGN
         if flags.solution_ready:
-            return Stage.SOLUTION_READY
+            return Stage.SOLUTION
         if flags.requirements_ready:
-            return Stage.REQUIREMENTS_READY
+            return Stage.REQUIREMENTS
         return Stage.INIT
 
     def compute_current_stage(
@@ -335,9 +335,9 @@ class Orchestrator:
         computed_stage = self.compute_current_stage(states)
         if computed_stage in {
             Stage.TESTING,
-            Stage.IMPLEMENTING,
-            Stage.DESIGN_READY,
-            Stage.SOLUTION_READY,
+            Stage.IMPLEMENTATION,
+            Stage.DESIGN,
+            Stage.SOLUTION,
         }:
             return computed_stage
 
@@ -360,7 +360,7 @@ class Orchestrator:
             and implementation_status.get("implementation_status")
             in {"in_progress", "blocked", "done"}
         ):
-            return Stage.IMPLEMENTING
+            return Stage.IMPLEMENTATION
 
         if (
             design.get("project_structure", {}).get("modules")
@@ -368,7 +368,7 @@ class Orchestrator:
             or design.get("data_flow")
             or design.get("mvp_plan", {}).get("first_deliverable")
         ):
-            return Stage.DESIGN_READY
+            return Stage.DESIGN
 
         selected_stack = solution.get("selected_stack", {})
         if (
@@ -377,7 +377,7 @@ class Orchestrator:
             or selected_stack.get("frontend")
             or selected_stack.get("agent_framework")
         ):
-            return Stage.SOLUTION_READY
+            return Stage.SOLUTION
 
         return computed_stage
 
@@ -393,7 +393,7 @@ class Orchestrator:
             done_ready=flags.done_ready,
         )
 
-        if backflow_target == Stage.REQUIREMENTS_READY:
+        if backflow_target == Stage.REQUIREMENTS:
             resolved.solution_ready = False
             resolved.design_ready = False
             resolved.implementing_active = False
@@ -401,20 +401,20 @@ class Orchestrator:
             resolved.done_ready = False
             return resolved
 
-        if backflow_target == Stage.SOLUTION_READY:
+        if backflow_target == Stage.SOLUTION:
             resolved.design_ready = False
             resolved.implementing_active = False
             resolved.testing_active = False
             resolved.done_ready = False
             return resolved
 
-        if backflow_target == Stage.DESIGN_READY:
+        if backflow_target == Stage.DESIGN:
             resolved.implementing_active = False
             resolved.testing_active = False
             resolved.done_ready = False
             return resolved
 
-        if backflow_target == Stage.IMPLEMENTING:
+        if backflow_target == Stage.IMPLEMENTATION:
             resolved.testing_active = False
             resolved.done_ready = False
             return resolved
@@ -435,9 +435,9 @@ class Orchestrator:
             evidence.append("spec.project_goal is non-empty.")
             evidence.append("spec.functional_requirements is non-empty.")
             evidence.append("spec.acceptance_criteria is non-empty.")
-            return Stage.REQUIREMENTS_READY, evidence
+            return Stage.REQUIREMENTS, evidence
         if (
-            current_stage == Stage.REQUIREMENTS_READY
+            current_stage == Stage.REQUIREMENTS
             and self.is_solution_ready(states)
         ):
             evidence.append("solution.selected_stack.backend is defined.")
@@ -451,8 +451,8 @@ class Orchestrator:
             evidence.append(
                 "solution.module_mapping covers core spec.functional_requirements."
             )
-            return Stage.SOLUTION_READY, evidence
-        if current_stage == Stage.SOLUTION_READY and self.is_design_ready(states):
+            return Stage.SOLUTION, evidence
+        if current_stage == Stage.SOLUTION and self.is_design_ready(states):
             evidence.append("design.project_structure.modules is non-empty.")
             evidence.append("design.contracts contain MVP critical handoff contracts.")
             evidence.append(
@@ -460,14 +460,14 @@ class Orchestrator:
             )
             evidence.append("design.mvp_plan.in_scope is non-empty.")
             evidence.append("design.mvp_plan.first_deliverable is defined.")
-            return Stage.DESIGN_READY, evidence
-        if current_stage == Stage.DESIGN_READY and self.is_implementing(states):
+            return Stage.DESIGN, evidence
+        if current_stage == Stage.DESIGN and self.has_active_implementation(states):
             evidence.append("implementation_status.module_name is defined.")
             evidence.append(
                 "implementation_status.implementation_status is active."
             )
-            return Stage.IMPLEMENTING, evidence
-        if current_stage == Stage.IMPLEMENTING and self.is_testing(states):
+            return Stage.IMPLEMENTATION, evidence
+        if current_stage == Stage.IMPLEMENTATION and self.has_validation_context(states):
             evidence.append("implementation_status.implementation_status is done.")
             evidence.append("implementation_status.blockers is empty.")
             evidence.append("A test scope is available for validation.")
@@ -477,25 +477,25 @@ class Orchestrator:
             evidence.append("No high/critical open or confirmed issues block delivery.")
             return Stage.DONE, evidence
 
-        if current_stage == Stage.REQUIREMENTS_READY:
+        if current_stage == Stage.REQUIREMENTS:
             if spec.get("open_questions"):
                 evidence.append(
-                    "Stay on REQUIREMENTS_READY because blocking open_questions still exist."
+                    "Stay on REQUIREMENTS because blocking open_questions still exist."
                 )
-        elif current_stage == Stage.SOLUTION_READY:
+        elif current_stage == Stage.SOLUTION:
             if not solution.get("module_mapping"):
                 evidence.append(
-                    "Stay on SOLUTION_READY because module_mapping is still empty."
+                    "Stay on SOLUTION because module_mapping is still empty."
                 )
-        elif current_stage == Stage.DESIGN_READY:
+        elif current_stage == Stage.DESIGN:
             if not design.get("contracts") or not design.get("data_flow"):
                 evidence.append(
-                    "Stay on DESIGN_READY because contracts or data_flow are incomplete."
+                    "Stay on DESIGN because contracts or data_flow are incomplete."
                 )
-        elif current_stage == Stage.IMPLEMENTING:
+        elif current_stage == Stage.IMPLEMENTATION:
             if implementation_status.get("implementation_status") != "done":
                 evidence.append(
-                    "Stay on IMPLEMENTING because implementation is not done yet."
+                    "Stay on IMPLEMENTATION because implementation is not done yet."
                 )
         elif current_stage == Stage.TESTING:
             if test_report.get("result") != "pass":
@@ -610,7 +610,7 @@ class Orchestrator:
                 evidence.append(
                     "Testing indicates unstable requirements, constraints, or acceptance criteria."
                 )
-                return Stage.REQUIREMENTS_READY, evidence
+                return Stage.REQUIREMENTS, evidence
 
             design_failure = any(
                 issue.get("related_contracts")
@@ -627,7 +627,7 @@ class Orchestrator:
                 evidence.append(
                     "Testing found contract, data flow, or module-boundary defects."
                 )
-                return Stage.DESIGN_READY, evidence
+                return Stage.DESIGN, evidence
 
             solution_failure = any(
                 len(issue.get("related_modules", [])) > 1
@@ -647,7 +647,7 @@ class Orchestrator:
                 evidence.append(
                     "Testing indicates unstable module ownership or solution-level structure."
                 )
-                return Stage.SOLUTION_READY, evidence
+                return Stage.SOLUTION, evidence
 
             implementation_failure = any(
                 issue.get("related_modules") for issue in active_issues
@@ -656,13 +656,13 @@ class Orchestrator:
                 evidence.append(
                     "Testing found issues that are still attributable to implementation."
                 )
-                return Stage.IMPLEMENTING, evidence
+                return Stage.IMPLEMENTATION, evidence
 
             if implementation_status.get("implementation_status") != "done":
                 evidence.append("Testing state exists but implementation is no longer done.")
-                return Stage.IMPLEMENTING, evidence
+                return Stage.IMPLEMENTATION, evidence
 
-        if current_stage == Stage.IMPLEMENTING:
+        if current_stage == Stage.IMPLEMENTATION:
             blockers = implementation_status.get("blockers", [])
             blocker_text = collect_text(
                 implementation_status.get("known_limitations"),
@@ -677,7 +677,7 @@ class Orchestrator:
 
             if contains_any(blocker_text, execution_keywords):
                 evidence.append(
-                    "Stay on IMPLEMENTING because blockers look execution-related rather than upstream."
+                    "Stay on IMPLEMENTATION because blockers look execution-related rather than upstream."
                 )
                 return None, evidence
 
@@ -690,7 +690,7 @@ class Orchestrator:
                 evidence.append(
                     "Implementation is blocked by unstable requirements, constraints, or acceptance criteria."
                 )
-                return Stage.REQUIREMENTS_READY, evidence
+                return Stage.REQUIREMENTS, evidence
 
             solution_failure = (
                 not solution.get("module_mapping")
@@ -711,7 +711,7 @@ class Orchestrator:
                 evidence.append(
                     "Implementation is blocked by unstable module ownership or solution structure."
                 )
-                return Stage.SOLUTION_READY, evidence
+                return Stage.SOLUTION, evidence
 
             design_failure = (
                 implementation_status.get("contract_compliance") is False
@@ -724,20 +724,20 @@ class Orchestrator:
                 evidence.append(
                     "Implementation is blocked by insufficient design contracts, flow, or structure."
                 )
-                return Stage.DESIGN_READY, evidence
+                return Stage.DESIGN, evidence
 
-        if current_stage == Stage.DESIGN_READY and not self.is_solution_ready(states):
+        if current_stage == Stage.DESIGN and not self.is_solution_ready(states):
             if self.is_requirements_ready(states):
                 evidence.append("Design is no longer supported by a ready solution.")
-                return Stage.SOLUTION_READY, evidence
+                return Stage.SOLUTION, evidence
             evidence.append(
                 "Design is no longer supported because requirements are also unstable."
             )
-            return Stage.REQUIREMENTS_READY, evidence
+            return Stage.REQUIREMENTS, evidence
 
-        if current_stage == Stage.SOLUTION_READY and not self.is_requirements_ready(states):
+        if current_stage == Stage.SOLUTION and not self.is_requirements_ready(states):
             evidence.append("Solution is no longer supported by ready requirements.")
-            return Stage.REQUIREMENTS_READY, evidence
+            return Stage.REQUIREMENTS, evidence
 
         return None, evidence
 
@@ -809,7 +809,7 @@ class Orchestrator:
         if decision.forward_target is not None and decision.forward_target in self.agents:
             return decision.forward_target
         if decision.final_stage == Stage.INIT:
-            return Stage.REQUIREMENTS_READY
+            return Stage.REQUIREMENTS
         if decision.final_stage in self.agents:
             return decision.final_stage
         return None

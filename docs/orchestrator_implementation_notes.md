@@ -96,9 +96,9 @@ requirements_ready
 当前 `source_stage` 通过以下痕迹推断：
 
 * 如果已有 testing 结果或 testing issue，则优先视为 `TESTING`
-* 否则如果 `implementation_status` 已进入活动状态，则视为 `IMPLEMENTING`
-* 否则如果已有 design 结构、contract、data flow 或 MVP 交付定义，则视为 `DESIGN_READY`
-* 否则如果已有 solution 技术主干或模块映射，则视为 `SOLUTION_READY`
+* 否则如果 `implementation_status` 已进入活动状态，则视为 `IMPLEMENTATION`
+* 否则如果已有 design 结构、contract、data flow 或 MVP 交付定义，则视为 `DESIGN`
+* 否则如果已有 solution 技术主干或模块映射，则视为 `SOLUTION`
 
 ## 回流目标与最终阶段
 
@@ -109,7 +109,7 @@ requirements_ready
 
 例如：
 
-* 如果回流目标是 `DESIGN_READY`
+* 如果回流目标是 `DESIGN`
 * 则 `implementing_active`、`testing_active`、`done_ready` 都会被置为 `false`
 * 之后再重新根据布尔链计算最终阶段
 
@@ -122,7 +122,7 @@ requirements_ready
 
 典型情况：
 
-* 如果回流目标是 `REQUIREMENTS_READY`
+* 如果回流目标是 `REQUIREMENTS`
 * 但当前 requirements 本身已经不满足 ready 条件
 * 则 `final_stage` 可能落到 `INIT`
 
@@ -130,13 +130,13 @@ requirements_ready
 
 用布尔链的语言来描述，当前回流实现可以概括为：
 
-* 如果回流目标是 `IMPLEMENTING`
+* 如果回流目标是 `IMPLEMENTATION`
   就把 `testing_active` 和 `done_ready` 置为 `false`
-* 如果回流目标是 `DESIGN_READY`
+* 如果回流目标是 `DESIGN`
   就把 `implementing_active`、`testing_active`、`done_ready` 置为 `false`
-* 如果回流目标是 `SOLUTION_READY`
+* 如果回流目标是 `SOLUTION`
   就把 `design_ready` 以及其后的布尔值置为 `false`
-* 如果回流目标是 `REQUIREMENTS_READY`
+* 如果回流目标是 `REQUIREMENTS`
   就把 `solution_ready` 以及其后的布尔值置为 `false`
 
 然后再重新取“最后一个成立的布尔值”作为最终阶段。
@@ -173,7 +173,7 @@ requirements_ready
 
 以下内容当前仍是有意简化，尚未完全按文档细化到最终形态：
 
-* `REQUIREMENTS_READY`、`SOLUTION_READY`、`DESIGN_READY` 的判定仍以核心字段为主，没有覆盖所有建议项与软条件。
+* `REQUIREMENTS`、`SOLUTION`、`DESIGN` 的判定仍以核心字段为主，没有覆盖所有建议项与软条件。
 * `TESTING` 和 `DONE` 目前没有引入更细粒度的“可交付但有中低优先级问题”的决策层。
 * `source_stage` 目前通过状态痕迹推断，而不是持久化存储。
 * blocker / issue 的根因归因仍然部分依赖关键词，而不是完全依赖结构化 schema。

@@ -6,10 +6,10 @@
 
 ```text
 INIT
-→ REQUIREMENTS_READY
-→ SOLUTION_READY
-→ DESIGN_READY
-→ IMPLEMENTING
+→ REQUIREMENTS
+→ SOLUTION
+→ DESIGN
+→ IMPLEMENTATION
 → TESTING
 → DONE
 ```
@@ -47,10 +47,10 @@ INIT
 
 | 阶段 | 主判断文件 | 关键问题 |
 | --- | --- | --- |
-| `REQUIREMENTS_READY` | `state/spec.json` | 需求是否已经足够明确，可以进入方案设计 |
-| `SOLUTION_READY` | `state/solution.json` | 方案主干是否已经稳定，可以进入系统设计 |
-| `DESIGN_READY` | `state/system_design.json` | 设计是否已经可指导编码落地 |
-| `IMPLEMENTING` | `state/implementation_status.json` | 实现动作是否已经正式开始 |
+| `REQUIREMENTS` | `state/spec.json` | 需求是否已经足够明确，可以进入方案设计 |
+| `SOLUTION` | `state/solution.json` | 方案主干是否已经稳定，可以进入系统设计 |
+| `DESIGN` | `state/system_design.json` | 设计是否已经可指导编码落地 |
+| `IMPLEMENTATION` | `state/implementation_status.json` | 实现动作是否已经正式开始 |
 | `TESTING` | `state/test_report.json` | 当前实现是否已经进入可验证状态 |
 | `DONE` | `state/test_report.json` | 当前这一轮是否已经完成闭环交付 |
 
@@ -58,9 +58,9 @@ INIT
 
 | 当前阶段 | 主判断文件 | 主要输出 |
 | --- | --- | --- |
-| `TESTING` | `state/test_report.json` | 留在 `TESTING` 或回流到 `IMPLEMENTING` / `DESIGN_READY` / `SOLUTION_READY` / `REQUIREMENTS_READY` |
-| `IMPLEMENTING` | `state/implementation_status.json` | 留在 `IMPLEMENTING` 或回流到 `DESIGN_READY` / `SOLUTION_READY` / `REQUIREMENTS_READY` |
-| `DESIGN_READY` | `state/system_design.json` | 留在 `DESIGN_READY` 或回流到 `SOLUTION_READY` / `REQUIREMENTS_READY` |
-| `SOLUTION_READY` | `state/solution.json` | 留在 `SOLUTION_READY` 或回流到 `REQUIREMENTS_READY` |
+| `TESTING` | `state/test_report.json` | 留在 `TESTING` 或回流到 `IMPLEMENTATION` / `DESIGN` / `SOLUTION` / `REQUIREMENTS` |
+| `IMPLEMENTATION` | `state/implementation_status.json` | 留在 `IMPLEMENTATION` 或回流到 `DESIGN` / `SOLUTION` / `REQUIREMENTS` |
+| `DESIGN` | `state/system_design.json` | 留在 `DESIGN` 或回流到 `SOLUTION` / `REQUIREMENTS` |
+| `SOLUTION` | `state/solution.json` | 留在 `SOLUTION` 或回流到 `REQUIREMENTS` |
 
 详细字段级判断与回流后状态处理，请直接查看 [workflow_stage_criteria.md](./workflow_stage_criteria.md) 和 [workflow_backflow_rules.md](./workflow_backflow_rules.md)。

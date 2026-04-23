@@ -6,10 +6,10 @@
 
 ```text
 INIT
-→ REQUIREMENTS_READY
-→ SOLUTION_READY
-→ DESIGN_READY
-→ IMPLEMENTING
+→ REQUIREMENTS
+→ SOLUTION
+→ DESIGN
+→ IMPLEMENTATION
 → TESTING
 → DONE
 ```
@@ -22,9 +22,9 @@ INIT
 * `state/implementation_status.json`
 * `state/test_report.json`
 
-## `REQUIREMENTS_READY` 判定条件
+## `REQUIREMENTS` 判定条件
 
-在当前单线程主流程中，`REQUIREMENTS_READY` 表示需求已经足够清晰，可以进入 `solution` 阶段；它不要求需求绝对完整，但要求核心目标、主要能力和验收方向已经明确。
+在当前单线程主流程中，`REQUIREMENTS` 表示需求已经足够清晰，可以进入 `solution` 阶段；它不要求需求绝对完整，但要求核心目标、主要能力和验收方向已经明确。
 
 必须满足：
 
@@ -38,7 +38,7 @@ INIT
 * `constraints` 如果用户已明确提出，则必须记录；如果当前没有识别到硬约束，可以为空。
 * `non_functional_requirements` 与 `preferences` 可以为空，但只要用户明确提过相关内容，就应被记录。
 
-不能推进到 `REQUIREMENTS_READY` 的情况：
+不能推进到 `REQUIREMENTS` 的情况：
 
 * `open_questions` 中仍存在会阻塞方案设计的关键未决问题。
 * 用户输入仍然停留在模糊意图层，无法稳定提炼出主要功能需求。
@@ -49,11 +49,11 @@ orchestrator 的基础判断原则：
 
 * 不以“字段是否全部填满”为 ready 标准，而以“是否已经足够进入方案设计”为准。
 * 明确的新需求应直接进入正式需求字段；只有尚未澄清、会阻塞后续的问题才进入 `open_questions`。
-* 如果需求内容已基本明确，但仍有非阻塞性小问题，可以先进入 `REQUIREMENTS_READY`，并在后续阶段继续补全。
+* 如果需求内容已基本明确，但仍有非阻塞性小问题，可以先进入 `REQUIREMENTS`，并在后续阶段继续补全。
 
-## `SOLUTION_READY` 判定条件
+## `SOLUTION` 判定条件
 
-在当前单线程主流程中，`SOLUTION_READY` 表示方案已经足够稳定，可以进入 `design` 阶段；它不要求所有技术细节都已经定死，但要求关键技术决策和核心模块划分已经明确。
+在当前单线程主流程中，`SOLUTION` 表示方案已经足够稳定，可以进入 `design` 阶段；它不要求所有技术细节都已经定死，但要求关键技术决策和核心模块划分已经明确。
 
 必须满足：
 
@@ -68,10 +68,10 @@ orchestrator 的基础判断原则：
 * `database` 与 `deployment` 不要求一开始就非常细，但应至少有清晰方向，且不能与当前约束冲突。
 * `depends_on` 建议明确主要模块依赖关系；如果当前只是粗粒度方案，可以允许后续在 design 阶段继续细化。
 * `risks` 建议记录；如果当前存在明显风险但没有记入，会降低方案可用性。
-* `alternatives` 可选，用于记录备选方案与取舍，不阻塞进入 `SOLUTION_READY`。
+* `alternatives` 可选，用于记录备选方案与取舍，不阻塞进入 `SOLUTION`。
 * `tech_note` 仅在存在模块级特殊技术偏好时填写，不影响 ready 判定。
 
-不能推进到 `SOLUTION_READY` 的情况：
+不能推进到 `SOLUTION` 的情况：
 
 * 核心技术方案仍然悬空，导致 design 阶段无法继续展开结构设计。
 * 关键需求尚未被任何模块承接，或多个模块职责明显重叠、边界混乱。
@@ -85,11 +85,11 @@ orchestrator 的基础判断原则：
 * 可以对所有 `module_mapping[].covers_requirements` 取并集作为覆盖集合，用于检查核心需求是否已被承接。
 * 覆盖判断不要求与 `functional_requirements` 机械全等，而要求核心需求至少已被一个模块覆盖。
 * `risks` 和 `alternatives` 用于提高方案质量，但不应取代核心方案判断。
-* 如果方案主干已经明确，但仍有少量非阻塞性风险或备选项未补全，可以先进入 `SOLUTION_READY`，再在 design 阶段继续收紧。
+* 如果方案主干已经明确，但仍有少量非阻塞性风险或备选项未补全，可以先进入 `SOLUTION`，再在 design 阶段继续收紧。
 
-## `DESIGN_READY` 判定条件
+## `DESIGN` 判定条件
 
-在当前单线程主流程中，`DESIGN_READY` 表示系统设计已经足够具体，可以进入 `implementation` 阶段；它不要求所有实现细节都已经定稿，但要求项目结构、关键交接边界、主流程流转和 MVP 范围已经能够指导编码落地。
+在当前单线程主流程中，`DESIGN` 表示系统设计已经足够具体，可以进入 `implementation` 阶段；它不要求所有实现细节都已经定稿，但要求项目结构、关键交接边界、主流程流转和 MVP 范围已经能够指导编码落地。
 
 必须满足：
 
@@ -107,7 +107,7 @@ orchestrator 的基础判断原则：
 * `data_flow.trigger` 建议明确关键触发条件；`notes` 可作为补充说明，不影响 ready 判定。
 * `mvp_plan.out_of_scope` 与 `milestones` 最好明确，用于防止范围膨胀，但不要求计划颗粒度过细。
 
-不能推进到 `DESIGN_READY` 的情况：
+不能推进到 `DESIGN` 的情况：
 
 * solution 中的核心模块在 design 中尚未落到可实现结构，导致 implementation 无法确定代码边界。
 * 关键模块之间的交接边界仍然模糊，`contracts` 无法指导实现。
@@ -123,13 +123,13 @@ orchestrator 的基础判断原则：
 * `data_flow` 只要能串起主路径即可；异常分支、回流分支可以后续补全。
 * `mvp_plan` 的目标是收范围、定起点，而不是替代详细开发计划。
 
-## `IMPLEMENTING` 判定条件
+## `IMPLEMENTATION` 判定条件
 
-在当前单线程主流程中，`IMPLEMENTING` 表示主流程已经正式进入按设计落地实现的阶段；它不是通过“写了多少代码”来定义，而是通过“orchestrator 是否已经切换到实现执行，并且实现动作已经开始”来定义。
+在当前单线程主流程中，`IMPLEMENTATION` 表示主流程已经正式进入按设计落地实现的阶段；它不是通过“写了多少代码”来定义，而是通过“orchestrator 是否已经切换到实现执行，并且实现动作已经开始”来定义。
 
-进入 `IMPLEMENTING` 的条件：
+进入 `IMPLEMENTATION` 的条件：
 
-* `DESIGN_READY` 已成立。
+* `DESIGN` 已成立。
 * 当前选定角色已切换为 `Implementation Engineer`。
 * `implementation_status.json` 中的 `module_name` 已明确，表示当前存在具体实现对象。
 * `implementation_status` 已进入活动状态，而非 `not_started`。
@@ -140,7 +140,7 @@ orchestrator 的基础判断原则：
 * `blocked` 表示当前仍属于实现阶段，但因为阻塞条件尚未解除而无法继续推进。
 * `done` 表示当前这轮实现已经完成，主流程可以准备进入 testing 判定。
 
-不能视为已进入 `IMPLEMENTING` 的情况：
+不能视为已进入 `IMPLEMENTATION` 的情况：
 
 * design 尚未 ready，但已经试图直接开始编码。
 * 当前没有明确实现对象，无法判断这一轮在落哪个模块或交付项。
@@ -148,7 +148,7 @@ orchestrator 的基础判断原则：
 
 orchestrator 的基础判断原则：
 
-* 是否进入 `IMPLEMENTING` 由“实现动作是否正式开始”决定，不由 `files_touched` 数量决定。
+* 是否进入 `IMPLEMENTATION` 由“实现动作是否正式开始”决定，不由 `files_touched` 数量决定。
 * `in_progress` 与 `blocked` 都属于实现中的活动状态。
 * `done` 只表示实现阶段当前轮次完成，不自动等于整个流程结束。
 
@@ -178,7 +178,7 @@ orchestrator 的基础判断原则：
 orchestrator 的基础判断原则：
 
 * 进入 `TESTING` 的前提是“当前轮实现已经可被验证”，而不是“测试文件已经存在”。
-* `IMPLEMENTING` 的完成与 `TESTING` 的开始是相邻关系：实现完成后，主流程应转入验证，而不是直接视为完成。
+* `IMPLEMENTATION` 的完成与 `TESTING` 的开始是相邻关系：实现完成后，主流程应转入验证，而不是直接视为完成。
 * testing 阶段的核心任务不是继续实现，而是验证结果、检查模块交互、contract 与 data flow 是否成立、记录问题并决定是否回流。
 
 ## `DONE` 判定条件

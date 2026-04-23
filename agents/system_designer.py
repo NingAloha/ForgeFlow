@@ -5,7 +5,7 @@ from .base import AgentContext, AgentResult, BaseAgent
 
 class SystemDesignerAgent(BaseAgent):
     agent_name = "System Designer"
-    stage_name = "DESIGN_READY"
+    stage_name = "DESIGN"
     state_key = "system_design"
 
     def run(self, context: AgentContext) -> AgentResult:

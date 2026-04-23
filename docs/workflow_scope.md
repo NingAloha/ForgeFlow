@@ -22,7 +22,7 @@
 
 当前规则建立在以下假设之上：
 
-* 当前只有一条主流程：`INIT -> REQUIREMENTS_READY -> SOLUTION_READY -> DESIGN_READY -> IMPLEMENTING -> TESTING -> DONE`。
+* 当前只有一条主流程：`INIT -> REQUIREMENTS -> SOLUTION -> DESIGN -> IMPLEMENTATION -> TESTING -> DONE`。
 * 当前只要求“本轮需求闭环”清晰，不要求一次性定义项目未来所有需求。
 * 回流存在，但回流服务于修正本轮闭环中的问题，而不是长期并行管理多个变化源。
 * `state/*.json` 当前表达的是“这一轮主流程的当前状态”，而不是多轮并存、多分支并存的状态集合。

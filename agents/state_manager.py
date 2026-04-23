@@ -12,6 +12,7 @@ class StateManager:
         "system_design": "system_design.json",
         "implementation_status": "implementation_status.json",
         "test_report": "test_report.json",
+        "question_state": "question_state.json",
     }
 
     def __init__(self, state_dir: str | Path | None = None) -> None:

@@ -3,6 +3,14 @@ from __future__ import annotations
 import unittest
 from copy import deepcopy
 
+from agents.base import (
+    AgentResult,
+    BaseAgent,
+    QuestionAnswer,
+    QuestionItem,
+    QuestionOption,
+    QuestionState,
+)
 from agents.orchestrator import Orchestrator, Stage
 
 
@@ -57,6 +65,15 @@ def make_empty_states() -> dict[str, dict]:
             "test_scope": "integration",
             "result": "not_run",
             "issues": [],
+        },
+        "question_state": {
+            "status": "idle",
+            "stage_name": "",
+            "state_key": "",
+            "blocking": False,
+            "questions": [],
+            "created_by": "",
+            "resolution_summary": "",
         },
     }
 
@@ -318,6 +335,342 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         self.assertIsNone(decision.forward_target)
         self.assertTrue(decision.should_stay)
 
+    def test_resolve_transition_waits_on_blocking_question_state(self) -> None:
+        states = make_requirements_ready_states()
+        states["question_state"] = {
+            "status": "awaiting_user",
+            "stage_name": "REQUIREMENTS_READY",
+            "state_key": "spec",
+            "blocking": True,
+            "questions": [
+                {
+                    "id": "scope-choice",
+                    "title": "Pick initial scope",
+                    "description": "Need one direction before solution work.",
+                    "response_type": "single_select",
+                    "options": [],
+                    "allow_free_text": False,
+                    "answer": None,
+                }
+            ],
+            "created_by": "Requirements Engineer",
+            "resolution_summary": "",
+        }
+        decision = self.orchestrator.resolve_transition(states)
+        self.assertTrue(decision.wait_for_user_input)
+        self.assertTrue(decision.should_stay)
+        self.assertEqual(decision.final_stage, Stage.REQUIREMENTS_READY)
+        self.assertIsNone(self.orchestrator.determine_execution_stage(decision))
+
+    def test_resolve_transition_waits_on_answered_blocking_question_state(self) -> None:
+        states = make_requirements_ready_states()
+        states["question_state"] = {
+            "status": "answered",
+            "stage_name": "REQUIREMENTS_READY",
+            "state_key": "spec",
+            "blocking": True,
+            "questions": [
+                {
+                    "id": "scope-choice",
+                    "title": "Pick initial scope",
+                    "description": "Need one direction before solution work.",
+                    "response_type": "single_select",
+                    "options": [],
+                    "allow_free_text": False,
+                    "answer": {
+                        "selected_values": ["mvp"],
+                        "free_text": "",
+                    },
+                }
+            ],
+            "created_by": "Requirements Engineer",
+            "resolution_summary": "",
+        }
+        decision = self.orchestrator.resolve_transition(states)
+        self.assertTrue(decision.wait_for_user_input)
+        self.assertTrue(decision.should_stay)
+        self.assertEqual(decision.final_stage, Stage.REQUIREMENTS_READY)
+        self.assertIsNone(self.orchestrator.determine_execution_stage(decision))
+
+    def test_resolve_transition_does_not_wait_when_question_state_is_non_blocking(self) -> None:
+        states = make_requirements_ready_states()
+        states["question_state"] = {
+            "status": "awaiting_user",
+            "stage_name": "REQUIREMENTS_READY",
+            "state_key": "spec",
+            "blocking": False,
+            "questions": [
+                {
+                    "id": "optional-note",
+                    "title": "Optional preference",
+                    "description": "Nice to know but not required.",
+                    "response_type": "free_text",
+                    "options": [],
+                    "allow_free_text": True,
+                    "answer": None,
+                }
+            ],
+            "created_by": "Requirements Engineer",
+            "resolution_summary": "",
+        }
+        decision = self.orchestrator.resolve_transition(states)
+        self.assertFalse(decision.wait_for_user_input)
+        self.assertEqual(decision.final_stage, Stage.REQUIREMENTS_READY)
+
+    def test_resolve_transition_does_not_wait_when_blocking_question_list_is_empty(self) -> None:
+        states = make_requirements_ready_states()
+        states["question_state"] = {
+            "status": "awaiting_user",
+            "stage_name": "REQUIREMENTS_READY",
+            "state_key": "spec",
+            "blocking": True,
+            "questions": [],
+            "created_by": "Requirements Engineer",
+            "resolution_summary": "",
+        }
+        decision = self.orchestrator.resolve_transition(states)
+        self.assertFalse(decision.wait_for_user_input)
+        self.assertEqual(decision.final_stage, Stage.REQUIREMENTS_READY)
+
+    def test_resolve_transition_falls_back_to_source_stage_for_invalid_question_stage(self) -> None:
+        states = make_testing_states()
+        states["question_state"] = {
+            "status": "awaiting_user",
+            "stage_name": "NOT_A_STAGE",
+            "state_key": "spec",
+            "blocking": True,
+            "questions": [
+                {
+                    "id": "broken-stage",
+                    "title": "Clarify expectation",
+                    "description": "Malformed stage marker should not crash.",
+                    "response_type": "free_text",
+                    "options": [],
+                    "allow_free_text": True,
+                    "answer": None,
+                }
+            ],
+            "created_by": "Requirements Engineer",
+            "resolution_summary": "",
+        }
+        decision = self.orchestrator.resolve_transition(states)
+        self.assertTrue(decision.wait_for_user_input)
+        self.assertEqual(decision.source_stage, Stage.TESTING)
+        self.assertEqual(decision.final_stage, Stage.TESTING)
+
+    def test_parse_question_state_handles_nested_options_and_answers(self) -> None:
+        payload = {
+            "status": "answered",
+            "stage_name": "SOLUTION_READY",
+            "state_key": "solution",
+            "blocking": True,
+            "questions": [
+                {
+                    "id": "stack-choice",
+                    "title": "Pick backend",
+                    "description": "Need a backend to proceed.",
+                    "response_type": "mixed",
+                    "options": [
+                        {
+                            "label": "Python",
+                            "value": "python",
+                            "hint": "Fastest path in this repo.",
+                        }
+                    ],
+                    "allow_free_text": True,
+                    "answer": {
+                        "selected_values": ["python"],
+                        "free_text": "Prefer standard library first.",
+                    },
+                }
+            ],
+            "created_by": "Solution Engineer",
+            "resolution_summary": "User picked Python.",
+        }
+
+        question_state = self.orchestrator.parse_question_state(payload)
+
+        self.assertEqual(question_state.status, "answered")
+        self.assertEqual(question_state.stage_name, "SOLUTION_READY")
+        self.assertEqual(len(question_state.questions), 1)
+        self.assertEqual(question_state.questions[0].options[0].value, "python")
+        self.assertEqual(
+            question_state.questions[0].answer.selected_values, ["python"]
+        )
+        self.assertEqual(
+            question_state.questions[0].answer.free_text,
+            "Prefer standard library first.",
+        )
+
+    def test_serialize_question_state_none_returns_idle_payload(self) -> None:
+        payload = self.orchestrator.serialize_question_state(None)
+        self.assertEqual(payload, make_empty_states()["question_state"])
+
+    def test_serialize_question_state_preserves_nested_question_fields(self) -> None:
+        question_state = QuestionState(
+            status="answered",
+            stage_name="SOLUTION_READY",
+            state_key="solution",
+            blocking=True,
+            questions=[
+                QuestionItem(
+                    id="stack-choice",
+                    title="Pick backend",
+                    description="Need a backend to proceed.",
+                    response_type="mixed",
+                    options=[
+                        QuestionOption(
+                            label="Python",
+                            value="python",
+                            hint="Fastest path in this repo.",
+                        )
+                    ],
+                    allow_free_text=True,
+                    answer=QuestionAnswer(
+                        selected_values=["python"],
+                        free_text="Prefer standard library first.",
+                    ),
+                )
+            ],
+            created_by="Solution Engineer",
+            resolution_summary="User picked Python.",
+        )
+
+        payload = self.orchestrator.serialize_question_state(question_state)
+
+        self.assertEqual(payload["questions"][0]["options"][0]["label"], "Python")
+        self.assertEqual(
+            payload["questions"][0]["answer"]["selected_values"], ["python"]
+        )
+        self.assertEqual(payload["resolution_summary"], "User picked Python.")
+
+    def test_run_stage_saves_question_state_update(self) -> None:
+        state_manager = InMemoryStateManager(make_empty_states())
+        orchestrator = Orchestrator(state_manager=state_manager)
+        orchestrator.agents[Stage.REQUIREMENTS_READY] = QuestionAskingAgent()
+
+        result = orchestrator.run_stage(Stage.REQUIREMENTS_READY)
+
+        self.assertTrue(result.requires_user_input)
+        self.assertIn("question_state", state_manager.saved_states)
+        saved_question_state = state_manager.saved_states["question_state"]
+        self.assertEqual(saved_question_state["status"], "awaiting_user")
+        self.assertEqual(saved_question_state["stage_name"], "REQUIREMENTS_READY")
+        self.assertEqual(saved_question_state["questions"][0]["id"], "target-user")
+
+    def test_run_stage_without_question_update_does_not_write_question_state(self) -> None:
+        state_manager = InMemoryStateManager(make_empty_states())
+        orchestrator = Orchestrator(state_manager=state_manager)
+
+        orchestrator.run_stage(Stage.REQUIREMENTS_READY)
+
+        self.assertNotIn("question_state", state_manager.saved_states)
+        self.assertIn("spec", state_manager.saved_states)
+
+    def test_run_stage_clears_answered_question_state_after_same_stage_consumes_it(self) -> None:
+        states = make_empty_states()
+        states["question_state"] = {
+            "status": "answered",
+            "stage_name": "REQUIREMENTS_READY",
+            "state_key": "spec",
+            "blocking": True,
+            "questions": [
+                {
+                    "id": "target-user",
+                    "title": "Who is the first target user?",
+                    "description": "Need one concrete initial user persona.",
+                    "response_type": "single_select",
+                    "options": [],
+                    "allow_free_text": True,
+                    "answer": {
+                        "selected_values": ["indie_hacker"],
+                        "free_text": "Solo builder first.",
+                    },
+                }
+            ],
+            "created_by": "Requirements Engineer",
+            "resolution_summary": "",
+        }
+        state_manager = InMemoryStateManager(states)
+        orchestrator = Orchestrator(state_manager=state_manager)
+        orchestrator.agents[Stage.REQUIREMENTS_READY] = AnswerConsumingAgent()
+
+        orchestrator.run_stage(Stage.REQUIREMENTS_READY)
+
+        self.assertIn("question_state", state_manager.saved_states)
+        self.assertEqual(
+            state_manager.saved_states["question_state"],
+            make_empty_states()["question_state"],
+        )
+
+    def test_run_stage_does_not_clear_answered_question_state_for_other_stage(self) -> None:
+        states = make_empty_states()
+        states["question_state"] = {
+            "status": "answered",
+            "stage_name": "SOLUTION_READY",
+            "state_key": "solution",
+            "blocking": True,
+            "questions": [
+                {
+                    "id": "stack-choice",
+                    "title": "Pick backend",
+                    "description": "Need a backend to proceed.",
+                    "response_type": "single_select",
+                    "options": [],
+                    "allow_free_text": False,
+                    "answer": {
+                        "selected_values": ["python"],
+                        "free_text": "",
+                    },
+                }
+            ],
+            "created_by": "Solution Engineer",
+            "resolution_summary": "",
+        }
+        state_manager = InMemoryStateManager(states)
+        orchestrator = Orchestrator(state_manager=state_manager)
+        orchestrator.agents[Stage.REQUIREMENTS_READY] = AnswerConsumingAgent()
+
+        orchestrator.run_stage(Stage.REQUIREMENTS_READY)
+
+        self.assertNotIn("question_state", state_manager.saved_states)
+
+    def test_run_stage_does_not_clear_answered_question_state_when_agent_reasks(self) -> None:
+        states = make_empty_states()
+        states["question_state"] = {
+            "status": "answered",
+            "stage_name": "REQUIREMENTS_READY",
+            "state_key": "spec",
+            "blocking": True,
+            "questions": [
+                {
+                    "id": "target-user",
+                    "title": "Who is the first target user?",
+                    "description": "Need one concrete initial user persona.",
+                    "response_type": "single_select",
+                    "options": [],
+                    "allow_free_text": True,
+                    "answer": {
+                        "selected_values": [],
+                        "free_text": "Need more constraints.",
+                    },
+                }
+            ],
+            "created_by": "Requirements Engineer",
+            "resolution_summary": "",
+        }
+        state_manager = InMemoryStateManager(states)
+        orchestrator = Orchestrator(state_manager=state_manager)
+        orchestrator.agents[Stage.REQUIREMENTS_READY] = ReaskingAgent()
+
+        orchestrator.run_stage(Stage.REQUIREMENTS_READY)
+
+        self.assertIn("question_state", state_manager.saved_states)
+        self.assertEqual(
+            state_manager.saved_states["question_state"]["status"],
+            "awaiting_user",
+        )
+
     def test_resolve_transition_backflows_testing_failure_to_implementing(self) -> None:
         states = make_testing_states()
         states["test_report"].update(
@@ -458,6 +811,97 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         self.assertEqual(result.decision.final_stage, Stage.DONE)
         self.assertIsNone(result.executed_stage)
         self.assertIsNone(result.agent_result)
+
+
+class InMemoryStateManager:
+    def __init__(self, states: dict[str, dict]) -> None:
+        self.states = deepcopy(states)
+        self.saved_states: dict[str, dict] = {}
+
+    def load_all_states(self) -> dict[str, dict]:
+        return deepcopy(self.states)
+
+    def save_state(self, state_key: str, payload: dict) -> None:
+        self.saved_states[state_key] = deepcopy(payload)
+        self.states[state_key] = deepcopy(payload)
+
+
+class QuestionAskingAgent(BaseAgent):
+    agent_name = "Requirements Engineer"
+    stage_name = "REQUIREMENTS_READY"
+    state_key = "spec"
+
+    def run(self, context):  # type: ignore[override]
+        return AgentResult(
+            agent_name=self.agent_name,
+            stage_name=self.stage_name,
+            state_key=self.state_key,
+            updated_state=dict(context.states.get("spec", {})),
+            summary="Need user clarification before proceeding.",
+            question_state_update=QuestionState(
+                status="awaiting_user",
+                stage_name=self.stage_name,
+                state_key=self.state_key,
+                blocking=True,
+                questions=[
+                    QuestionItem(
+                        id="target-user",
+                        title="Who is the first target user?",
+                        description="Need one concrete initial user persona.",
+                    )
+                ],
+                created_by=self.agent_name,
+            ),
+            requires_user_input=True,
+        )
+
+
+class AnswerConsumingAgent(BaseAgent):
+    agent_name = "Requirements Engineer"
+    stage_name = "REQUIREMENTS_READY"
+    state_key = "spec"
+
+    def run(self, context):  # type: ignore[override]
+        updated_state = dict(context.states.get("spec", {}))
+        updated_state["target_users"] = ["indie_hacker"]
+        updated_state["open_questions"] = []
+        return AgentResult(
+            agent_name=self.agent_name,
+            stage_name=self.stage_name,
+            state_key=self.state_key,
+            updated_state=updated_state,
+            summary="Consumed answered question and updated spec.",
+        )
+
+
+class ReaskingAgent(BaseAgent):
+    agent_name = "Requirements Engineer"
+    stage_name = "REQUIREMENTS_READY"
+    state_key = "spec"
+
+    def run(self, context):  # type: ignore[override]
+        return AgentResult(
+            agent_name=self.agent_name,
+            stage_name=self.stage_name,
+            state_key=self.state_key,
+            updated_state=dict(context.states.get("spec", {})),
+            summary="Need one more clarification round.",
+            question_state_update=QuestionState(
+                status="awaiting_user",
+                stage_name=self.stage_name,
+                state_key=self.state_key,
+                blocking=True,
+                questions=[
+                    QuestionItem(
+                        id="target-user-followup",
+                        title="What is the user's biggest pain point?",
+                        description="Need a sharper first-use-case boundary.",
+                    )
+                ],
+                created_by=self.agent_name,
+            ),
+            requires_user_input=True,
+        )
 
 
 if __name__ == "__main__":

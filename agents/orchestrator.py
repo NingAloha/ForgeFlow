@@ -1,10 +1,17 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from typing import Any
 
-from .base import AgentContext, AgentResult
+from .base import (
+    AgentContext,
+    AgentResult,
+    QuestionAnswer,
+    QuestionItem,
+    QuestionOption,
+    QuestionState,
+)
 from .implementation_engineer import ImplementationEngineerAgent
 from .requirements_engineer import RequirementsEngineerAgent
 from .solution_engineer import SolutionEngineerAgent
@@ -40,6 +47,7 @@ class TransitionDecision:
     source_stage: Stage | None = None
     forward_target: Stage | None = None
     backflow_target: Stage | None = None
+    wait_for_user_input: bool = False
     should_stay: bool = True
     reason: str = ""
     evidence: list[str] = field(default_factory=list)
@@ -67,9 +75,107 @@ class Orchestrator:
         }
 
     def build_context(self, user_input: str = "") -> AgentContext:
+        states = self.state_manager.load_all_states()
         return AgentContext(
             user_input=user_input,
-            states=self.state_manager.load_all_states(),
+            states=states,
+            question_state=self.parse_question_state(
+                states.get("question_state", {})
+            ),
+        )
+
+    def parse_question_state(self, payload: dict[str, Any]) -> QuestionState:
+        questions: list[QuestionItem] = []
+        for item in payload.get("questions", []):
+            options = [
+                QuestionOption(
+                    label=option.get("label", ""),
+                    value=option.get("value", ""),
+                    hint=option.get("hint", ""),
+                )
+                for option in item.get("options", [])
+            ]
+            answer_payload = item.get("answer")
+            answer = None
+            if isinstance(answer_payload, dict):
+                answer = QuestionAnswer(
+                    selected_values=list(
+                        answer_payload.get("selected_values", [])
+                    ),
+                    free_text=answer_payload.get("free_text", ""),
+                )
+            questions.append(
+                QuestionItem(
+                    id=item.get("id", ""),
+                    title=item.get("title", ""),
+                    description=item.get("description", ""),
+                    response_type=item.get("response_type", "single_select"),
+                    options=options,
+                    allow_free_text=item.get("allow_free_text", False),
+                    answer=answer,
+                )
+            )
+
+        return QuestionState(
+            status=payload.get("status", "idle"),
+            stage_name=payload.get("stage_name", ""),
+            state_key=payload.get("state_key", ""),
+            blocking=payload.get("blocking", False),
+            questions=questions,
+            created_by=payload.get("created_by", ""),
+            resolution_summary=payload.get("resolution_summary", ""),
+        )
+
+    def serialize_question_state(
+        self, question_state: QuestionState | None
+    ) -> dict[str, Any]:
+        if question_state is None:
+            return self.default_question_state_payload()
+        return asdict(question_state)
+
+    def default_question_state_payload(self) -> dict[str, Any]:
+        return {
+            "status": "idle",
+            "stage_name": "",
+            "state_key": "",
+            "blocking": False,
+            "questions": [],
+            "created_by": "",
+            "resolution_summary": "",
+        }
+
+    def should_clear_question_state(
+        self, context: AgentContext, result: AgentResult
+    ) -> bool:
+        question_state = context.question_state
+        if question_state is None:
+            return False
+        if question_state.status != "answered":
+            return False
+        if result.requires_user_input or result.question_state_update is not None:
+            return False
+        return question_state.stage_name == result.stage_name
+
+    def get_blocking_question_stage(
+        self, states: dict[str, dict[str, Any]], fallback_stage: Stage
+    ) -> Stage:
+        question_state = states.get("question_state", {})
+        stage_name = question_state.get("stage_name")
+        if not stage_name:
+            return fallback_stage
+        try:
+            return Stage(stage_name)
+        except ValueError:
+            return fallback_stage
+
+    def is_waiting_for_user_input(
+        self, states: dict[str, dict[str, Any]]
+    ) -> bool:
+        question_state = states.get("question_state", {})
+        return bool(
+            question_state.get("blocking")
+            and question_state.get("status") in {"awaiting_user", "answered"}
+            and question_state.get("questions")
         )
 
     def is_requirements_ready(self, states: dict[str, dict[str, Any]]) -> bool:
@@ -641,6 +747,22 @@ class Orchestrator:
         flags = self.evaluate_stage_flags(states)
         computed_stage = self.stage_from_flags(flags)
         source_stage = self.infer_source_stage(states)
+        if self.is_waiting_for_user_input(states):
+            waiting_stage = self.get_blocking_question_stage(
+                states, source_stage
+            )
+            return TransitionDecision(
+                computed_stage=computed_stage,
+                final_stage=waiting_stage,
+                source_stage=source_stage,
+                wait_for_user_input=True,
+                should_stay=True,
+                reason="Waiting for user input.",
+                evidence=[
+                    "question_state is blocking and awaiting user response."
+                ],
+            )
+
         backflow_target, backflow_evidence = self.evaluate_backflow(
             states, source_stage
         )
@@ -680,6 +802,8 @@ class Orchestrator:
         )
 
     def determine_execution_stage(self, decision: TransitionDecision) -> Stage | None:
+        if decision.wait_for_user_input:
+            return None
         if decision.backflow_target is not None and decision.backflow_target in self.agents:
             return decision.backflow_target
         if decision.forward_target is not None and decision.forward_target in self.agents:
@@ -696,6 +820,11 @@ class Orchestrator:
         executed_stage: Stage | None = None,
         agent_result: AgentResult | None = None,
     ) -> str:
+        if decision.wait_for_user_input:
+            return (
+                f"Resolved stage to {decision.final_stage}; "
+                "waiting for user input."
+            )
         if executed_stage is None:
             return (
                 f"Resolved stage to {decision.final_stage}; "
@@ -745,4 +874,14 @@ class Orchestrator:
         context = self.build_context(user_input=user_input)
         result = agent.run(context)
         self.state_manager.save_state(result.state_key, result.updated_state)
+        if result.question_state_update is not None:
+            self.state_manager.save_state(
+                "question_state",
+                self.serialize_question_state(result.question_state_update),
+            )
+        elif self.should_clear_question_state(context, result):
+            self.state_manager.save_state(
+                "question_state",
+                self.default_question_state_payload(),
+            )
         return result

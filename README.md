@@ -84,6 +84,7 @@ forgeflow/
 详细参考：
 
 * [docs/workflow_criteria.md](./docs/workflow_criteria.md)：单线程主流程阶段判定规则
+* [docs/agent_design_principles.md](./docs/agent_design_principles.md)：后续 agent 能力扩展与动作空间设计原则
 * [docs/state_contracts.md](./docs/state_contracts.md)：各阶段 JSON 状态契约
 
 ## 当前范围
@@ -119,6 +120,7 @@ forgeflow/
 
 * 阶段判定规则已拆到 `docs/`
 * 状态 JSON 契约已收紧并文档化
+* 已补充一版 agent 设计原则文档，用于约束后续演进方向
 * 各模块目录已补充导航 README
 * 实现仍处于早期阶段
 

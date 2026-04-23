@@ -1,4 +1,12 @@
-from .base import AgentContext, AgentResult, BaseAgent
+from .base import (
+    AgentContext,
+    AgentResult,
+    BaseAgent,
+    QuestionAnswer,
+    QuestionItem,
+    QuestionOption,
+    QuestionState,
+)
 from .implementation_engineer import ImplementationEngineerAgent
 from .orchestrator import Orchestrator
 from .requirements_engineer import RequirementsEngineerAgent
@@ -13,6 +21,10 @@ __all__ = [
     "BaseAgent",
     "ImplementationEngineerAgent",
     "Orchestrator",
+    "QuestionAnswer",
+    "QuestionItem",
+    "QuestionOption",
+    "QuestionState",
     "RequirementsEngineerAgent",
     "SolutionEngineerAgent",
     "StateManager",

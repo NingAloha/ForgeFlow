@@ -25,6 +25,7 @@ INIT
 ## 文档分工
 
 * [workflow_scope.md](./workflow_scope.md)：当前工作流适用场景与边界，回答“这套规则主要适用于什么，不适用于什么”。
+* [agent_design_principles.md](./agent_design_principles.md)：agent 设计原则与演进方向，回答“后续应该如何扩能力而不失控”。
 * [workflow_stage_criteria.md](./workflow_stage_criteria.md)：正向阶段进入条件，回答“什么时候可以进入下一阶段”。
 * [workflow_backflow_rules.md](./workflow_backflow_rules.md)：回流规则与状态失效处理，回答“什么时候应该退回上游阶段，以及回流后哪些结论失效”。
 * [orchestrator_implementation_notes.md](./orchestrator_implementation_notes.md)：当前 orchestrator 的代码级判定模型与简化策略，回答“规则是如何落到当前实现里的”。
@@ -34,10 +35,11 @@ INIT
 
 1. 当前 `workflow_criteria.md`
 2. [workflow_scope.md](./workflow_scope.md)
-3. [workflow_stage_criteria.md](./workflow_stage_criteria.md)
-4. [workflow_backflow_rules.md](./workflow_backflow_rules.md)
-5. [orchestrator_implementation_notes.md](./orchestrator_implementation_notes.md)
-6. [state_contracts.md](./state_contracts.md)
+3. [agent_design_principles.md](./agent_design_principles.md)
+4. [workflow_stage_criteria.md](./workflow_stage_criteria.md)
+5. [workflow_backflow_rules.md](./workflow_backflow_rules.md)
+6. [orchestrator_implementation_notes.md](./orchestrator_implementation_notes.md)
+7. [state_contracts.md](./state_contracts.md)
 
 ## 快速索引
 

@@ -9,6 +9,7 @@
 * `system_design.json`
 * `implementation_status.json`
 * `test_report.json`
+* `question_state.json`
 
 这些文件是最小持久化契约，由 `State Manager` 统一读写。
 

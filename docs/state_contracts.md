@@ -4,6 +4,116 @@
 
 所有阶段必须输出结构化数据，当前以 `state/*.json` 作为最小持久化契约，后续再由 `schemas/*.py` 收敛为正式 Schema。
 
+## 后续扩展约束
+
+未来如果要增强 agent 能力，优先扩展结构化状态，而不是依赖更多自由文本说明。
+
+优先考虑纳入结构化契约的扩展对象包括：
+
+* 面向用户的澄清问题与回答
+* 跨阶段持续跟踪的任务对象
+* 可复用的阻塞项与问题归因
+* agent 按需读取的上下文请求结果
+
+这些对象在正式落入 `state/` 之前，应先满足两个原则：
+
+* 能被 orchestrator 或下游 agent 稳定消费
+* 不与现有五个主阶段状态混淆职责
+
+相关演进原则见 [agent_design_principles.md](./agent_design_principles.md)。
+
+## Structured Question State
+
+`state/question_state.json`
+
+这是当前已经引入的第一类扩展状态，用于承接 agent 面向用户的结构化澄清。
+
+它解决的问题是：
+
+* 某阶段已经识别到信息缺口，但不能只靠自由文本追问
+* orchestrator 需要知道当前是否应该暂停推进并等待用户回答
+* TUI 需要知道应该展示什么问题、有哪些可选项、回答后如何回填
+
+当前契约如下：
+
+```json
+{
+  "status": "idle",
+  "stage_name": "",
+  "state_key": "",
+  "blocking": false,
+  "questions": [
+    {
+      "id": "",
+      "title": "",
+      "description": "",
+      "response_type": "single_select",
+      "options": [
+        {
+          "label": "",
+          "value": "",
+          "hint": ""
+        }
+      ],
+      "allow_free_text": false,
+      "answer": {
+        "selected_values": [],
+        "free_text": ""
+      }
+    }
+  ],
+  "created_by": "",
+  "resolution_summary": ""
+}
+```
+
+字段说明：
+
+* `status`：当前提问状态，当前使用 `idle`、`awaiting_user`、`answered`、`resolved`。
+* `stage_name`：发起提问的阶段，例如 `REQUIREMENTS_READY` 或 `SOLUTION_READY`。
+* `state_key`：本次提问主要关联的状态文件，例如 `spec` 或 `solution`。
+* `blocking`：该组问题是否阻塞当前阶段继续推进。
+* `questions`：当前待回答的问题列表。
+* `questions[].id`：问题稳定标识，用于回答回填和去重。
+* `questions[].title`：问题标题，要求简短明确。
+* `questions[].description`：对问题背景和影响的解释。
+* `questions[].response_type`：回答类型，建议值包括 `single_select`、`multi_select`、`free_text`、`mixed`。
+* `questions[].options`：可选项列表；当回答类型不是纯自由输入时，应尽量提供。
+* `questions[].options[].label`：用户可读标签。
+* `questions[].options[].value`：结构化写回值。
+* `questions[].options[].hint`：该选项的简短解释。
+* `questions[].allow_free_text`：是否允许在选项之外补充自由回答。
+* `questions[].answer`：当前问题的回答结果；在等待回答时可以为空对象或空值。
+* `questions[].answer.selected_values`：选择型回答的结果列表。
+* `questions[].answer.free_text`：自由文本补充。
+* `created_by`：发起提问的 agent 或控制层名称。
+* `resolution_summary`：问题被消费、写回状态并恢复流程后的简短总结。
+
+约束：
+
+* `question_state.json` 不替代 `spec.json` 或 `solution.json`，它只承载“澄清过程中的中间状态”。
+* 同一时刻应尽量只有一组活动问题，避免多个阶段同时争抢用户输入。
+* `blocking = true` 且 `status` 为 `awaiting_user` 或 `answered` 时，orchestrator 应优先停留在当前阶段或进入显式等待态，而不是继续前推。
+* 问题应优先面向“缺什么信息才能决策”，而不是面向“让用户重写整份需求文档”。
+* `awaiting_user` 表示问题已发出、正在等用户回答；`answered` 表示用户已回答，但回答尚未被 agent 消费并写回主状态。
+* 同阶段 agent 成功消费 `answered` 状态且没有发出新的问题时，控制层可以把 `question_state` 自动清回 `idle`。
+* 若某问题已经被回答并写回主状态，应及时把 `status` 推进到 `resolved` 或清空为 `idle`。
+* `questions[].options[].value` 应服务于状态回填，不能只写展示文本。
+* 如果问题本质上是实现阻塞或测试缺陷，不应滥用本状态，而应分别进入 `implementation_status.json` 或 `test_report.json`。
+
+职责边界：
+
+* `Requirements Engineer` 和 `Solution Engineer` 是最先应使用这类状态的阶段角色。
+* orchestrator 负责识别“有活动问题时是否暂停流程”。
+* TUI 负责把 `questions` 渲染成明确可回答的交互，而不是只打印文字。
+* 用户回答被消费后，最终仍应写回主阶段状态，而不是长期停留在 `question_state.json`。
+
+为什么先从这个扩展对象开始：
+
+* 它直接连接用户交互和状态机暂停机制。
+* 它能最早验证“结构化交互”这条路线是否成立。
+* 它对后续 `tasks`、`context fetch` 等对象的设计有示范作用。
+
 ## Requirements State
 
 `state/spec.json`

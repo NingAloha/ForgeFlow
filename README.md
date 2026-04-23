@@ -2,7 +2,7 @@
 
 [English Overview](./docs/README.en.md)
 
-一个以聊天式 TUI 为入口的多 Agent 软件工程流水线。
+一个以结构化状态驱动的多 Agent 软件工程流水线，当前同时提供最小 CLI 入口和聊天式 TUI 入口。
 
 ## 项目概览
 
@@ -14,7 +14,7 @@ ForgeFlow 试图把用户输入逐步推进为以下阶段产物：
 * 代码实现（Implementation）
 * 测试验证（Testing）
 
-ForgeShell 是这个流程的终端交互层。它提供类似聊天的使用方式，同时把阶段状态、当前角色和流程进度暴露给用户。
+ForgeShell 是这个流程的 TUI 交互层。当前仓库里的 `main.py` 提供最小 CLI 入口，用于直接触发一次 orchestrator 调度；`tui/` 下的应用负责聊天式交互体验，并把阶段状态、当前角色和流程进度暴露给用户。
 
 ## 这是什么项目
 
@@ -25,14 +25,14 @@ ForgeShell 是这个流程的终端交互层。它提供类似聊天的使用方
 * 分层 agent：每层只负责一个阶段
 * 控制层：负责流程调度与阶段切换
 * 状态层：负责结构化状态持久化
-* TUI：负责把流程以可见、可控的方式呈现出来
+* CLI / TUI 入口：分别负责最小调度调用和可视交互呈现
 
 ## 架构快照
 
 ```text
 User
   ↓
-ForgeShell (Chat TUI)
+CLI / ForgeShell
   ↓
 Project Orchestrator
   ├── State Manager
@@ -70,6 +70,7 @@ forgeflow/
 * [agents/](./agents/README.md)：agent 与控制层职责说明
 * [state/](./state/README.md)：阶段状态文件
 * [schemas/](./schemas/README.md)：后续正式 schema 层
+* [main.py](./main.py)：最小 CLI 入口，用于直接运行一次 orchestrator
 * [tui/](./tui/README.md)：ForgeShell 终端 UI 层
 
 ## 阅读路径
@@ -92,6 +93,7 @@ forgeflow/
 当前 MVP 方向包括：
 
 * ForgeShell 聊天输入
+* 最小 CLI 调度入口
 * 自动角色调度
 * 可见的流程状态
 * 单线程主流程：requirements -> testing
@@ -122,6 +124,8 @@ forgeflow/
 * 状态 JSON 契约已收紧并文档化
 * 已补充一版 agent 设计原则文档，用于约束后续演进方向
 * 各模块目录已补充导航 README
+* `main.py` 已可直接触发一次 orchestrator 调度
+* requirements 阶段已能生成首版 `spec` 核心字段，并在缺信息时写入 `question_state`
 * 实现仍处于早期阶段
 
 ## 给第一次阅读的人

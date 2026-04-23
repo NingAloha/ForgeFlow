@@ -13,4 +13,9 @@
 
 这些文件是最小持久化契约，由 `State Manager` 统一读写。
 
+当前默认约定：
+
+* 空列表表示“当前没有有效条目”，不使用空壳对象作为占位。
+* `StateManager` 在缺文件、坏 JSON 或结构不完整时会回退到默认状态并补齐缺失字段。
+
 字段级详细说明见 [../docs/state_contracts.md](../docs/state_contracts.md)。

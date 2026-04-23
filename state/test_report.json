@@ -1,14 +1,5 @@
 {
   "test_scope": "integration",
   "result": "not_run",
-  "issues": [
-    {
-      "title": "",
-      "severity": "",
-      "status": "",
-      "related_modules": [],
-      "related_contracts": [],
-      "notes": ""
-    }
-  ]
+  "issues": []
 }

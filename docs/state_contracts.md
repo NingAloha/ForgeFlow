@@ -159,15 +159,7 @@
     "agent_framework": "",
     "deployment": ""
   },
-  "module_mapping": [
-    {
-      "module": "",
-      "responsibilities": [],
-      "covers_requirements": [],
-      "depends_on": [],
-      "tech_note": ""
-    }
-  ],
+  "module_mapping": [],
   "risks": [],
   "alternatives": []
 }
@@ -193,6 +185,7 @@
 约束：
 
 * `module_mapping` 只描述方案层模块，不写文件名、类名、接口参数等设计细节。
+* 当还没有任何有效模块方案时，`module_mapping` 应为空数组，而不是放一个空壳占位对象。
 * 每一项必须能回答“这个模块负责什么”和“它承接了哪些需求”。
 * `depends_on` 只写内部模块依赖，不写第三方库依赖；第三方技术归入 `selected_stack`。
 * `tech_note` 只写影响方案决策的模块级技术偏好，例如“该功能必须使用 SQLite”或“该模块优先采用本地文件存储”，不展开为实现细节。
@@ -210,51 +203,12 @@
     "directories": [],
     "modules": []
   },
-  "contracts": [
-    {
-      "name": "",
-      "contract_type": "",
-      "producer": "",
-      "consumers": [],
-      "input": [
-        {
-          "name": "",
-          "description": "",
-          "required": true
-        }
-      ],
-      "output": [
-        {
-          "name": "",
-          "description": "",
-          "required": true
-        }
-      ],
-      "constraints": [],
-      "acceptance_criteria": [],
-      "failure_handling": []
-    }
-  ],
-  "data_flow": [
-    {
-      "step": 1,
-      "contract_name": "",
-      "from": "",
-      "to": [],
-      "trigger": "",
-      "notes": ""
-    }
-  ],
+  "contracts": [],
+  "data_flow": [],
   "mvp_plan": {
     "in_scope": [],
     "out_of_scope": [],
-    "milestones": [
-      {
-        "name": "",
-        "goal": "",
-        "deliverables": []
-      }
-    ],
+    "milestones": [],
     "first_deliverable": ""
   }
 }
@@ -300,6 +254,7 @@
 约束：
 
 * `contracts` 只描述模块间或阶段间的交接契约，不写模块内部实现。
+* 当设计尚未产出任何有效契约或流程步骤时，`contracts`、`data_flow`、`milestones` 都应为空数组，而不是放占位条目。
 * 每一项必须能回答“谁产出”“谁消费”“交付什么”“需要遵守什么约束”“失败后怎么处理”。
 * `input` 和 `output` 使用对象数组，保持在字段级或对象级摘要，不展开成完整 schema 实现。
 * `constraints` 和 `acceptance_criteria` 分开维护，前者描述限制，后者描述交付完成判定。
@@ -361,16 +316,7 @@
 {
   "test_scope": "integration",
   "result": "not_run",
-  "issues": [
-    {
-      "title": "",
-      "severity": "",
-      "status": "",
-      "related_modules": [],
-      "related_contracts": [],
-      "notes": ""
-    }
-  ]
+  "issues": []
 }
 ```
 
@@ -391,6 +337,7 @@
 * `test_report.json` 只记录验证结果与发现的问题，不记录实现过程本身。
 * `result` 表示当前测试结论汇总，不替代单条 issue 的状态。
 * `issues` 中每一项都应能独立表达一个可追踪问题，避免把多个问题混在一条里。
+* 当当前轮验证尚未发现问题时，`issues` 应为空数组，而不是保留空壳问题对象。
 * `related_modules` 应优先引用 `solution.json` 或 `system_design.json` 中已存在的模块名，避免新造命名。
 * `related_contracts` 应优先引用 `system_design.json` 中已定义的 contract 名称，避免与 design 层脱节。
 * 如果问题涉及模块交互、契约不一致或数据流断裂，应同时记录多个相关模块，而不是强行归因到单一模块。
@@ -402,4 +349,5 @@
 
 * 足够轻量，适合开发初期快速推进
 * 以阶段输出为中心，而不是一次性塞进单个大对象
+* 空数组明确表示“当前无有效条目”，不使用占位对象伪装已有产物
 * 便于后续替换为 Pydantic 模型或增加版本字段

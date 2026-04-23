@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import tempfile
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -127,10 +128,17 @@ class StateManager:
             raise TypeError("State payload must be a dictionary.")
         path = self.get_state_path(state_key)
         path.parent.mkdir(parents=True, exist_ok=True)
-        temp_path = path.with_suffix(f"{path.suffix}.tmp")
-        with temp_path.open("w", encoding="utf-8") as handle:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f"{path.stem}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
             json.dump(payload, handle, indent=2, ensure_ascii=False)
             handle.write("\n")
+            temp_path = Path(handle.name)
         temp_path.replace(path)
 
     def load_all_states(self) -> dict[str, dict[str, Any]]:

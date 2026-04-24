@@ -28,37 +28,62 @@ class OrchestratorStageComputationTests(unittest.TestCase):
 
     def test_empty_states_resolve_to_init(self) -> None:
         states = make_empty_states()
-        self.assertEqual(self.orchestrator.compute_current_stage(states), Stage.INIT)
+        self.assertEqual(
+            self.orchestrator.stage_evaluator.compute_current_stage(states),
+            Stage.INIT,
+        )
 
     def test_requirements_ready_states_resolve_to_requirements_ready(self) -> None:
         states = make_requirements_ready_states()
-        self.assertTrue(self.orchestrator.is_requirements_ready(states))
-        self.assertEqual(self.orchestrator.compute_current_stage(states), Stage.REQUIREMENTS)
+        self.assertTrue(self.orchestrator.stage_evaluator.is_requirements_ready(states))
+        self.assertEqual(
+            self.orchestrator.stage_evaluator.compute_current_stage(states),
+            Stage.REQUIREMENTS,
+        )
 
     def test_solution_ready_states_resolve_to_solution_ready(self) -> None:
         states = make_solution_ready_states()
-        self.assertTrue(self.orchestrator.is_solution_ready(states))
-        self.assertEqual(self.orchestrator.compute_current_stage(states), Stage.SOLUTION)
+        self.assertTrue(self.orchestrator.stage_evaluator.is_solution_ready(states))
+        self.assertEqual(
+            self.orchestrator.stage_evaluator.compute_current_stage(states),
+            Stage.SOLUTION,
+        )
 
     def test_design_ready_states_resolve_to_design_ready(self) -> None:
         states = make_design_ready_states()
-        self.assertTrue(self.orchestrator.is_design_ready(states))
-        self.assertEqual(self.orchestrator.compute_current_stage(states), Stage.DESIGN)
+        self.assertTrue(self.orchestrator.stage_evaluator.is_design_ready(states))
+        self.assertEqual(
+            self.orchestrator.stage_evaluator.compute_current_stage(states),
+            Stage.DESIGN,
+        )
 
     def test_implementing_states_resolve_to_implementing(self) -> None:
         states = make_implementing_states()
-        self.assertTrue(self.orchestrator.has_active_implementation(states))
-        self.assertEqual(self.orchestrator.compute_current_stage(states), Stage.IMPLEMENTATION)
+        self.assertTrue(
+            self.orchestrator.stage_evaluator.has_active_implementation(states)
+        )
+        self.assertEqual(
+            self.orchestrator.stage_evaluator.compute_current_stage(states),
+            Stage.IMPLEMENTATION,
+        )
 
     def test_testing_states_resolve_to_testing(self) -> None:
         states = make_testing_states()
-        self.assertTrue(self.orchestrator.has_validation_context(states))
-        self.assertEqual(self.orchestrator.compute_current_stage(states), Stage.TESTING)
+        self.assertTrue(
+            self.orchestrator.stage_evaluator.has_validation_context(states)
+        )
+        self.assertEqual(
+            self.orchestrator.stage_evaluator.compute_current_stage(states),
+            Stage.TESTING,
+        )
 
     def test_done_states_resolve_to_done(self) -> None:
         states = make_done_states()
-        self.assertTrue(self.orchestrator.is_done(states))
-        self.assertEqual(self.orchestrator.compute_current_stage(states), Stage.DONE)
+        self.assertTrue(self.orchestrator.stage_evaluator.is_done(states))
+        self.assertEqual(
+            self.orchestrator.stage_evaluator.compute_current_stage(states),
+            Stage.DONE,
+        )
 
     def test_high_severity_open_issue_blocks_done(self) -> None:
         states = make_done_states()
@@ -72,8 +97,11 @@ class OrchestratorStageComputationTests(unittest.TestCase):
                 "notes": "",
             }
         ]
-        self.assertFalse(self.orchestrator.is_done(states))
-        self.assertEqual(self.orchestrator.compute_current_stage(states), Stage.TESTING)
+        self.assertFalse(self.orchestrator.stage_evaluator.is_done(states))
+        self.assertEqual(
+            self.orchestrator.stage_evaluator.compute_current_stage(states),
+            Stage.TESTING,
+        )
 
     def test_blocked_implementation_does_not_enter_testing(self) -> None:
         states = make_design_ready_states()
@@ -84,16 +112,26 @@ class OrchestratorStageComputationTests(unittest.TestCase):
                 "blockers": ["Need API shape clarification"],
             }
         )
-        self.assertTrue(self.orchestrator.has_active_implementation(states))
-        self.assertFalse(self.orchestrator.has_validation_context(states))
-        self.assertEqual(self.orchestrator.compute_current_stage(states), Stage.IMPLEMENTATION)
+        self.assertTrue(
+            self.orchestrator.stage_evaluator.has_active_implementation(states)
+        )
+        self.assertFalse(
+            self.orchestrator.stage_evaluator.has_validation_context(states)
+        )
+        self.assertEqual(
+            self.orchestrator.stage_evaluator.compute_current_stage(states),
+            Stage.IMPLEMENTATION,
+        )
 
     def test_missing_valid_contract_reference_prevents_design_ready(self) -> None:
         states = make_design_ready_states()
         broken_states = deepcopy(states)
         broken_states["system_design"]["data_flow"][0]["contract_name"] = "missing"
-        self.assertFalse(self.orchestrator.is_design_ready(broken_states))
-        self.assertEqual(self.orchestrator.compute_current_stage(broken_states), Stage.SOLUTION)
+        self.assertFalse(self.orchestrator.stage_evaluator.is_design_ready(broken_states))
+        self.assertEqual(
+            self.orchestrator.stage_evaluator.compute_current_stage(broken_states),
+            Stage.SOLUTION,
+        )
 
     def test_resolve_transition_stays_on_init_for_empty_states(self) -> None:
         decision = self.orchestrator.resolve_transition(make_empty_states())
@@ -258,7 +296,7 @@ class OrchestratorStageComputationTests(unittest.TestCase):
             "resolution_summary": "User picked Python.",
         }
 
-        question_state = self.orchestrator.parse_question_state(payload)
+        question_state = self.orchestrator.question_flow.parse_question_state(payload)
 
         self.assertEqual(question_state.status, "answered")
         self.assertEqual(question_state.stage_name, "SOLUTION")
@@ -268,7 +306,7 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         self.assertEqual(question_state.questions[0].answer.free_text, "Prefer standard library first.")
 
     def test_serialize_question_state_none_returns_idle_payload(self) -> None:
-        payload = self.orchestrator.serialize_question_state(None)
+        payload = self.orchestrator.question_flow.serialize_question_state(None)
         self.assertEqual(payload, make_empty_states()["question_state"])
 
     def test_serialize_question_state_preserves_nested_question_fields(self) -> None:
@@ -301,7 +339,9 @@ class OrchestratorStageComputationTests(unittest.TestCase):
             resolution_summary="User picked Python.",
         )
 
-        payload = self.orchestrator.serialize_question_state(question_state)
+        payload = self.orchestrator.question_flow.serialize_question_state(
+            question_state
+        )
 
         self.assertEqual(payload["questions"][0]["options"][0]["label"], "Python")
         self.assertEqual(payload["questions"][0]["answer"]["selected_values"], ["python"])

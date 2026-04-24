@@ -10,7 +10,7 @@ from ..state_manager import StateManager
 from ..system_designer import SystemDesignerAgent
 from ..test_validation_engineer import TestValidationEngineerAgent
 from .backflow_evaluator import BackflowEvaluator
-from .models import OrchestrationResult, Stage, StageFlags, TransitionDecision
+from .models import OrchestrationResult, Stage, TransitionDecision
 from .question_flow import QuestionFlow
 from .stage_evaluator import StageEvaluator
 
@@ -37,71 +37,10 @@ class Orchestrator:
         return AgentContext(
             user_input=user_input,
             states=states,
-            question_state=self.parse_question_state(
+            question_state=self.question_flow.parse_question_state(
                 states.get("question_state", {})
             ),
         )
-
-    def parse_question_state(self, payload: dict[str, Any]):
-        return self.question_flow.parse_question_state(payload)
-
-    def serialize_question_state(self, question_state):
-        return self.question_flow.serialize_question_state(question_state)
-
-    def default_question_state_payload(self) -> dict[str, Any]:
-        return self.question_flow.default_question_state_payload()
-
-    def should_clear_question_state(
-        self, context: AgentContext, result: AgentResult
-    ) -> bool:
-        return self.question_flow.should_clear_question_state(context, result)
-
-    def get_blocking_question_stage(
-        self, states: dict[str, dict[str, Any]], fallback_stage: Stage
-    ) -> Stage:
-        return self.question_flow.get_blocking_question_stage(states, fallback_stage)
-
-    def is_waiting_for_user_input(
-        self, states: dict[str, dict[str, Any]]
-    ) -> bool:
-        return self.question_flow.is_waiting_for_user_input(states)
-
-    def is_requirements_ready(self, states: dict[str, dict[str, Any]]) -> bool:
-        return self.stage_evaluator.is_requirements_ready(states)
-
-    def is_solution_ready(self, states: dict[str, dict[str, Any]]) -> bool:
-        return self.stage_evaluator.is_solution_ready(states)
-
-    def is_design_ready(self, states: dict[str, dict[str, Any]]) -> bool:
-        return self.stage_evaluator.is_design_ready(states)
-
-    def has_active_implementation(self, states: dict[str, dict[str, Any]]) -> bool:
-        return self.stage_evaluator.has_active_implementation(states)
-
-    def has_validation_context(self, states: dict[str, dict[str, Any]]) -> bool:
-        return self.stage_evaluator.has_validation_context(states)
-
-    def is_done(self, states: dict[str, dict[str, Any]]) -> bool:
-        return self.stage_evaluator.is_done(states)
-
-    def evaluate_stage_flags(self, states: dict[str, dict[str, Any]]) -> StageFlags:
-        return self.stage_evaluator.evaluate_stage_flags(states)
-
-    def stage_from_flags(self, flags: StageFlags) -> Stage:
-        return self.stage_evaluator.stage_from_flags(flags)
-
-    def compute_current_stage(
-        self, states: dict[str, dict[str, Any]]
-    ) -> Stage:
-        return self.stage_evaluator.compute_current_stage(states)
-
-    def infer_source_stage(self, states: dict[str, dict[str, Any]]) -> Stage:
-        return self.stage_evaluator.infer_source_stage(states)
-
-    def apply_backflow_to_flags(
-        self, flags: StageFlags, backflow_target: Stage
-    ) -> StageFlags:
-        return self.stage_evaluator.apply_backflow_to_flags(flags, backflow_target)
 
     def evaluate_forward_transition(
         self, states: dict[str, dict[str, Any]], current_stage: Stage
@@ -113,14 +52,14 @@ class Orchestrator:
         implementation_status = states.get("implementation_status", {})
         test_report = states.get("test_report", {})
 
-        if current_stage == Stage.INIT and self.is_requirements_ready(states):
+        if current_stage == Stage.INIT and self.stage_evaluator.is_requirements_ready(states):
             evidence.append("spec.project_goal is non-empty.")
             evidence.append("spec.functional_requirements is non-empty.")
             evidence.append("spec.acceptance_criteria is non-empty.")
             return Stage.REQUIREMENTS, evidence
         if (
             current_stage == Stage.REQUIREMENTS
-            and self.is_solution_ready(states)
+            and self.stage_evaluator.is_solution_ready(states)
         ):
             evidence.append("solution.selected_stack.backend is defined.")
             if solution.get("selected_stack", {}).get("frontend"):
@@ -134,7 +73,7 @@ class Orchestrator:
                 "solution.module_mapping covers core spec.functional_requirements."
             )
             return Stage.SOLUTION, evidence
-        if current_stage == Stage.SOLUTION and self.is_design_ready(states):
+        if current_stage == Stage.SOLUTION and self.stage_evaluator.is_design_ready(states):
             evidence.append("design.project_structure.modules is non-empty.")
             evidence.append("design.contracts contain MVP critical handoff contracts.")
             evidence.append(
@@ -143,7 +82,7 @@ class Orchestrator:
             evidence.append("design.mvp_plan.in_scope is non-empty.")
             evidence.append("design.mvp_plan.first_deliverable is defined.")
             return Stage.DESIGN, evidence
-        if current_stage == Stage.DESIGN and self.has_active_implementation(states):
+        if current_stage == Stage.DESIGN and self.stage_evaluator.has_active_implementation(states):
             evidence.append("implementation_status.module_name is defined.")
             evidence.append(
                 "implementation_status.implementation_status is active."
@@ -151,13 +90,13 @@ class Orchestrator:
             return Stage.IMPLEMENTATION, evidence
         if (
             current_stage == Stage.IMPLEMENTATION
-            and self.has_validation_context(states)
+            and self.stage_evaluator.has_validation_context(states)
         ):
             evidence.append("implementation_status.implementation_status is done.")
             evidence.append("implementation_status.blockers is empty.")
             evidence.append("A test scope is available for validation.")
             return Stage.TESTING, evidence
-        if current_stage == Stage.TESTING and self.is_done(states):
+        if current_stage == Stage.TESTING and self.stage_evaluator.is_done(states):
             evidence.append("test_report.result is pass.")
             evidence.append("No high/critical open or confirmed issues block delivery.")
             return Stage.DONE, evidence
@@ -198,11 +137,11 @@ class Orchestrator:
     def resolve_transition(
         self, states: dict[str, dict[str, Any]]
     ) -> TransitionDecision:
-        flags = self.evaluate_stage_flags(states)
-        computed_stage = self.stage_from_flags(flags)
-        source_stage = self.infer_source_stage(states)
-        if self.is_waiting_for_user_input(states):
-            waiting_stage = self.get_blocking_question_stage(
+        flags = self.stage_evaluator.evaluate_stage_flags(states)
+        computed_stage = self.stage_evaluator.stage_from_flags(flags)
+        source_stage = self.stage_evaluator.infer_source_stage(states)
+        if self.question_flow.is_waiting_for_user_input(states):
+            waiting_stage = self.question_flow.get_blocking_question_stage(
                 states, source_stage
             )
             return TransitionDecision(
@@ -221,10 +160,12 @@ class Orchestrator:
             states, source_stage
         )
         if backflow_target is not None:
-            resolved_flags = self.apply_backflow_to_flags(flags, backflow_target)
+            resolved_flags = self.stage_evaluator.apply_backflow_to_flags(
+                flags, backflow_target
+            )
             return TransitionDecision(
                 computed_stage=computed_stage,
-                final_stage=self.stage_from_flags(resolved_flags),
+                final_stage=self.stage_evaluator.stage_from_flags(resolved_flags),
                 source_stage=source_stage,
                 backflow_target=backflow_target,
                 should_stay=False,
@@ -331,11 +272,13 @@ class Orchestrator:
         if result.question_state_update is not None:
             self.state_manager.save_state(
                 "question_state",
-                self.serialize_question_state(result.question_state_update),
+                self.question_flow.serialize_question_state(
+                    result.question_state_update
+                ),
             )
-        elif self.should_clear_question_state(context, result):
+        elif self.question_flow.should_clear_question_state(context, result):
             self.state_manager.save_state(
                 "question_state",
-                self.default_question_state_payload(),
+                self.question_flow.default_question_state_payload(),
             )
         return result

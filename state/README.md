@@ -19,4 +19,4 @@
 * `StateManager` 在缺文件、坏 JSON 或结构不完整时会回退到默认状态并补齐缺失字段。
 * 运行态状态默认写入仓库根目录下的 `.forgeflow/state/`，而不是直接写回本目录。
 
-字段级详细说明见 [../docs/state_contracts.md](../docs/state_contracts.md)。
+字段级详细说明见 [../docs/state/contracts.md](../docs/state/contracts.md)。

@@ -12,5 +12,5 @@
 
 参考来源：
 
-* [../docs/state_contracts.md](../docs/state_contracts.md)
-* [../docs/workflow_criteria.md](../docs/workflow_criteria.md)
+* [../docs/state/contracts.md](../docs/state/contracts.md)
+* [../docs/workflow/README.md](../docs/workflow/README.md)

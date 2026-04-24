@@ -76,8 +76,8 @@ Recommended reading order:
 
 1. [Chinese README](../README.md)
 2. [docs/README.md](./README.md)
-3. [workflow_criteria.md](./workflow_criteria.md)
-4. [state_contracts.md](./state_contracts.md)
+3. [workflow docs](./workflow/README.md)
+4. [state docs](./state/README.md)
 
 ## Current Scope
 

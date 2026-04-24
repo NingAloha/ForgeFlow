@@ -82,9 +82,9 @@ forgeflow/
 
 详细参考：
 
-* [docs/workflow_criteria.md](./docs/workflow_criteria.md)：单线程主流程阶段判定规则
-* [docs/agent_design_principles.md](./docs/agent_design_principles.md)：后续 agent 能力扩展与动作空间设计原则
-* [docs/state_contracts.md](./docs/state_contracts.md)：各阶段 JSON 状态契约
+* [docs/workflow/README.md](./docs/workflow/README.md)：单线程主流程规则与 orchestrator 判定文档入口
+* [docs/agents/design_principles.md](./docs/agents/design_principles.md)：后续 agent 能力扩展与动作空间设计原则
+* [docs/state/contracts.md](./docs/state/contracts.md)：各阶段 JSON 状态契约
 
 ## 当前范围
 
@@ -113,7 +113,7 @@ forgeflow/
 * 边开发边持续插入新需求
 * 一套状态同时管理多个 feature stream、多个版本线或 backlog 驱动的持续迭代
 
-换句话说，当前模型更接近“单轮需求闭环驱动”的工程工作流，而不是一个已经完整覆盖增量开发和长期项目管理的系统。详细边界见 [docs/workflow_scope.md](./docs/workflow_scope.md)。
+换句话说，当前模型更接近“单轮需求闭环驱动”的工程工作流，而不是一个已经完整覆盖增量开发和长期项目管理的系统。详细边界见 [docs/workflow/scope.md](./docs/workflow/scope.md)。
 
 ## 当前状态
 

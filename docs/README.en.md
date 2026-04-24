@@ -65,7 +65,7 @@ Directory guide:
 * [README.md](../README.md): Chinese-first project entry
 * [README.md in docs](./README.md): documentation index
 * [agents/README.md](../agents/README.md): agent and control-layer responsibilities
-* [state/README.md](../state/README.md): persisted stage state files
+* [state/README.md](../state/README.md): state contract examples and field reference
 * [schemas/README.md](../schemas/README.md): future formal schema layer
 * [main.py](../main.py): minimal CLI runner for one-shot orchestration and diagnostic reporting
 * [tui/README.md](../tui/README.md): ForgeShell terminal UI layer
@@ -89,6 +89,7 @@ Current MVP direction:
 * visible workflow state
 * a single-thread flow from requirements to testing
 * JSON-backed stage state management
+* runtime state stored under `.forgeflow/state/` by default
 
 ## Status
 
@@ -99,5 +100,7 @@ Current repository state:
 * module-level README files have been added for navigation
 * `main.py` can now trigger a single orchestrator run and print a diagnostic report for development and debugging
 * the requirements stage can now produce the first structured `spec` fields and raise blocking clarification questions when needed
+* the solution stage can now derive an initial `selected_stack`, `module_mapping`, `risks`, and `alternatives` from the current `spec`
 * `question_state = answered` now routes execution back to the owning stage so answers can be consumed instead of remaining stuck in a waiting state
+* runtime state now defaults to `.forgeflow/state/` so repository contract examples stay clean
 * implementation is still early-stage

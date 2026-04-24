@@ -66,7 +66,7 @@ forgeflow/
 
 * [docs/](./docs/README.md)：详细流程规则与状态契约文档
 * [agents/](./agents/README.md)：agent 与控制层职责说明
-* [state/](./state/README.md)：阶段状态文件
+* [state/](./state/README.md)：状态契约示例与字段参考
 * [schemas/](./schemas/README.md)：后续正式 schema 层
 * [main.py](./main.py)：开发与诊断用的最小 CLI runner，用于直接运行一次 orchestrator 并输出诊断视图
 * [tui/](./tui/README.md)：ForgeShell 主交互入口与终端 UI 层
@@ -96,6 +96,7 @@ forgeflow/
 * 可见的流程状态
 * 单线程主流程：requirements -> testing
 * 基于 JSON 的阶段状态管理
+* 默认运行态状态目录为 `.forgeflow/state/`
 
 ## 当前适用范围与限制
 
@@ -124,7 +125,9 @@ forgeflow/
 * 各模块目录已补充导航 README
 * `main.py` 已可直接触发一次 orchestrator 调度，并输出诊断视图
 * requirements 阶段已能生成首版 `spec` 核心字段，并在缺信息时写入 `question_state`
+* solution 阶段已能基于 `spec` 生成首版 `selected_stack`、`module_mapping`、`risks` 与 `alternatives`
 * `question_state = answered` 时，控制层会重新执行对应阶段来消费回答，而不是继续卡在等待态
+* 运行态 state 默认写入 `.forgeflow/state/`，避免污染仓库中的契约示例文件
 * 实现仍处于早期阶段
 
 ## 给第一次阅读的人

@@ -80,7 +80,7 @@ class StateManager:
 
     def __init__(self, state_dir: str | Path | None = None) -> None:
         if state_dir is None:
-            state_dir = Path(__file__).resolve().parent.parent / "state"
+            state_dir = Path(__file__).resolve().parent.parent / ".forgeflow" / "state"
         self.state_dir = Path(state_dir)
 
     def get_state_path(self, state_key: str) -> Path:

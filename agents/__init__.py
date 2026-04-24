@@ -8,7 +8,14 @@ from .base import (
     QuestionState,
 )
 from .implementation_engineer import ImplementationEngineerAgent
-from .orchestrator import Orchestrator
+from .orchestrator import (
+    OrchestrationResult,
+    Orchestrator,
+    Stage,
+    StageFlags,
+    TransitionDecision,
+)
+from .orchestrator.backflow_evaluator import BackflowEvaluator
 from .requirements_engineer import RequirementsEngineerAgent
 from .solution_engineer import SolutionEngineerAgent
 from .state_manager import StateManager
@@ -18,8 +25,10 @@ from .test_validation_engineer import TestValidationEngineerAgent
 __all__ = [
     "AgentContext",
     "AgentResult",
+    "BackflowEvaluator",
     "BaseAgent",
     "ImplementationEngineerAgent",
+    "OrchestrationResult",
     "Orchestrator",
     "QuestionAnswer",
     "QuestionItem",
@@ -27,7 +36,10 @@ __all__ = [
     "QuestionState",
     "RequirementsEngineerAgent",
     "SolutionEngineerAgent",
+    "Stage",
+    "StageFlags",
     "StateManager",
     "SystemDesignerAgent",
     "TestValidationEngineerAgent",
+    "TransitionDecision",
 ]

@@ -23,6 +23,9 @@ ENV/
 .coverage.*
 htmlcov/
 
+# ForgeFlow runtime state
+.forgeflow/
+
 # Build artifacts
 build/
 dist/

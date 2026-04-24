@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import re
 
-from .helpers import RequirementsTextHelper
+from ..common.text import TextHelper
 
 
-class RequirementsExtractionMixin(RequirementsTextHelper):
+class RequirementsExtractionMixin(TextHelper):
     def extract_goal_from_input(self, user_input: str) -> str:
         text = self.normalize_text(user_input)
         if not text:

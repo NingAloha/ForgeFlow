@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from .helpers import SolutionTextHelper
+from ..common.text import TextHelper
 
 
-class SolutionPlanningMixin(SolutionTextHelper):
+class SolutionPlanningMixin(TextHelper):
     def pick_stack(
         self,
         spec: dict[str, object],
@@ -75,7 +75,7 @@ class SolutionPlanningMixin(SolutionTextHelper):
         }
 
     def infer_module_name(self, requirement: str) -> str:
-        slug = self.slugify_requirement(requirement)
+        slug = self.slugify_text(requirement)
         if any(keyword in slug for keyword in {"requirement", "spec"}):
             return "requirements_engine"
         if any(keyword in slug for keyword in {"solution", "plan", "design"}):

@@ -33,7 +33,7 @@ class SolutionEngineerHelperTests(unittest.TestCase):
 
     def test_slugify_and_infer_module_name_map_common_requirement_shapes(self) -> None:
         self.assertEqual(
-            self.agent.slugify_requirement("Track implementation progress!"),
+            self.agent.slugify_text("Track implementation progress!"),
             "track_implementation_progress",
         )
         self.assertEqual(

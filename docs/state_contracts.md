@@ -93,9 +93,9 @@
 
 * `question_state.json` 不替代 `spec.json` 或 `solution.json`，它只承载“澄清过程中的中间状态”。
 * 同一时刻应尽量只有一组活动问题，避免多个阶段同时争抢用户输入。
-* `blocking = true` 且 `status` 为 `awaiting_user` 或 `answered` 时，orchestrator 应优先停留在当前阶段或进入显式等待态，而不是继续前推。
+* `blocking = true` 且 `status = awaiting_user` 时，orchestrator 应优先停留在当前阶段或进入显式等待态，而不是继续前推。
 * 问题应优先面向“缺什么信息才能决策”，而不是面向“让用户重写整份需求文档”。
-* `awaiting_user` 表示问题已发出、正在等用户回答；`answered` 表示用户已回答，但回答尚未被 agent 消费并写回主状态。
+* `awaiting_user` 表示问题已发出、正在等用户回答；`answered` 表示用户已回答，控制层应把执行权重新交回对应阶段 agent，由它消费答案并写回主状态。
 * 同阶段 agent 成功消费 `answered` 状态且没有发出新的问题时，控制层可以把 `question_state` 自动清回 `idle`。
 * 若某问题已经被回答并写回主状态，应及时把 `status` 推进到 `resolved` 或清空为 `idle`。
 * `questions[].options[].value` 应服务于状态回填，不能只写展示文本。

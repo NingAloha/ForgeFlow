@@ -178,6 +178,19 @@ requirements_ready
 * `source_stage` 目前通过状态痕迹推断，而不是持久化存储。
 * blocker / issue 的根因归因仍然部分依赖关键词，而不是完全依赖结构化 schema。
 
+## `question_state` 的等待与消费
+
+当前实现对 `question_state` 的处理约定是：
+
+* `status = awaiting_user` 且 `blocking = true` 时，orchestrator 进入等待态，不执行阶段 agent。
+* `status = answered` 时，不再视为“继续等待用户”；orchestrator 应恢复对应阶段的执行，让该阶段 agent 消费答案。
+* 如果该阶段 agent 成功消费答案且没有重新发出问题，控制层会把 `question_state` 清回 `idle`。
+
+这意味着：
+
+* `awaiting_user` 表示“控制层应暂停”
+* `answered` 表示“用户输入已到位，下一步应回到对应阶段继续推进”
+
 这些简化是当前为了先建立稳定骨架而保留的，不表示规则文档本身已经收缩到这个粒度。
 
 ## 与规则文档的关系

@@ -12,7 +12,7 @@ ForgeFlow turns a user request into a staged engineering flow:
 * Implementation
 * Testing
 
-ForgeShell is the primary user-facing entrypoint for this flow. It provides the chat-style TUI experience, keeps workflow state and progress visible, and supports longer-running interaction. The repository also includes `main.py` as a minimal CLI runner for development, debugging, smoke tests, and one-shot orchestration checks.
+ForgeShell is the primary user-facing entrypoint for this flow. It provides the chat-style TUI experience, keeps workflow state and progress visible, and supports longer-running interaction. The repository also includes `main.py` as a minimal CLI runner for development, debugging, smoke tests, and one-shot orchestration checks, with a diagnostic-oriented report output.
 
 ## What This Project Is
 
@@ -67,7 +67,7 @@ Directory guide:
 * [agents/README.md](../agents/README.md): agent and control-layer responsibilities
 * [state/README.md](../state/README.md): persisted stage state files
 * [schemas/README.md](../schemas/README.md): future formal schema layer
-* [main.py](../main.py): minimal CLI runner for one-shot orchestration
+* [main.py](../main.py): minimal CLI runner for one-shot orchestration and diagnostic reporting
 * [tui/README.md](../tui/README.md): ForgeShell terminal UI layer
 
 ## Documentation Map
@@ -97,6 +97,7 @@ Current repository state:
 * workflow stage criteria have been drafted in `docs/`
 * state JSON contracts have been tightened and documented
 * module-level README files have been added for navigation
-* `main.py` can now trigger a single orchestrator run for development and diagnostics
+* `main.py` can now trigger a single orchestrator run and print a diagnostic report for development and debugging
 * the requirements stage can now produce the first structured `spec` fields and raise blocking clarification questions when needed
+* `question_state = answered` now routes execution back to the owning stage so answers can be consumed instead of remaining stuck in a waiting state
 * implementation is still early-stage

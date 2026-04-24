@@ -368,7 +368,7 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         self.assertEqual(decision.final_stage, Stage.REQUIREMENTS)
         self.assertIsNone(self.orchestrator.determine_execution_stage(decision))
 
-    def test_resolve_transition_waits_on_answered_blocking_question_state(self) -> None:
+    def test_resolve_transition_does_not_wait_on_answered_blocking_question_state(self) -> None:
         states = make_requirements_ready_states()
         states["question_state"] = {
             "status": "answered",
@@ -393,10 +393,13 @@ class OrchestratorStageComputationTests(unittest.TestCase):
             "resolution_summary": "",
         }
         decision = self.orchestrator.resolve_transition(states)
-        self.assertTrue(decision.wait_for_user_input)
+        self.assertFalse(decision.wait_for_user_input)
         self.assertTrue(decision.should_stay)
         self.assertEqual(decision.final_stage, Stage.REQUIREMENTS)
-        self.assertIsNone(self.orchestrator.determine_execution_stage(decision))
+        self.assertEqual(
+            self.orchestrator.determine_execution_stage(decision),
+            Stage.REQUIREMENTS,
+        )
 
     def test_resolve_transition_does_not_wait_when_question_state_is_non_blocking(self) -> None:
         states = make_requirements_ready_states()
@@ -823,6 +826,45 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         self.assertEqual(result.decision.final_stage, Stage.DONE)
         self.assertIsNone(result.executed_stage)
         self.assertIsNone(result.agent_result)
+
+    def test_orchestrate_executes_answered_question_stage_for_consumption(self) -> None:
+        states = make_empty_states()
+        states["question_state"] = {
+            "status": "answered",
+            "stage_name": "REQUIREMENTS",
+            "state_key": "spec",
+            "blocking": True,
+            "questions": [
+                {
+                    "id": "target-user",
+                    "title": "Who is the first target user?",
+                    "description": "Need one concrete initial user persona.",
+                    "response_type": "single_select",
+                    "options": [],
+                    "allow_free_text": True,
+                    "answer": {
+                        "selected_values": ["indie_hacker"],
+                        "free_text": "Solo builder first.",
+                    },
+                }
+            ],
+            "created_by": "Requirements Engineer",
+            "resolution_summary": "",
+        }
+
+        state_manager = InMemoryStateManager(states)
+        orchestrator = Orchestrator(state_manager=state_manager)
+        orchestrator.agents[Stage.REQUIREMENTS] = AnswerConsumingAgent()
+
+        result = orchestrator.orchestrate()
+
+        self.assertEqual(result.decision.final_stage, Stage.INIT)
+        self.assertEqual(result.executed_stage, Stage.REQUIREMENTS)
+        self.assertIsNotNone(result.agent_result)
+        self.assertEqual(
+            state_manager.states["question_state"],
+            make_empty_states()["question_state"],
+        )
 
 
 class InMemoryStateManager:

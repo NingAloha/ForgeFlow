@@ -174,7 +174,7 @@ class Orchestrator:
         question_state = states.get("question_state", {})
         return bool(
             question_state.get("blocking")
-            and question_state.get("status") in {"awaiting_user", "answered"}
+            and question_state.get("status") == "awaiting_user"
             and question_state.get("questions")
         )
 

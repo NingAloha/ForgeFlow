@@ -14,7 +14,7 @@ ForgeFlow 试图把用户输入逐步推进为以下阶段产物：
 * 代码实现（Implementation）
 * 测试验证（Testing）
 
-ForgeShell 是这个流程的主交互入口。它负责聊天式会话、状态可视化和持续交互；当前仓库里的 `main.py` 只保留为最小 CLI runner，用于直接触发一次 orchestrator 调度，服务开发、诊断和快速验证。
+ForgeShell 是这个流程的主交互入口。它负责聊天式会话、状态可视化和持续交互；当前仓库里的 `main.py` 只保留为最小 CLI runner，用于直接触发一次 orchestrator 调度，并输出面向开发/诊断的诊断视图。
 
 ## 这是什么项目
 
@@ -68,7 +68,7 @@ forgeflow/
 * [agents/](./agents/README.md)：agent 与控制层职责说明
 * [state/](./state/README.md)：阶段状态文件
 * [schemas/](./schemas/README.md)：后续正式 schema 层
-* [main.py](./main.py)：开发与诊断用的最小 CLI runner，用于直接运行一次 orchestrator
+* [main.py](./main.py)：开发与诊断用的最小 CLI runner，用于直接运行一次 orchestrator 并输出诊断视图
 * [tui/](./tui/README.md)：ForgeShell 主交互入口与终端 UI 层
 
 ## 阅读路径
@@ -122,8 +122,9 @@ forgeflow/
 * 状态 JSON 契约已收紧并文档化
 * 已补充一版 agent 设计原则文档，用于约束后续演进方向
 * 各模块目录已补充导航 README
-* `main.py` 已可直接触发一次 orchestrator 调度，用于开发与诊断
+* `main.py` 已可直接触发一次 orchestrator 调度，并输出诊断视图
 * requirements 阶段已能生成首版 `spec` 核心字段，并在缺信息时写入 `question_state`
+* `question_state = answered` 时，控制层会重新执行对应阶段来消费回答，而不是继续卡在等待态
 * 实现仍处于早期阶段
 
 ## 给第一次阅读的人

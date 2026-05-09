@@ -47,4 +47,5 @@ class OrchestrationResult:
     agent_result: AgentResult | None = None
     states_before: dict[str, dict[str, Any]] = field(default_factory=dict)
     states_after: dict[str, dict[str, Any]] = field(default_factory=dict)
+    diagnostic: dict[str, Any] = field(default_factory=dict)
     summary: str = ""

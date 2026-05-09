@@ -99,6 +99,20 @@ class QuestionFlow:
         except ValueError:
             return fallback_stage
 
+    def get_answered_question_stage(
+        self, states: dict[str, dict[str, Any]]
+    ) -> Stage | None:
+        question_state = states.get("question_state", {})
+        if question_state.get("status") != "answered":
+            return None
+        stage_name = question_state.get("stage_name")
+        if not stage_name:
+            return None
+        try:
+            return Stage(stage_name)
+        except ValueError:
+            return None
+
     def is_waiting_for_user_input(
         self, states: dict[str, dict[str, Any]]
     ) -> bool:

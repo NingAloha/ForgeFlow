@@ -128,6 +128,7 @@ forgeflow/
 * solution 阶段已能基于 `spec` 生成首版 `selected_stack`、`module_mapping`、`risks` 与 `alternatives`
 * `question_state = answered` 时，控制层会重新执行对应阶段来消费回答，而不是继续卡在等待态
 * 运行态 state 默认写入 `.forgeflow/state/`，避免污染仓库中的契约示例文件
+* design / implementation / testing 三层已不再是 placeholder，当前会输出最小可执行工件并给出可回流的验证归因
 * 实现仍处于早期阶段
 
 ## 给第一次阅读的人

@@ -50,7 +50,13 @@ class StageEvaluatorTests(unittest.TestCase):
     ) -> None:
         states = make_design_ready_states()
         states["implementation_status"].update(
-            {"module_name": "orchestrator", "implementation_status": "blocked"}
+            {
+                "module_name": "orchestrator",
+                "implementation_status": "blocked",
+                "files_touched": ["agents/orchestrator/core.py"],
+                "tests_added_or_updated": ["tests/unit/orchestrator/test_core.py"],
+                "contract_compliance": True,
+            }
         )
         self.assertTrue(self.evaluator.has_active_implementation(states))
 

@@ -20,3 +20,10 @@
 * `issues[].related_modules`：归因模块
 * `issues[].related_contracts`：归因 contract
 * `issues[].notes`：补充说明
+
+结果语义：
+
+* `not_run`：测试尚未真正执行
+* `partial`：执行了部分验证，但归因仍不完整
+* `fail`：存在 `high/critical` 且状态为 `open/confirmed` 的问题
+* `pass`：未发现阻塞交付的问题

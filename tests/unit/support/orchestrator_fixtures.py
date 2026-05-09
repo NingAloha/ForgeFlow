@@ -168,6 +168,9 @@ def make_implementing_states() -> dict[str, dict]:
         {
             "module_name": "orchestrator",
             "implementation_status": "in_progress",
+            "files_touched": ["agents/orchestrator/core.py"],
+            "tests_added_or_updated": ["tests/unit/orchestrator/test_core.py"],
+            "contract_compliance": True,
         }
     )
     return states
@@ -179,6 +182,9 @@ def make_testing_states() -> dict[str, dict]:
         {
             "module_name": "orchestrator",
             "implementation_status": "done",
+            "files_touched": ["agents/orchestrator/core.py"],
+            "tests_added_or_updated": ["tests/unit/orchestrator/test_core.py"],
+            "contract_compliance": True,
             "blockers": [],
         }
     )

@@ -681,10 +681,12 @@ class OrchestratorStageComputationTests(unittest.TestCase):
 
         result = orchestrator.orchestrate()
 
-        self.assertEqual(result.decision.final_stage, Stage.INIT)
+        self.assertEqual(result.decision.final_stage, Stage.REQUIREMENTS)
         self.assertEqual(result.executed_stage, Stage.REQUIREMENTS)
         self.assertIsNotNone(result.agent_result)
         self.assertEqual(state_manager.states["question_state"], make_empty_states()["question_state"])
+        self.assertEqual(result.diagnostic["decision_type"], "STAY")
+        self.assertIn("question_state", result.diagnostic["state_changes"])
 
 
 if __name__ == "__main__":

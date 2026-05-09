@@ -29,3 +29,10 @@
 * `mvp_plan.out_of_scope`：明确排除的范围
 * `mvp_plan.milestones`：关键里程碑
 * `mvp_plan.first_deliverable`：当前第一交付目标
+
+最小有效产物（用于进入 implementation）：
+
+* `project_structure.modules` 非空
+* `contracts` 至少包含一条稳定 contract（含 `name/producer/consumers/input/output`）
+* `data_flow` 至少有一步引用有效 `contract_name`
+* `mvp_plan.in_scope` 与 `mvp_plan.first_deliverable` 非空

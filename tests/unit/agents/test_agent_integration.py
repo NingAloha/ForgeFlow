@@ -3,11 +3,17 @@ from __future__ import annotations
 import unittest
 
 from agents.base import AgentContext, QuestionAnswer, QuestionItem, QuestionState
+from agents.implementation_engineer import ImplementationEngineerAgent
 from agents.requirements_engineer import RequirementsEngineerAgent
 from agents.solution_engineer import SolutionEngineerAgent
+from agents.system_designer import SystemDesignerAgent
+from agents.test_validation_engineer import TestValidationEngineerAgent
 from tests.unit.support.orchestrator_fixtures import (
+    make_design_ready_states,
     make_empty_states,
     make_requirements_ready_states,
+    make_solution_ready_states,
+    make_testing_states,
 )
 
 
@@ -188,6 +194,69 @@ class SolutionEngineerAgentTests(unittest.TestCase):
         self.assertTrue(result.updated_state["module_mapping"])
         self.assertFalse(result.requires_user_input)
         self.assertIsNone(result.question_state_update)
+
+
+class SystemDesignerAgentTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.agent = SystemDesignerAgent()
+
+    def test_agent_generates_design_artifacts_from_solution_state(self) -> None:
+        context = AgentContext(user_input="", states=make_solution_ready_states())
+        result = self.agent.run(context)
+        self.assertTrue(result.updated_state["project_structure"]["modules"])
+        self.assertTrue(result.updated_state["contracts"])
+        self.assertTrue(result.updated_state["data_flow"])
+        self.assertTrue(result.updated_state["mvp_plan"]["first_deliverable"])
+        self.assertTrue(result.handoff_ready)
+
+    def test_agent_blocks_when_solution_mapping_is_missing(self) -> None:
+        states = make_solution_ready_states()
+        states["solution"]["module_mapping"] = []
+        result = self.agent.run(AgentContext(user_input="", states=states))
+        self.assertFalse(result.handoff_ready)
+        self.assertEqual(result.blockers, ["solution_module_mapping_missing"])
+
+
+class ImplementationEngineerAgentTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.agent = ImplementationEngineerAgent()
+
+    def test_agent_generates_execution_artifacts_when_design_is_ready(self) -> None:
+        context = AgentContext(user_input="", states=make_design_ready_states())
+        result = self.agent.run(context)
+        self.assertEqual(result.updated_state["implementation_status"], "done")
+        self.assertTrue(result.updated_state["files_touched"])
+        self.assertTrue(result.updated_state["tests_added_or_updated"])
+        self.assertTrue(result.updated_state["contract_compliance"])
+        self.assertTrue(result.handoff_ready)
+
+    def test_agent_marks_blocked_when_design_contracts_are_missing(self) -> None:
+        states = make_design_ready_states()
+        states["system_design"]["contracts"] = []
+        result = self.agent.run(AgentContext(user_input="", states=states))
+        self.assertEqual(result.updated_state["implementation_status"], "blocked")
+        self.assertFalse(result.handoff_ready)
+        self.assertTrue(result.blockers)
+
+
+class TestValidationEngineerAgentTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.agent = TestValidationEngineerAgent()
+
+    def test_agent_produces_pass_result_for_clean_ready_states(self) -> None:
+        context = AgentContext(user_input="", states=make_testing_states())
+        result = self.agent.run(context)
+        self.assertEqual(result.updated_state["result"], "pass")
+        self.assertEqual(result.updated_state["issues"], [])
+        self.assertTrue(result.handoff_ready)
+
+    def test_agent_produces_fail_result_with_blocking_issues(self) -> None:
+        states = make_testing_states()
+        states["implementation_status"]["contract_compliance"] = False
+        result = self.agent.run(AgentContext(user_input="", states=states))
+        self.assertEqual(result.updated_state["result"], "fail")
+        self.assertTrue(result.updated_state["issues"])
+        self.assertFalse(result.handoff_ready)
 
 
 if __name__ == "__main__":

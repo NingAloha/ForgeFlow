@@ -16,6 +16,18 @@ from .stage_evaluator import StageEvaluator
 
 
 class Orchestrator:
+    @staticmethod
+    def changed_state_keys(
+        states_before: dict[str, dict[str, Any]],
+        states_after: dict[str, dict[str, Any]],
+    ) -> list[str]:
+        changed: list[str] = []
+        all_keys = set(states_before) | set(states_after)
+        for state_key in sorted(all_keys):
+            if states_before.get(state_key) != states_after.get(state_key):
+                changed.append(state_key)
+        return changed
+
     def __init__(self, state_manager: StateManager | None = None) -> None:
         self.state_manager = state_manager or StateManager()
         self.question_flow = QuestionFlow()
@@ -140,6 +152,19 @@ class Orchestrator:
         flags = self.stage_evaluator.evaluate_stage_flags(states)
         computed_stage = self.stage_evaluator.stage_from_flags(flags)
         source_stage = self.stage_evaluator.infer_source_stage(states)
+        answered_stage = self.question_flow.get_answered_question_stage(states)
+        if answered_stage is not None and answered_stage in self.agents:
+            return TransitionDecision(
+                computed_stage=computed_stage,
+                final_stage=answered_stage,
+                source_stage=source_stage,
+                should_stay=True,
+                reason="Answered questions must be consumed by the same stage.",
+                evidence=[
+                    "question_state.status is answered and must be consumed before new transitions."
+                ],
+            )
+
         if self.question_flow.is_waiting_for_user_input(states):
             waiting_stage = self.question_flow.get_blocking_question_stage(
                 states, source_stage
@@ -195,6 +220,68 @@ class Orchestrator:
             reason="Stay on current stage.",
             evidence=[],
         )
+
+    def build_diagnostic_payload(
+        self,
+        decision: TransitionDecision,
+        states_before: dict[str, dict[str, Any]],
+        states_after: dict[str, dict[str, Any]],
+        executed_stage: Stage | None = None,
+        agent_result: AgentResult | None = None,
+        summary: str = "",
+    ) -> dict[str, Any]:
+        question_state = states_after.get("question_state", {})
+        decision_type = "STAY"
+        if decision.wait_for_user_input:
+            decision_type = "WAIT"
+        elif decision.backflow_target is not None:
+            decision_type = "BACKFLOW"
+        elif decision.forward_target is not None:
+            decision_type = "FORWARD"
+        elif decision.final_stage == Stage.INIT and executed_stage is not None:
+            decision_type = "BOOTSTRAP"
+        elif not decision.should_stay:
+            decision_type = "EXECUTE"
+        return {
+            "decision_type": decision_type,
+            "stages": {
+                "computed": str(decision.computed_stage),
+                "source": str(decision.source_stage) if decision.source_stage else "",
+                "final": str(decision.final_stage),
+                "executed": str(executed_stage) if executed_stage else "",
+            },
+            "transition": {
+                "reason": decision.reason,
+                "forward_target": str(decision.forward_target)
+                if decision.forward_target
+                else "",
+                "backflow_target": str(decision.backflow_target)
+                if decision.backflow_target
+                else "",
+                "wait_for_user_input": decision.wait_for_user_input,
+                "evidence": list(decision.evidence),
+            },
+            "state_changes": self.changed_state_keys(states_before, states_after),
+            "question_state": {
+                "status": question_state.get("status", "idle"),
+                "stage_name": question_state.get("stage_name", ""),
+                "state_key": question_state.get("state_key", ""),
+                "blocking": bool(question_state.get("blocking", False)),
+                "question_count": len(question_state.get("questions", [])),
+            },
+            "execution": {
+                "agent_name": agent_result.agent_name if agent_result else "",
+                "state_key": agent_result.state_key if agent_result else "",
+                "handoff_ready": bool(agent_result.handoff_ready)
+                if agent_result
+                else False,
+                "requires_user_input": bool(agent_result.requires_user_input)
+                if agent_result
+                else False,
+                "blockers": list(agent_result.blockers) if agent_result else [],
+            },
+            "summary": summary,
+        }
 
     def determine_execution_stage(self, decision: TransitionDecision) -> Stage | None:
         if decision.wait_for_user_input:
@@ -254,6 +341,14 @@ class Orchestrator:
             agent_result=agent_result,
             states_before=states_before,
             states_after=states_after,
+            diagnostic=self.build_diagnostic_payload(
+                decision=decision,
+                states_before=states_before,
+                states_after=states_after,
+                executed_stage=executed_stage,
+                agent_result=agent_result,
+                summary=summary,
+            ),
             summary=summary,
         )
 

@@ -23,3 +23,11 @@
 * `contract_compliance`：当前实现是否满足既有 contract
 * `known_limitations`：当前已知限制
 * `blockers`：阻塞当前实现继续推进的问题
+
+最小有效产物（用于进入 testing）：
+
+* `module_name` 非空
+* `implementation_status = done`
+* `files_touched` 与 `tests_added_or_updated` 非空
+* `contract_compliance = true`
+* `blockers` 为空

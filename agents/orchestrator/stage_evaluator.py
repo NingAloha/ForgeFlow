@@ -6,6 +6,34 @@ from .models import Stage, StageFlags
 
 
 class StageEvaluator:
+    def _has_minimal_design_artifacts(self, states: dict[str, dict[str, Any]]) -> bool:
+        design = states.get("system_design", {})
+        project_structure = design.get("project_structure", {})
+        return bool(
+            project_structure.get("modules")
+            and design.get("contracts")
+            and design.get("data_flow")
+            and design.get("mvp_plan", {}).get("first_deliverable")
+        )
+
+    def _has_minimal_implementation_artifacts(
+        self, states: dict[str, dict[str, Any]]
+    ) -> bool:
+        implementation_status = states.get("implementation_status", {})
+        status = implementation_status.get("implementation_status")
+        if not (
+            implementation_status.get("module_name")
+            and status in {"in_progress", "blocked", "done"}
+        ):
+            return False
+        if status != "done":
+            return True
+        return bool(
+            implementation_status.get("files_touched")
+            and implementation_status.get("tests_added_or_updated")
+            and isinstance(implementation_status.get("contract_compliance"), bool)
+        )
+
     def is_requirements_ready(self, states: dict[str, dict[str, Any]]) -> bool:
         spec = states.get("spec", {})
         return bool(
@@ -85,15 +113,12 @@ class StageEvaluator:
     def has_active_implementation(
         self, states: dict[str, dict[str, Any]]
     ) -> bool:
-        if not self.is_design_ready(states):
+        if not self.is_design_ready(states) or not self._has_minimal_design_artifacts(
+            states
+        ):
             return False
 
-        implementation_status = states.get("implementation_status", {})
-        return bool(
-            implementation_status.get("module_name")
-            and implementation_status.get("implementation_status")
-            in {"in_progress", "blocked", "done"}
-        )
+        return self._has_minimal_implementation_artifacts(states)
 
     def has_validation_context(self, states: dict[str, dict[str, Any]]) -> bool:
         if not self.has_active_implementation(states):
@@ -106,6 +131,8 @@ class StageEvaluator:
             implementation_status.get("implementation_status") == "done"
             and not implementation_status.get("blockers")
             and test_report.get("test_scope")
+            and implementation_status.get("files_touched")
+            and implementation_status.get("tests_added_or_updated")
         )
 
     def is_done(self, states: dict[str, dict[str, Any]]) -> bool:

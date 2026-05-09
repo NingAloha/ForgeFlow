@@ -32,7 +32,7 @@ class TransitionDecision:
     computed_stage: Stage
     final_stage: Stage
     source_stage: Stage | None = None
-    forward_target: Stage | None = None
+    next_stage_to_execute: Stage | None = None
     backflow_target: Stage | None = None
     wait_for_user_input: bool = False
     should_stay: bool = True

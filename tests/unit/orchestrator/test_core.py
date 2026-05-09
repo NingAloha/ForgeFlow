@@ -91,7 +91,7 @@ class OrchestratorCoreTests(unittest.TestCase):
                 TransitionDecision(
                     computed_stage=Stage.REQUIREMENTS,
                     final_stage=Stage.SOLUTION,
-                    forward_target=Stage.SOLUTION,
+                    next_stage_to_execute=Stage.SOLUTION,
                     should_stay=False,
                     reason="Forward transition available.",
                 )
@@ -127,7 +127,7 @@ class OrchestratorCoreTests(unittest.TestCase):
             decision=TransitionDecision(
                 computed_stage=Stage.REQUIREMENTS,
                 final_stage=Stage.SOLUTION,
-                forward_target=Stage.SOLUTION,
+                next_stage_to_execute=Stage.SOLUTION,
                 should_stay=False,
                 reason="Forward transition available.",
             ),

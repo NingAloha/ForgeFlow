@@ -14,7 +14,7 @@ ForgeFlow 试图把用户输入逐步推进为以下阶段产物：
 * 代码实现（Implementation）
 * 测试验证（Testing）
 
-ForgeShell 是目标主交互入口。它负责聊天式会话、状态可视化和持续交互；当前仓库里已可运行的入口仍以 `main.py` 这个最小 CLI runner 为主，用于直接触发一次 orchestrator 调度，并输出面向开发/诊断的诊断视图。
+ForgeShell 是目标主交互入口。它负责聊天式会话、状态可视化和持续交互；当前仓库里已可运行的入口仍以 `main.py` 这个最小 CLI runner 为主，既支持单次调度，也支持 `--auto-run` 连续推进到 `DONE` 或 `WAIT`。
 
 ## 这是什么项目
 
@@ -68,9 +68,10 @@ forgeflow/
 * [agents/](./agents/README.md)：agent 与控制层职责说明
 * [state/](./state/README.md)：状态契约示例与字段参考
 * [schemas/](./schemas/README.md)：状态契约的运行时 schema 与校验注册表
-* [main.py](./main.py)：开发与诊断用的最小 CLI runner，用于直接运行一次 orchestrator 并输出诊断视图
+* [main.py](./main.py)：开发与诊断用的最小 CLI runner，支持单次运行与 `--auto-run` 连续推进
 * [tui/](./tui/README.md)：ForgeShell 主交互入口与终端 UI 层
 * [llm_config.example.json](./llm_config.example.json)：本地大模型接入配置样例（请复制为 `llm_config.local.json` 并本地填写，兼容 `api_key` 直填与 `api_key_env` 环境变量两种模式）
+* LLM 密钥解析优先级（明确规则，无回退歧义）：`api_key`（或 `FORGEFLOW_LLM_API_KEY`）优先，其次才是 `api_key_env` 指向的环境变量值（默认 `DEEPSEEK_API_KEY`）
 
 ## 阅读路径
 

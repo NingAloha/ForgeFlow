@@ -25,7 +25,7 @@ def classify_decision(result: OrchestrationResult) -> str:
         return "WAIT"
     if decision.backflow_target is not None:
         return "BACKFLOW"
-    if decision.forward_target is not None:
+    if decision.next_stage_to_execute is not None:
         return "FORWARD"
     if decision.final_stage == Stage.INIT and result.executed_stage is not None:
         return "BOOTSTRAP"
@@ -88,9 +88,10 @@ def format_diagnostic_report(result: OrchestrationResult) -> str:
         f"- summary: {result.summary}",
     ]
 
-    if decision.forward_target is not None:
+    if decision.next_stage_to_execute is not None:
         lines.append(
-            f"- forward target: {transition_view.get('forward_target', decision.forward_target)}"
+            "- next stage to execute: "
+            f"{transition_view.get('next_stage_to_execute', decision.next_stage_to_execute)}"
         )
     if decision.backflow_target is not None:
         lines.append(
@@ -169,6 +170,17 @@ def main() -> int:
         default=None,
         help="Optional state directory for isolated runs.",
     )
+    parser.add_argument(
+        "--auto-run",
+        action="store_true",
+        help="Continuously run until DONE or WAIT.",
+    )
+    parser.add_argument(
+        "--max-steps",
+        type=int,
+        default=20,
+        help="Max orchestration steps in --auto-run mode.",
+    )
     args = parser.parse_args()
 
     orchestrator = Orchestrator(
@@ -176,8 +188,21 @@ def main() -> int:
         if args.state_dir is not None
         else None
     )
-    result = orchestrator.orchestrate(build_user_input(args))
-    print(format_diagnostic_report(result))
+    user_input = build_user_input(args)
+    if args.auto_run:
+        max_steps = max(1, args.max_steps)
+        for step in range(1, max_steps + 1):
+            result = orchestrator.orchestrate(user_input)
+            print(f"=== Auto Run Step {step} ===")
+            print(format_diagnostic_report(result))
+            if result.decision.wait_for_user_input:
+                break
+            if result.decision.final_stage == Stage.DONE:
+                break
+            user_input = ""
+    else:
+        result = orchestrator.orchestrate(user_input)
+        print(format_diagnostic_report(result))
     return 0
 
 

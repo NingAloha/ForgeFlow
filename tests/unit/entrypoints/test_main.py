@@ -190,6 +190,44 @@ class MainDiagnosticViewTests(unittest.TestCase):
             mock_state_manager.return_value,
         )
 
+    @patch("main.print")
+    @patch("main.Orchestrator")
+    def test_main_auto_run_stops_when_done(
+        self,
+        mock_orchestrator_cls: MagicMock,
+        _mock_print: MagicMock,
+    ) -> None:
+        mock_orchestrator = MagicMock()
+        mock_orchestrator.orchestrate.side_effect = [
+            OrchestrationResult(
+                decision=TransitionDecision(
+                    computed_stage=Stage.INIT,
+                    final_stage=Stage.REQUIREMENTS,
+                    should_stay=False,
+                    next_stage_to_execute=Stage.REQUIREMENTS,
+                    reason="Forward transition available.",
+                ),
+                executed_stage=Stage.REQUIREMENTS,
+                summary="step1",
+            ),
+            OrchestrationResult(
+                decision=TransitionDecision(
+                    computed_stage=Stage.DONE,
+                    final_stage=Stage.DONE,
+                    should_stay=True,
+                    reason="Stay on current stage.",
+                ),
+                summary="done",
+            ),
+        ]
+        mock_orchestrator_cls.return_value = mock_orchestrator
+
+        with patch("sys.argv", ["main.py", "--auto-run", "--max-steps", "5", "build", "todo"]):
+            exit_code = main()
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(mock_orchestrator.orchestrate.call_count, 2)
+
 
 if __name__ == "__main__":
     unittest.main()

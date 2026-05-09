@@ -193,15 +193,15 @@ class Orchestrator:
                 evidence=backflow_evidence,
             )
 
-        forward_target, forward_evidence = self.evaluate_forward_transition(
+        next_stage_to_execute, forward_evidence = self.evaluate_forward_transition(
             states, computed_stage
         )
-        if forward_target is not None:
+        if next_stage_to_execute is not None:
             return TransitionDecision(
                 computed_stage=computed_stage,
-                final_stage=forward_target,
+                final_stage=next_stage_to_execute,
                 source_stage=source_stage,
-                forward_target=forward_target,
+                next_stage_to_execute=next_stage_to_execute,
                 should_stay=False,
                 reason="Forward transition available.",
                 evidence=forward_evidence,
@@ -231,7 +231,7 @@ class Orchestrator:
             decision_type = "WAIT"
         elif decision.backflow_target is not None:
             decision_type = "BACKFLOW"
-        elif decision.forward_target is not None:
+        elif decision.next_stage_to_execute is not None:
             decision_type = "FORWARD"
         elif decision.final_stage == Stage.INIT and executed_stage is not None:
             decision_type = "BOOTSTRAP"
@@ -247,8 +247,8 @@ class Orchestrator:
             },
             "transition": {
                 "reason": decision.reason,
-                "forward_target": str(decision.forward_target)
-                if decision.forward_target
+                "next_stage_to_execute": str(decision.next_stage_to_execute)
+                if decision.next_stage_to_execute
                 else "",
                 "backflow_target": str(decision.backflow_target)
                 if decision.backflow_target
@@ -289,8 +289,8 @@ class Orchestrator:
             return None
         if decision.backflow_target is not None and decision.backflow_target in self.agents:
             return decision.backflow_target
-        if decision.forward_target is not None and decision.forward_target in self.agents:
-            return decision.forward_target
+        if decision.next_stage_to_execute is not None and decision.next_stage_to_execute in self.agents:
+            return decision.next_stage_to_execute
         if decision.final_stage == Stage.INIT:
             return Stage.REQUIREMENTS
         if decision.final_stage in self.agents:

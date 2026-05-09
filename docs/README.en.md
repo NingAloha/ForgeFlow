@@ -12,7 +12,7 @@ ForgeFlow turns a user request into a staged engineering flow:
 * Implementation
 * Testing
 
-ForgeShell is the target primary user-facing entrypoint for this flow. The currently runnable entrypoint in this repository is `main.py`, a minimal CLI runner for development, debugging, smoke tests, and one-shot orchestration checks with diagnostic output.
+ForgeShell is the target primary user-facing entrypoint for this flow. The currently runnable entrypoint in this repository is `main.py`, a minimal CLI runner for development, debugging, smoke tests, and orchestration checks with diagnostic output (`one-shot` or `--auto-run`).
 
 ## What This Project Is
 
@@ -67,8 +67,9 @@ Directory guide:
 * [agents/README.md](../agents/README.md): agent and control-layer responsibilities
 * [state/README.md](../state/README.md): state contract examples and field reference
 * [schemas/README.md](../schemas/README.md): runtime schema layer and state validation registry
-* [main.py](../main.py): minimal CLI runner for one-shot orchestration and diagnostic reporting
+* [main.py](../main.py): minimal CLI runner for one-shot or `--auto-run` orchestration and diagnostic reporting
 * [tui/README.md](../tui/README.md): ForgeShell terminal UI layer
+* LLM key resolution precedence: `api_key` (or `FORGEFLOW_LLM_API_KEY`) first, then the value from the env var named by `api_key_env` (default `DEEPSEEK_API_KEY`)
 
 ## Documentation Map
 
@@ -98,7 +99,7 @@ Current repository state:
 * workflow stage criteria have been drafted in `docs/`
 * state JSON contracts have been tightened and documented
 * module-level README files have been added for navigation
-* `main.py` can now trigger a single orchestrator run and print a diagnostic report for development and debugging
+* `main.py` can now trigger one-shot orchestration or run continuously with `--auto-run`, and print per-step diagnostic reports
 * the requirements stage can now produce the first structured `spec` fields and raise blocking clarification questions when needed
 * the solution stage can now derive an initial `selected_stack`, `module_mapping`, `risks`, and `alternatives` from the current `spec`
 * `question_state = answered` now routes execution back to the owning stage so answers can be consumed instead of remaining stuck in a waiting state

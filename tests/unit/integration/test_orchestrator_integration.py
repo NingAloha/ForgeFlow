@@ -154,7 +154,7 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         decision = self.orchestrator.resolve_transition(make_solution_ready_states())
         self.assertEqual(decision.computed_stage, Stage.SOLUTION)
         self.assertEqual(decision.final_stage, Stage.DESIGN)
-        self.assertEqual(decision.forward_target, Stage.DESIGN)
+        self.assertEqual(decision.next_stage_to_execute, Stage.DESIGN)
         self.assertFalse(decision.should_stay)
 
     def test_resolve_transition_waits_on_blocking_question_state(self) -> None:

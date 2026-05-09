@@ -27,6 +27,30 @@ htmlcov/
 # ForgeFlow runtime state
 .forgeflow/
 
+# Sensitive local config
+.env
+.env.*
+!.env.example
+secrets/
+config.local.*
+llm_config.json
+llm_config.local.json
+model_config.json
+model_config.local.json
+provider_config.json
+provider_config.local.json
+*.secrets.json
+*.local.yaml
+*.local.yml
+*.local.toml
+*.pem
+*.key
+*.p12
+*.crt
+
+# Logs
+*.log
+
 # Build artifacts
 build/
 dist/

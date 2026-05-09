@@ -145,6 +145,8 @@ class StageEvaluator:
             and implementation_status.get("files_touched")
             and implementation_status.get("tests_added_or_updated")
             and implementation_status.get("contract_compliance") is True
+            and implementation_status.get("workspace_path")
+            and implementation_status.get("suggested_test_command")
         )
 
     def is_done(self, states: dict[str, dict[str, Any]]) -> bool:
@@ -160,7 +162,11 @@ class StageEvaluator:
         )
 
         return bool(
-            test_report.get("result") == "pass" and not blocking_issue_exists
+            test_report.get("result") == "pass"
+            and not blocking_issue_exists
+            and test_report.get("command")
+            and test_report.get("exit_code") == 0
+            and int(test_report.get("tests_run", 0)) > 0
         )
 
     def evaluate_stage_flags(self, states: dict[str, dict[str, Any]]) -> StageFlags:

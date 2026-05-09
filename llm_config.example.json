@@ -9,5 +9,7 @@
   "timeout": 20.0,
   "temperature": 0.2,
   "max_tokens": 800,
-  "fallback_on_error": true
+  "execution_mode": "strict_llm",
+  "fallback_on_error": true,
+  "enabled_stages": ["REQUIREMENTS", "SOLUTION", "DESIGN", "IMPLEMENTATION", "TESTING"]
 }

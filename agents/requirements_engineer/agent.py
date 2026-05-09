@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from ..base import AgentContext, AgentResult, BaseAgent
 from ..common.llm_adapter import LLMAdapter
+from ..common.llm_policy import (
+    build_llm_failure_question_state,
+    should_block_on_llm_failure,
+    should_use_llm,
+)
 from ..common.runtime_config import LLMRuntimeConfig, load_llm_runtime_config
 from .extraction import RequirementsExtractionMixin
 from .questions import RequirementsQuestionMixin
@@ -34,12 +39,14 @@ class RequirementsEngineerAgent(
             "fallback_used": False,
             "error": "",
             "latency_ms": 0,
+            "source": "fallback",
         }
         llm_project_goal = ""
         llm_functional_requirements: list[str] = []
         llm_acceptance_criteria: list[str] = []
 
-        if llm_config.enabled and user_input:
+        llm_stage_enabled = should_use_llm(llm_config, self.stage_name)
+        if llm_config.enabled and llm_stage_enabled and user_input:
             llm_result = self.get_llm_adapter().generate_requirements(
                 user_input=user_input,
                 config=llm_config,
@@ -48,6 +55,7 @@ class RequirementsEngineerAgent(
             llm_trace["latency_ms"] = llm_result.latency_ms
             llm_trace["error"] = llm_result.error
             if llm_result.ok:
+                llm_trace["source"] = "llm"
                 llm_project_goal = self.normalize_text(
                     str(llm_result.content.get("project_goal", ""))
                 )
@@ -74,6 +82,34 @@ class RequirementsEngineerAgent(
                     llm_trace["error"] = "LLM response missing required fields."
             else:
                 llm_trace["fallback_used"] = True
+
+        if should_block_on_llm_failure(
+            llm_config,
+            self.stage_name,
+            llm_trace["used"],
+            llm_trace["fallback_used"],
+        ):
+            updated_state = {
+                **current_state,
+                "open_questions": ["llm_generation_failed"],
+            }
+            return AgentResult(
+                agent_name=self.agent_name,
+                stage_name=self.stage_name,
+                state_key=self.state_key,
+                updated_state=updated_state,
+                summary="Requirements blocked: strict_llm mode requires successful LLM output.",
+                notes=["LLM output was invalid or unavailable; waiting for user action."],
+                blockers=["llm_generation_failed"],
+                handoff_ready=False,
+                requires_user_input=True,
+                question_state_update=build_llm_failure_question_state(
+                    self.stage_name,
+                    self.state_key,
+                    llm_trace.get("error", ""),
+                ),
+                diagnostics={"llm_trace": llm_trace},
+            )
 
         project_goal = self.normalize_text(str(current_state.get("project_goal", "")))
         if not project_goal:

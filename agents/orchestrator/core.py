@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import json
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from ..base import AgentContext, AgentResult
 from ..implementation_engineer import ImplementationEngineerAgent
@@ -30,6 +34,14 @@ class Orchestrator:
 
     def __init__(self, state_manager: StateManager | None = None) -> None:
         self.state_manager = state_manager or StateManager()
+        state_dir_value = getattr(self.state_manager, "state_dir", None)
+        state_dir = Path(state_dir_value) if state_dir_value is not None else Path.cwd() / ".forgeflow" / "state"
+        self.run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid4().hex[:8]
+        self.runs_dir = state_dir.parent / "runs" / self.run_id
+        self.generated_project_dir = state_dir.parent / "generated" / self.run_id
+        self.runs_dir.mkdir(parents=True, exist_ok=True)
+        self.generated_project_dir.mkdir(parents=True, exist_ok=True)
+        self._run_steps: list[dict[str, Any]] = []
         self.question_flow = QuestionFlow()
         self.stage_evaluator = StageEvaluator()
         self.backflow_evaluator = BackflowEvaluator(
@@ -46,9 +58,16 @@ class Orchestrator:
 
     def build_context(self, user_input: str = "") -> AgentContext:
         states = self.state_manager.load_all_states()
+        state_dir = getattr(self.state_manager, "state_dir", "")
         return AgentContext(
             user_input=user_input,
             states=states,
+            metadata={
+                "run_id": self.run_id,
+                "runs_dir": str(self.runs_dir),
+                "generated_project_dir": str(self.generated_project_dir),
+                "state_dir": str(state_dir),
+            },
             question_state=self.question_flow.parse_question_state(
                 states.get("question_state", {})
             ),
@@ -278,9 +297,17 @@ class Orchestrator:
             "llm_trace": dict(agent_result.diagnostics.get("llm_trace", {}))
             if agent_result
             else {},
+            "execution_trace": dict(agent_result.diagnostics.get("execution_trace", {}))
+            if agent_result
+            else {},
             "state_validation_errors": dict(
                 getattr(self.state_manager, "validation_errors", {})
             ),
+            "run": {
+                "run_id": self.run_id,
+                "generated_project_dir": str(self.generated_project_dir),
+                "runs_dir": str(self.runs_dir),
+            },
             "summary": summary,
         }
 
@@ -336,7 +363,7 @@ class Orchestrator:
             agent_result=agent_result,
         )
 
-        return OrchestrationResult(
+        result = OrchestrationResult(
             decision=decision,
             executed_stage=executed_stage,
             agent_result=agent_result,
@@ -352,6 +379,35 @@ class Orchestrator:
             ),
             summary=summary,
         )
+        self._write_run_manifest(result, user_input)
+        return result
+
+    def _write_run_manifest(self, result: OrchestrationResult, user_input: str) -> None:
+        step = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "input": user_input,
+            "decision_type": result.diagnostic.get("decision_type", ""),
+            "computed_stage": result.diagnostic.get("stages", {}).get("computed", ""),
+            "final_stage": result.diagnostic.get("stages", {}).get("final", ""),
+            "executed_stage": result.diagnostic.get("stages", {}).get("executed", ""),
+            "summary": result.summary,
+            "llm_trace": result.diagnostic.get("llm_trace", {}),
+            "execution_trace": result.diagnostic.get("execution_trace", {}),
+            "state_changes": result.diagnostic.get("state_changes", []),
+            "question_state": result.diagnostic.get("question_state", {}),
+        }
+        self._run_steps.append(step)
+        manifest = {
+            "run_id": self.run_id,
+            "generated_project_dir": str(self.generated_project_dir),
+            "state_dir": str(getattr(self.state_manager, "state_dir", "")),
+            "latest_summary": result.summary,
+            "latest_final_stage": result.diagnostic.get("stages", {}).get("final", ""),
+            "latest_decision_type": result.diagnostic.get("decision_type", ""),
+            "steps": self._run_steps,
+        }
+        path = self.runs_dir / "summary.json"
+        path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     def run_stage(
         self, stage_name: Stage | str, user_input: str = ""
@@ -364,7 +420,49 @@ class Orchestrator:
 
         context = self.build_context(user_input=user_input)
         result = agent.run(context)
-        self.state_manager.save_state(result.state_key, result.updated_state)
+        try:
+            self.state_manager.save_state(result.state_key, result.updated_state)
+        except ValueError as exc:
+            fallback_result = AgentResult(
+                agent_name=result.agent_name,
+                stage_name=result.stage_name,
+                state_key=result.state_key,
+                updated_state=context.states.get(result.state_key, {}),
+                summary="Stage output failed schema validation and was blocked.",
+                notes=[str(exc)],
+                blockers=["schema_validation_failed"],
+                handoff_ready=False,
+                requires_user_input=True,
+                question_state_update=self.question_flow.parse_question_state(
+                    {
+                        "status": "awaiting_user",
+                        "stage_name": str(stage),
+                        "state_key": result.state_key,
+                        "blocking": True,
+                        "questions": [
+                            {
+                                "id": "schema_validation_failed",
+                                "title": "Schema validation failed",
+                                "description": str(exc),
+                                "response_type": "free_text",
+                                "options": [],
+                                "allow_free_text": True,
+                                "answer": None,
+                            }
+                        ],
+                        "created_by": result.agent_name,
+                        "resolution_summary": "",
+                    }
+                ),
+                diagnostics=result.diagnostics,
+            )
+            self.state_manager.save_state(
+                "question_state",
+                self.question_flow.serialize_question_state(
+                    fallback_result.question_state_update
+                ),
+            )
+            return fallback_result
         if result.question_state_update is not None:
             self.state_manager.save_state(
                 "question_state",

@@ -47,11 +47,20 @@ def make_empty_states() -> dict[str, dict]:
             "contract_compliance": True,
             "known_limitations": [],
             "blockers": [],
+            "workspace_path": "",
+            "commands_executed": [],
+            "artifacts_generated": [],
+            "suggested_test_command": [],
         },
         "test_report": {
             "test_scope": "integration",
             "result": "not_run",
             "issues": [],
+            "command": [],
+            "exit_code": 0,
+            "tests_run": 0,
+            "failed_tests": [],
+            "log_excerpt": "",
         },
         "question_state": {
             "status": "idle",
@@ -171,6 +180,18 @@ def make_implementing_states() -> dict[str, dict]:
             "files_touched": ["agents/orchestrator/core.py"],
             "tests_added_or_updated": ["tests/unit/orchestrator/test_core.py"],
             "contract_compliance": True,
+            "workspace_path": "/tmp/generated/demo",
+            "suggested_test_command": [
+                "python3",
+                "-m",
+                "unittest",
+                "discover",
+                "-s",
+                "tests",
+                "-p",
+                "test_*.py",
+                "-v",
+            ],
         }
     )
     return states
@@ -186,6 +207,18 @@ def make_testing_states() -> dict[str, dict]:
             "tests_added_or_updated": ["tests/unit/orchestrator/test_core.py"],
             "contract_compliance": True,
             "blockers": [],
+            "workspace_path": "/tmp/generated/demo",
+            "suggested_test_command": [
+                "python3",
+                "-m",
+                "unittest",
+                "discover",
+                "-s",
+                "tests",
+                "-p",
+                "test_*.py",
+                "-v",
+            ],
         }
     )
     states["test_report"].update(
@@ -193,6 +226,21 @@ def make_testing_states() -> dict[str, dict]:
             "test_scope": "integration",
             "result": "not_run",
             "issues": [],
+            "command": [
+                "python3",
+                "-m",
+                "unittest",
+                "discover",
+                "-s",
+                "tests",
+                "-p",
+                "test_*.py",
+                "-v",
+            ],
+            "exit_code": 0,
+            "tests_run": 1,
+            "failed_tests": [],
+            "log_excerpt": "",
         }
     )
     return states

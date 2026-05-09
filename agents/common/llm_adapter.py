@@ -34,6 +34,22 @@ class LLMAdapter:
         user_input: str,
         config: LLMRuntimeConfig,
     ) -> LLMCallResult:
+        return self.generate_json(
+            system_prompt=(
+                "You extract requirement state as strict JSON. "
+                "Return only JSON with keys: project_goal, "
+                "functional_requirements, acceptance_criteria."
+            ),
+            user_prompt=user_input,
+            config=config,
+        )
+
+    def generate_json(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        config: LLMRuntimeConfig,
+    ) -> LLMCallResult:
         api_key, _source = self.resolve_api_key(config)
         if not api_key:
             return LLMCallResult(
@@ -54,15 +70,8 @@ class LLMAdapter:
             "max_tokens": config.max_tokens,
             "stream": False,
             "messages": [
-                {
-                    "role": "system",
-                    "content": (
-                        "You extract requirement state as strict JSON. "
-                        "Return only JSON with keys: project_goal, "
-                        "functional_requirements, acceptance_criteria."
-                    ),
-                },
-                {"role": "user", "content": user_input},
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
             ],
             "response_format": {"type": "json_object"},
         }

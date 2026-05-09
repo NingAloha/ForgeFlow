@@ -13,3 +13,7 @@ class ImplementationStatusState(StateModel):
     contract_compliance: bool = True
     known_limitations: list[str] = Field(default_factory=list)
     blockers: list[str] = Field(default_factory=list)
+    workspace_path: str = ""
+    commands_executed: list[str] = Field(default_factory=list)
+    artifacts_generated: list[str] = Field(default_factory=list)
+    suggested_test_command: list[str] = Field(default_factory=list)

@@ -19,3 +19,8 @@ class TestReportState(StateModel):
     test_scope: str = "integration"
     result: str = "not_run"
     issues: list[TestIssue] = Field(default_factory=list)
+    command: list[str] = Field(default_factory=list)
+    exit_code: int = 0
+    tests_run: int = 0
+    failed_tests: list[str] = Field(default_factory=list)
+    log_excerpt: str = ""

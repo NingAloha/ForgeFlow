@@ -162,7 +162,7 @@ class RequirementsEngineerHelperTests(unittest.TestCase):
     def test_agent_prefers_llm_result_when_enabled_and_valid(self) -> None:
         class TestableRequirementsEngineerAgent(RequirementsEngineerAgent):
             def get_llm_runtime_config(self) -> LLMRuntimeConfig:
-                return LLMRuntimeConfig(enabled=True)
+                return LLMRuntimeConfig(enabled=True, execution_mode="compat")
 
             def get_llm_adapter(self):  # type: ignore[override]
                 adapter = MagicMock()
@@ -196,7 +196,7 @@ class RequirementsEngineerHelperTests(unittest.TestCase):
     def test_agent_falls_back_to_rules_when_llm_fails(self) -> None:
         class TestableRequirementsEngineerAgent(RequirementsEngineerAgent):
             def get_llm_runtime_config(self) -> LLMRuntimeConfig:
-                return LLMRuntimeConfig(enabled=True)
+                return LLMRuntimeConfig(enabled=True, execution_mode="compat")
 
             def get_llm_adapter(self):  # type: ignore[override]
                 adapter = MagicMock()
@@ -219,6 +219,32 @@ class RequirementsEngineerHelperTests(unittest.TestCase):
         self.assertTrue(result.updated_state["functional_requirements"])
         self.assertTrue(result.diagnostics["llm_trace"]["used"])
         self.assertTrue(result.diagnostics["llm_trace"]["fallback_used"])
+
+    def test_agent_blocks_in_strict_llm_mode_when_llm_fails(self) -> None:
+        class TestableRequirementsEngineerAgent(RequirementsEngineerAgent):
+            def get_llm_runtime_config(self) -> LLMRuntimeConfig:
+                return LLMRuntimeConfig(enabled=True, execution_mode="strict_llm")
+
+            def get_llm_adapter(self):  # type: ignore[override]
+                adapter = MagicMock()
+                adapter.generate_requirements.return_value = LLMCallResult(
+                    ok=False,
+                    content={},
+                    error="timeout",
+                    model="deepseek-v4-flash",
+                    latency_ms=30,
+                )
+                return adapter
+
+        agent = TestableRequirementsEngineerAgent()
+        context = AgentContext(
+            user_input="Build a task board and track progress",
+            states=make_empty_states(),
+        )
+        result = agent.run(context)
+        self.assertFalse(result.handoff_ready)
+        self.assertTrue(result.requires_user_input)
+        self.assertEqual(result.blockers, ["llm_generation_failed"])
 
 
 if __name__ == "__main__":

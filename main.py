@@ -152,6 +152,31 @@ def format_diagnostic_report(result: OrchestrationResult) -> str:
         for key, message in sorted(validation_errors.items()):
             lines.append(f"- {key}: {message}")
 
+    execution_trace = diagnostic.get("execution_trace", {})
+    if execution_trace:
+        lines.append("Execution Trace:")
+        workspace = execution_trace.get("workspace_path", "")
+        if workspace:
+            lines.append(f"- workspace: {workspace}")
+        file_writes = execution_trace.get("file_writes", [])
+        if file_writes:
+            lines.append(f"- files written: {len(file_writes)}")
+        command_results = execution_trace.get("command_results", [])
+        for item in command_results:
+            cmd = " ".join(item.get("command", []))
+            exit_code = item.get("exit_code", "")
+            lines.append(f"- command: {cmd} (exit={exit_code})")
+
+    run_meta = diagnostic.get("run", {})
+    if run_meta:
+        lines.append("Run Artifact:")
+        if run_meta.get("run_id"):
+            lines.append(f"- run id: {run_meta.get('run_id')}")
+        if run_meta.get("generated_project_dir"):
+            lines.append(f"- generated project dir: {run_meta.get('generated_project_dir')}")
+        if run_meta.get("runs_dir"):
+            lines.append(f"- run summary dir: {run_meta.get('runs_dir')}")
+
     return "\n".join(lines)
 
 
@@ -199,7 +224,6 @@ def main() -> int:
                 break
             if result.decision.final_stage == Stage.DONE:
                 break
-            user_input = ""
     else:
         result = orchestrator.orchestrate(user_input)
         print(format_diagnostic_report(result))

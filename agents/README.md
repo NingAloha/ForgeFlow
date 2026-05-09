@@ -7,7 +7,7 @@
 * `requirements_engineer/`：需求规格生成；当前会从用户输入或已回答的 `question_state` 提取 `spec` 核心字段，并在缺关键字段时发起 blocking 澄清问题
 * `solution_engineer/`：方案与技术选型；当前会基于 `spec` 生成首版 `selected_stack`、`module_mapping`、`risks` 与 `alternatives`，并在 requirements 前提不足时发起 blocking 澄清问题
 * `system_designer/`：结构、契约与数据流设计
-* `implementation_engineer/`：实现与本地阻塞分析
+* `implementation_engineer/`：implementation planning / status 生成与本地阻塞分析（当前不是自动代码生成器）
 * `test_validation_engineer/`：验证、归因与回流输入
 * `orchestrator/`：流程调度入口
 * `state_manager.py`：状态读写与一致性入口

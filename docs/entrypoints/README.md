@@ -4,8 +4,9 @@
 
 当前约定：
 
-* ForgeShell / TUI 是主交互入口
-* `main.py` 是开发、调试和一次性诊断 runner
+* ForgeShell / TUI 是目标主交互入口
+* 当前仓库可运行的主入口仍是 `main.py`（开发、调试和一次性诊断 runner）
+* `main.py` 支持 `--state-dir` 用于隔离演示/调试状态目录
 
 相关入口说明：
 

@@ -16,7 +16,8 @@
 当前默认约定：
 
 * 空列表表示“当前没有有效条目”，不使用空壳对象作为占位。
-* `StateManager` 在缺文件、坏 JSON 或结构不完整时会回退到默认状态并补齐缺失字段。
+* `StateManager` 会在读写阶段执行 schema 校验；缺文件、坏 JSON 或结构非法时会回退到默认状态。
+* 非法状态回退不会静默吞掉，诊断输出中会包含 `state_validation_errors` 便于排查。
 * 运行态状态默认写入仓库根目录下的 `.forgeflow/state/`，而不是直接写回本目录。
 
 字段级详细说明见 [../docs/state/contracts.md](../docs/state/contracts.md)。

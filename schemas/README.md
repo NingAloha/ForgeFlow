@@ -1,14 +1,15 @@
 # Schemas Module
 
-这个目录预留给正式 schema 定义。
+这个目录存放状态契约的运行时 schema 定义（Pydantic）。
 
-当前仓库先用 `state/*.json` 作为最小持久化契约，后续再把这些约束收敛到：
+当前仓库会在 `StateManager` 的读写路径上对以下状态做结构校验：
 
 * `spec.py`
 * `solution.py`
 * `design.py`
 * `implementation.py`
 * `testing.py`
+* `question_state.py`
 
 参考来源：
 

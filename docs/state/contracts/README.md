@@ -1,6 +1,7 @@
 # State Contracts
 
 这里收各状态文件的字段契约。
+运行时会由 `schemas/` 中的 Pydantic 模型执行结构校验。
 
 按状态查看：
 

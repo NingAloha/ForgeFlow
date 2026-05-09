@@ -5,6 +5,7 @@ import sys
 from typing import Any
 
 from agents.orchestrator import OrchestrationResult, Orchestrator
+from agents.state_manager import StateManager
 
 
 def build_user_input(args: argparse.Namespace) -> str:
@@ -137,9 +138,19 @@ def main() -> int:
         nargs="*",
         help="User request to send into the orchestrator.",
     )
+    parser.add_argument(
+        "--state-dir",
+        dest="state_dir",
+        default=None,
+        help="Optional state directory for isolated runs.",
+    )
     args = parser.parse_args()
 
-    orchestrator = Orchestrator()
+    orchestrator = Orchestrator(
+        state_manager=StateManager(state_dir=args.state_dir)
+        if args.state_dir is not None
+        else None
+    )
     result = orchestrator.orchestrate(build_user_input(args))
     print(format_diagnostic_report(result))
     return 0

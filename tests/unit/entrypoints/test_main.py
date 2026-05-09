@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import MagicMock, patch
 
 from agents.base import AgentResult
 from agents.orchestrator import OrchestrationResult, Stage, TransitionDecision
-from main import changed_state_keys, classify_decision, format_diagnostic_report
+from main import changed_state_keys, classify_decision, format_diagnostic_report, main
 
 
 class MainDiagnosticViewTests(unittest.TestCase):
@@ -85,6 +86,38 @@ class MainDiagnosticViewTests(unittest.TestCase):
         self.assertIn("question state: awaiting_user (blocking)", report)
         self.assertIn("changed states: question_state", report)
         self.assertIn("Evidence:", report)
+
+    @patch("main.print")
+    @patch("main.Orchestrator")
+    @patch("main.StateManager")
+    def test_main_accepts_state_dir_argument(
+        self,
+        mock_state_manager: MagicMock,
+        mock_orchestrator_cls: MagicMock,
+        _mock_print: MagicMock,
+    ) -> None:
+        mock_orchestrator = MagicMock()
+        mock_orchestrator.orchestrate.return_value = OrchestrationResult(
+            decision=TransitionDecision(
+                computed_stage=Stage.INIT,
+                final_stage=Stage.INIT,
+                should_stay=True,
+                reason="Stay on current stage.",
+            ),
+            summary="ok",
+        )
+        mock_orchestrator_cls.return_value = mock_orchestrator
+
+        with patch("sys.argv", ["main.py", "--state-dir", "/tmp/forgeflow-demo", "build", "todo"]):
+            exit_code = main()
+
+        self.assertEqual(exit_code, 0)
+        mock_state_manager.assert_called_once_with(state_dir="/tmp/forgeflow-demo")
+        mock_orchestrator_cls.assert_called_once()
+        self.assertEqual(
+            mock_orchestrator_cls.call_args.kwargs["state_manager"],
+            mock_state_manager.return_value,
+        )
 
 
 if __name__ == "__main__":

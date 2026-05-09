@@ -14,7 +14,7 @@ ForgeFlow 试图把用户输入逐步推进为以下阶段产物：
 * 代码实现（Implementation）
 * 测试验证（Testing）
 
-ForgeShell 是这个流程的主交互入口。它负责聊天式会话、状态可视化和持续交互；当前仓库里的 `main.py` 只保留为最小 CLI runner，用于直接触发一次 orchestrator 调度，并输出面向开发/诊断的诊断视图。
+ForgeShell 是目标主交互入口。它负责聊天式会话、状态可视化和持续交互；当前仓库里已可运行的入口仍以 `main.py` 这个最小 CLI runner 为主，用于直接触发一次 orchestrator 调度，并输出面向开发/诊断的诊断视图。
 
 ## 这是什么项目
 
@@ -67,7 +67,7 @@ forgeflow/
 * [docs/](./docs/README.md)：详细流程规则与状态契约文档
 * [agents/](./agents/README.md)：agent 与控制层职责说明
 * [state/](./state/README.md)：状态契约示例与字段参考
-* [schemas/](./schemas/README.md)：后续正式 schema 层
+* [schemas/](./schemas/README.md)：状态契约的运行时 schema 与校验注册表
 * [main.py](./main.py)：开发与诊断用的最小 CLI runner，用于直接运行一次 orchestrator 并输出诊断视图
 * [tui/](./tui/README.md)：ForgeShell 主交互入口与终端 UI 层
 
@@ -90,7 +90,7 @@ forgeflow/
 
 当前 MVP 方向包括：
 
-* ForgeShell 作为主交互入口
+* ForgeShell 作为目标主交互入口（当前仓库仍以 CLI 诊断入口为可运行主路径）
 * 最小 CLI runner 作为开发/诊断入口
 * 自动角色调度
 * 可见的流程状态
@@ -129,6 +129,7 @@ forgeflow/
 * `question_state = answered` 时，控制层会重新执行对应阶段来消费回答，而不是继续卡在等待态
 * 运行态 state 默认写入 `.forgeflow/state/`，避免污染仓库中的契约示例文件
 * design / implementation / testing 三层已不再是 placeholder，当前会输出最小可执行工件并给出可回流的验证归因
+* implementation 阶段当前是 implementation planning / status，不是自动代码生成器
 * 实现仍处于早期阶段
 
 ## 给第一次阅读的人

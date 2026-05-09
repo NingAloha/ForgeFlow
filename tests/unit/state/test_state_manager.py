@@ -82,6 +82,34 @@ class StateManagerResilienceTests(unittest.TestCase):
             with self.assertRaises(TypeError):
                 manager.save_state("spec", ["not", "a", "dict"])  # type: ignore[arg-type]
 
+    def test_load_state_falls_back_to_defaults_when_schema_is_invalid(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            manager = StateManager(state_dir=temp_dir)
+            path = manager.get_state_path("spec")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('{"project_goal": 123}\n', encoding="utf-8")
+            self.assertEqual(
+                manager.load_state("spec"),
+                StateManager.DEFAULT_STATES["spec"],
+            )
+
+    def test_load_state_normalizes_missing_fields_via_schema_defaults(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            manager = StateManager(state_dir=temp_dir)
+            path = manager.get_state_path("question_state")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('{"status": "awaiting_user"}\n', encoding="utf-8")
+            loaded = manager.load_state("question_state")
+            self.assertEqual(loaded["status"], "awaiting_user")
+            self.assertEqual(loaded["questions"], [])
+            self.assertEqual(loaded["stage_name"], "")
+
+    def test_save_state_rejects_schema_invalid_payload(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            manager = StateManager(state_dir=temp_dir)
+            with self.assertRaises(ValueError):
+                manager.save_state("spec", {"project_goal": 123})  # type: ignore[arg-type]
+
 
 if __name__ == "__main__":
     unittest.main()

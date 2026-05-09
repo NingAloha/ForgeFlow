@@ -6,6 +6,10 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
+from schemas import STATE_MODEL_REGISTRY
+
 
 class StateManager:
     STATE_FILES = {
@@ -121,11 +125,17 @@ class StateManager:
 
         if not isinstance(payload, dict):
             return default_state
-        return self.merge_with_defaults(default_state, payload)
+        merged = self.merge_with_defaults(default_state, payload)
+        return self.validate_state_payload(
+            state_key=state_key,
+            payload=merged,
+            fallback=default_state,
+        )
 
     def save_state(self, state_key: str, payload: dict[str, Any]) -> None:
         if not isinstance(payload, dict):
             raise TypeError("State payload must be a dictionary.")
+        payload = self.validate_state_payload(state_key=state_key, payload=payload)
         path = self.get_state_path(state_key)
         path.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(
@@ -146,3 +156,20 @@ class StateManager:
             state_key: self.load_state(state_key)
             for state_key in self.STATE_FILES
         }
+
+    def validate_state_payload(
+        self,
+        state_key: str,
+        payload: dict[str, Any],
+        fallback: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        model_cls = STATE_MODEL_REGISTRY.get(state_key)
+        if model_cls is None:
+            return payload
+        try:
+            model = model_cls.model_validate(payload)
+        except ValidationError:
+            if fallback is not None:
+                return fallback
+            raise ValueError(f"Invalid payload for state '{state_key}'.")
+        return model.model_dump(mode="python")

@@ -72,6 +72,7 @@ class AgentResult:
     handoff_ready: bool = False
     question_state_update: QuestionState | None = None
     requires_user_input: bool = False
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
     @property
     def blocks_on_questions(self) -> bool:

@@ -150,12 +150,12 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         self.assertEqual(decision.final_stage, Stage.INIT)
         self.assertTrue(decision.should_stay)
 
-    def test_resolve_transition_stays_on_solution_when_design_not_ready(self) -> None:
+    def test_resolve_transition_forwards_from_solution_when_solution_is_ready(self) -> None:
         decision = self.orchestrator.resolve_transition(make_solution_ready_states())
         self.assertEqual(decision.computed_stage, Stage.SOLUTION)
-        self.assertEqual(decision.final_stage, Stage.SOLUTION)
-        self.assertIsNone(decision.forward_target)
-        self.assertTrue(decision.should_stay)
+        self.assertEqual(decision.final_stage, Stage.DESIGN)
+        self.assertEqual(decision.forward_target, Stage.DESIGN)
+        self.assertFalse(decision.should_stay)
 
     def test_resolve_transition_waits_on_blocking_question_state(self) -> None:
         states = make_requirements_ready_states()
@@ -234,7 +234,7 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         }
         decision = self.orchestrator.resolve_transition(states)
         self.assertFalse(decision.wait_for_user_input)
-        self.assertEqual(decision.final_stage, Stage.REQUIREMENTS)
+        self.assertEqual(decision.final_stage, Stage.SOLUTION)
 
     def test_resolve_transition_does_not_wait_when_blocking_question_list_is_empty(self) -> None:
         states = make_requirements_ready_states()
@@ -249,7 +249,7 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         }
         decision = self.orchestrator.resolve_transition(states)
         self.assertFalse(decision.wait_for_user_input)
-        self.assertEqual(decision.final_stage, Stage.REQUIREMENTS)
+        self.assertEqual(decision.final_stage, Stage.SOLUTION)
 
     def test_resolve_transition_falls_back_to_source_stage_for_invalid_question_stage(self) -> None:
         states = make_testing_states()

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from ..base import AgentContext, AgentResult, BaseAgent
+from ..common.llm_adapter import LLMAdapter
+from ..common.runtime_config import LLMRuntimeConfig, load_llm_runtime_config
 from .extraction import RequirementsExtractionMixin
 from .questions import RequirementsQuestionMixin
 
@@ -12,12 +14,70 @@ class RequirementsEngineerAgent(
     stage_name = "REQUIREMENTS"
     state_key = "spec"
 
+    def get_llm_runtime_config(self) -> LLMRuntimeConfig:
+        return load_llm_runtime_config()
+
+    def get_llm_adapter(self) -> LLMAdapter:
+        return LLMAdapter()
+
     def run(self, context: AgentContext) -> AgentResult:
         current_state = dict(context.states.get(self.state_key, {}))
         answers = self.extract_answers(context)
         user_input = context.user_input.strip()
+        llm_config = self.get_llm_runtime_config()
+        llm_trace = {
+            "enabled": llm_config.enabled,
+            "provider": llm_config.provider,
+            "model": llm_config.model,
+            "protocol": llm_config.protocol,
+            "used": False,
+            "fallback_used": False,
+            "error": "",
+            "latency_ms": 0,
+        }
+        llm_project_goal = ""
+        llm_functional_requirements: list[str] = []
+        llm_acceptance_criteria: list[str] = []
+
+        if llm_config.enabled and user_input:
+            llm_result = self.get_llm_adapter().generate_requirements(
+                user_input=user_input,
+                config=llm_config,
+            )
+            llm_trace["used"] = True
+            llm_trace["latency_ms"] = llm_result.latency_ms
+            llm_trace["error"] = llm_result.error
+            if llm_result.ok:
+                llm_project_goal = self.normalize_text(
+                    str(llm_result.content.get("project_goal", ""))
+                )
+                llm_functional_requirements = self.dedupe_items(
+                    [
+                        str(item)
+                        for item in llm_result.content.get(
+                            "functional_requirements", []
+                        )
+                    ]
+                )
+                llm_acceptance_criteria = self.dedupe_items(
+                    [
+                        str(item)
+                        for item in llm_result.content.get("acceptance_criteria", [])
+                    ]
+                )
+                if (
+                    not llm_project_goal
+                    or not llm_functional_requirements
+                    or not llm_acceptance_criteria
+                ):
+                    llm_trace["fallback_used"] = True
+                    llm_trace["error"] = "LLM response missing required fields."
+            else:
+                llm_trace["fallback_used"] = True
 
         project_goal = self.normalize_text(str(current_state.get("project_goal", "")))
+        if not project_goal:
+            project_goal = self.sentence_case(llm_project_goal)
         if not project_goal:
             project_goal = self.extract_goal_from_input(answers.get("project_goal", ""))
         if not project_goal:
@@ -26,6 +86,8 @@ class RequirementsEngineerAgent(
         functional_requirements = list(
             current_state.get("functional_requirements", [])
         )
+        if not functional_requirements:
+            functional_requirements = list(llm_functional_requirements)
         if not functional_requirements:
             functional_requirements = self.extract_requirements_from_input(
                 answers.get("functional_requirements", "")
@@ -39,6 +101,8 @@ class RequirementsEngineerAgent(
         functional_requirements = self.dedupe_items(functional_requirements)
 
         acceptance_criteria = list(current_state.get("acceptance_criteria", []))
+        if not acceptance_criteria:
+            acceptance_criteria = list(llm_acceptance_criteria)
         if not acceptance_criteria:
             answered_acceptance = self.normalize_text(
                 answers.get("acceptance_criteria", "")
@@ -81,6 +145,7 @@ class RequirementsEngineerAgent(
                 handoff_ready=False,
                 question_state_update=self.build_clarifying_questions(updated_state),
                 requires_user_input=True,
+                diagnostics={"llm_trace": llm_trace},
             )
 
         return AgentResult(
@@ -93,4 +158,5 @@ class RequirementsEngineerAgent(
                 "Filled the core spec fields needed for downstream solution work."
             ],
             handoff_ready=True,
+            diagnostics={"llm_trace": llm_trace},
         )

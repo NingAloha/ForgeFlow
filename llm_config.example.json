@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "provider": "deepseek",
+  "protocol": "openai",
+  "base_url": "https://api.deepseek.com",
+  "model": "deepseek-v4-flash",
+  "api_key": "",
+  "api_key_env": "DEEPSEEK_API_KEY",
+  "timeout": 20.0,
+  "temperature": 0.2,
+  "max_tokens": 800,
+  "fallback_on_error": true
+}

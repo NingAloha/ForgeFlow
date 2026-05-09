@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import MagicMock
 
 from agents.base import AgentContext, QuestionAnswer, QuestionItem, QuestionState
 from agents.requirements_engineer import RequirementsEngineerAgent
+from agents.common.llm_adapter import LLMCallResult
+from agents.common.runtime_config import LLMRuntimeConfig
 from tests.unit.support.orchestrator_fixtures import make_empty_states
 
 
@@ -155,6 +158,67 @@ class RequirementsEngineerHelperTests(unittest.TestCase):
             [question.id for question in question_state.questions],
             ["project_goal", "functional_requirements", "acceptance_criteria"],
         )
+
+    def test_agent_prefers_llm_result_when_enabled_and_valid(self) -> None:
+        class TestableRequirementsEngineerAgent(RequirementsEngineerAgent):
+            def get_llm_runtime_config(self) -> LLMRuntimeConfig:
+                return LLMRuntimeConfig(enabled=True)
+
+            def get_llm_adapter(self):  # type: ignore[override]
+                adapter = MagicMock()
+                adapter.generate_requirements.return_value = LLMCallResult(
+                    ok=True,
+                    content={
+                        "project_goal": "Build todo app",
+                        "functional_requirements": ["Create tasks", "Mark done"],
+                        "acceptance_criteria": ["User can create and complete a task"],
+                    },
+                    model="deepseek-v4-flash",
+                    latency_ms=12,
+                )
+                return adapter
+
+        agent = TestableRequirementsEngineerAgent()
+        context = AgentContext(
+            user_input="build a simple todo app",
+            states=make_empty_states(),
+        )
+        result = agent.run(context)
+        self.assertEqual(result.updated_state["project_goal"], "Build todo app")
+        self.assertEqual(
+            result.updated_state["functional_requirements"],
+            ["Create tasks", "Mark done"],
+        )
+        self.assertTrue(result.handoff_ready)
+        self.assertTrue(result.diagnostics["llm_trace"]["used"])
+        self.assertFalse(result.diagnostics["llm_trace"]["fallback_used"])
+
+    def test_agent_falls_back_to_rules_when_llm_fails(self) -> None:
+        class TestableRequirementsEngineerAgent(RequirementsEngineerAgent):
+            def get_llm_runtime_config(self) -> LLMRuntimeConfig:
+                return LLMRuntimeConfig(enabled=True)
+
+            def get_llm_adapter(self):  # type: ignore[override]
+                adapter = MagicMock()
+                adapter.generate_requirements.return_value = LLMCallResult(
+                    ok=False,
+                    content={},
+                    error="timeout",
+                    model="deepseek-v4-flash",
+                    latency_ms=30,
+                )
+                return adapter
+
+        agent = TestableRequirementsEngineerAgent()
+        context = AgentContext(
+            user_input="Build a task board and track progress",
+            states=make_empty_states(),
+        )
+        result = agent.run(context)
+        self.assertTrue(result.updated_state["project_goal"])
+        self.assertTrue(result.updated_state["functional_requirements"])
+        self.assertTrue(result.diagnostics["llm_trace"]["used"])
+        self.assertTrue(result.diagnostics["llm_trace"]["fallback_used"])
 
 
 if __name__ == "__main__":

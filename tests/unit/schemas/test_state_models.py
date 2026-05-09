@@ -72,6 +72,30 @@ class StateModelsTests(unittest.TestCase):
             }
         )
         self.assertEqual(valid_design.contracts[0].name, "c1")
+        self.assertEqual(valid_design.data_flow[0].from_, "A")
+        compatible_design = SystemDesignState.model_validate(
+            {
+                "contracts": [
+                    {
+                        "name": "c1",
+                        "producer": "A",
+                        "consumers": ["B"],
+                        "input": [{"name": "i1", "description": "d", "required": True}],
+                        "output": [{"name": "o1", "description": "d", "required": True}],
+                    }
+                ],
+                "data_flow": [
+                    {
+                        "step": 1,
+                        "contract_name": "c1",
+                        "from_": "A",
+                        "to": ["B"],
+                        "trigger": "go",
+                    }
+                ],
+            }
+        )
+        self.assertEqual(compatible_design.data_flow[0].from_, "A")
         with self.assertRaises(ValidationError):
             SystemDesignState.model_validate({"contracts": [{"name": "c1"}]})
 

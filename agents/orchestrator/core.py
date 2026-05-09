@@ -71,34 +71,29 @@ class Orchestrator:
             return Stage.REQUIREMENTS, evidence
         if (
             current_stage == Stage.REQUIREMENTS
-            and self.stage_evaluator.is_solution_ready(states)
+            and self.stage_evaluator.is_requirements_ready(states)
         ):
+            evidence.append("spec.project_goal is non-empty.")
+            evidence.append("spec.functional_requirements is non-empty.")
+            evidence.append("spec.acceptance_criteria is non-empty.")
+            evidence.append("Requirements are ready for solution generation.")
+            return Stage.SOLUTION, evidence
+        if current_stage == Stage.SOLUTION and self.stage_evaluator.is_solution_ready(states):
             evidence.append("solution.selected_stack.backend is defined.")
-            if solution.get("selected_stack", {}).get("frontend"):
-                evidence.append("solution.selected_stack.frontend is defined.")
-            if solution.get("selected_stack", {}).get("agent_framework"):
-                evidence.append(
-                    "solution.selected_stack.agent_framework is defined."
-                )
             evidence.append("solution.module_mapping contains stable core modules.")
             evidence.append(
                 "solution.module_mapping covers core spec.functional_requirements."
             )
-            return Stage.SOLUTION, evidence
-        if current_stage == Stage.SOLUTION and self.stage_evaluator.is_design_ready(states):
+            evidence.append("Solution is ready for design generation.")
+            return Stage.DESIGN, evidence
+        if current_stage == Stage.DESIGN and self.stage_evaluator.is_design_ready(states):
             evidence.append("design.project_structure.modules is non-empty.")
             evidence.append("design.contracts contain MVP critical handoff contracts.")
             evidence.append(
                 "design.data_flow references existing contracts and forms a main path."
             )
-            evidence.append("design.mvp_plan.in_scope is non-empty.")
             evidence.append("design.mvp_plan.first_deliverable is defined.")
-            return Stage.DESIGN, evidence
-        if current_stage == Stage.DESIGN and self.stage_evaluator.has_active_implementation(states):
-            evidence.append("implementation_status.module_name is defined.")
-            evidence.append(
-                "implementation_status.implementation_status is active."
-            )
+            evidence.append("Design is ready for implementation planning.")
             return Stage.IMPLEMENTATION, evidence
         if (
             current_stage == Stage.IMPLEMENTATION
@@ -280,6 +275,9 @@ class Orchestrator:
                 else False,
                 "blockers": list(agent_result.blockers) if agent_result else [],
             },
+            "llm_trace": dict(agent_result.diagnostics.get("llm_trace", {}))
+            if agent_result
+            else {},
             "state_validation_errors": dict(
                 getattr(self.state_manager, "validation_errors", {})
             ),

@@ -121,6 +121,43 @@ class MainDiagnosticViewTests(unittest.TestCase):
         self.assertIn("State Validation Errors:", report)
         self.assertIn("spec: Input should be a valid string", report)
 
+    def test_format_diagnostic_report_surfaces_llm_trace(self) -> None:
+        result = OrchestrationResult(
+            decision=TransitionDecision(
+                computed_stage=Stage.REQUIREMENTS,
+                final_stage=Stage.REQUIREMENTS,
+                should_stay=True,
+                reason="Stay on current stage.",
+            ),
+            diagnostic={
+                "decision_type": "STAY",
+                "state_changes": ["spec"],
+                "question_state": {"status": "idle"},
+                "transition": {"reason": "Stay on current stage.", "evidence": []},
+                "stages": {
+                    "computed": "REQUIREMENTS",
+                    "source": "REQUIREMENTS",
+                    "final": "REQUIREMENTS",
+                    "executed": "REQUIREMENTS",
+                },
+                "llm_trace": {
+                    "enabled": True,
+                    "used": True,
+                    "fallback_used": True,
+                    "provider": "deepseek",
+                    "model": "deepseek-v4-flash",
+                    "protocol": "openai",
+                    "latency_ms": 42,
+                    "error": "timeout",
+                },
+            },
+            summary="ok",
+        )
+        report = format_diagnostic_report(result)
+        self.assertIn("LLM Trace:", report)
+        self.assertIn("fallback used: yes", report)
+        self.assertIn("error: timeout", report)
+
     @patch("main.print")
     @patch("main.Orchestrator")
     @patch("main.StateManager")

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 
 from .common import StateModel
 
@@ -38,7 +38,7 @@ class ContractModel(StateModel):
 class DataFlowStepModel(StateModel):
     step: int
     contract_name: str
-    from_: str = Field(alias="from")
+    from_: str = Field(validation_alias=AliasChoices("from", "from_"))
     to: list[str]
     trigger: str
     notes: str = ""

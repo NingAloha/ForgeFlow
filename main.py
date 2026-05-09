@@ -126,6 +126,25 @@ def format_diagnostic_report(result: OrchestrationResult) -> str:
     if evidence:
         lines.append("Evidence:")
         lines.extend(f"- {item}" for item in evidence)
+
+    llm_trace = diagnostic.get("llm_trace", {})
+    if llm_trace:
+        lines.append("LLM Trace:")
+        lines.append(f"- enabled: {'yes' if llm_trace.get('enabled') else 'no'}")
+        lines.append(f"- used: {'yes' if llm_trace.get('used') else 'no'}")
+        lines.append(
+            f"- fallback used: {'yes' if llm_trace.get('fallback_used') else 'no'}"
+        )
+        if llm_trace.get("provider"):
+            lines.append(f"- provider: {llm_trace.get('provider')}")
+        if llm_trace.get("model"):
+            lines.append(f"- model: {llm_trace.get('model')}")
+        if llm_trace.get("protocol"):
+            lines.append(f"- protocol: {llm_trace.get('protocol')}")
+        lines.append(f"- latency ms: {llm_trace.get('latency_ms', 0)}")
+        if llm_trace.get("error"):
+            lines.append(f"- error: {llm_trace.get('error')}")
+
     validation_errors = diagnostic.get("state_validation_errors", {})
     if validation_errors:
         lines.append("State Validation Errors:")

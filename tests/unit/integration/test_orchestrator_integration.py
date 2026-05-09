@@ -77,6 +77,17 @@ class OrchestratorStageComputationTests(unittest.TestCase):
             Stage.TESTING,
         )
 
+    def test_contract_non_compliance_blocks_transition_to_testing(self) -> None:
+        states = make_testing_states()
+        states["implementation_status"]["contract_compliance"] = False
+        self.assertFalse(
+            self.orchestrator.stage_evaluator.has_validation_context(states)
+        )
+        self.assertEqual(
+            self.orchestrator.stage_evaluator.compute_current_stage(states),
+            Stage.IMPLEMENTATION,
+        )
+
     def test_done_states_resolve_to_done(self) -> None:
         states = make_done_states()
         self.assertTrue(self.orchestrator.stage_evaluator.is_done(states))
@@ -635,6 +646,23 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         self.assertEqual(result.decision.final_stage, Stage.INIT)
         self.assertEqual(result.executed_stage, Stage.REQUIREMENTS)
         self.assertIsNotNone(result.agent_result)
+
+    def test_orchestrate_surfaces_state_validation_errors_in_diagnostic(self) -> None:
+        class StubStateManager:
+            def __init__(self) -> None:
+                self.states = make_empty_states()
+                self.validation_errors = {"spec": "Input should be a valid string"}
+
+            def load_all_states(self) -> dict[str, dict]:
+                return deepcopy(self.states)
+
+            def save_state(self, state_key: str, payload: dict) -> None:
+                self.states[state_key] = deepcopy(payload)
+
+        orchestrator = Orchestrator(state_manager=StubStateManager())
+        result = orchestrator.orchestrate("build me a workflow")
+        self.assertIn("state_validation_errors", result.diagnostic)
+        self.assertIn("spec", result.diagnostic["state_validation_errors"])
 
     def test_orchestrate_does_not_execute_agent_when_done(self) -> None:
         class StubStateManager:

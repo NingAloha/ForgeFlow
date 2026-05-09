@@ -38,6 +38,10 @@ class StageEvaluatorTests(unittest.TestCase):
         states["solution"]["module_mapping"][0]["covers_requirements"] = []
         self.assertFalse(self.evaluator.is_solution_ready(states))
 
+        states = make_solution_ready_states()
+        states["spec"]["functional_requirements"].append("Need analytics dashboard")
+        self.assertFalse(self.evaluator.is_solution_ready(states))
+
     def test_is_design_ready_rejects_data_flow_without_valid_contract(self) -> None:
         states = make_design_ready_states()
         self.assertTrue(self.evaluator.is_design_ready(states))
@@ -73,6 +77,10 @@ class StageEvaluatorTests(unittest.TestCase):
         self.assertTrue(self.evaluator.has_validation_context(states))
 
         states["implementation_status"]["blockers"] = ["Need API clarification"]
+        self.assertFalse(self.evaluator.has_validation_context(states))
+
+        states = make_testing_states()
+        states["implementation_status"]["contract_compliance"] = False
         self.assertFalse(self.evaluator.has_validation_context(states))
 
     def test_is_done_rejects_high_severity_open_issues_even_when_result_passes(

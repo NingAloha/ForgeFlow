@@ -86,6 +86,7 @@ class StateManager:
         if state_dir is None:
             state_dir = Path(__file__).resolve().parent.parent / ".forgeflow" / "state"
         self.state_dir = Path(state_dir)
+        self.validation_errors: dict[str, str] = {}
 
     def get_state_path(self, state_key: str) -> Path:
         try:
@@ -119,11 +120,14 @@ class StateManager:
             with path.open("r", encoding="utf-8") as handle:
                 payload = json.load(handle)
         except FileNotFoundError:
+            self.validation_errors.pop(state_key, None)
             return default_state
         except json.JSONDecodeError:
+            self.validation_errors[state_key] = "Invalid JSON payload."
             return default_state
 
         if not isinstance(payload, dict):
+            self.validation_errors[state_key] = "State payload is not an object."
             return default_state
         merged = self.merge_with_defaults(default_state, payload)
         return self.validate_state_payload(
@@ -152,6 +156,7 @@ class StateManager:
         temp_path.replace(path)
 
     def load_all_states(self) -> dict[str, dict[str, Any]]:
+        self.validation_errors = {}
         return {
             state_key: self.load_state(state_key)
             for state_key in self.STATE_FILES
@@ -168,8 +173,11 @@ class StateManager:
             return payload
         try:
             model = model_cls.model_validate(payload)
-        except ValidationError:
+        except ValidationError as exc:
             if fallback is not None:
+                self.validation_errors[state_key] = str(exc.errors()[0]["msg"])
                 return fallback
+            self.validation_errors[state_key] = str(exc.errors()[0]["msg"])
             raise ValueError(f"Invalid payload for state '{state_key}'.")
+        self.validation_errors.pop(state_key, None)
         return model.model_dump(mode="python")

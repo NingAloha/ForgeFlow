@@ -17,8 +17,35 @@ class MvpPlan(StateModel):
     first_deliverable: str = ""
 
 
+class ContractIOModel(StateModel):
+    name: str
+    description: str
+    required: bool
+
+
+class ContractModel(StateModel):
+    name: str
+    contract_type: str = ""
+    producer: str
+    consumers: list[str]
+    input: list[ContractIOModel]
+    output: list[ContractIOModel]
+    constraints: list[str] = Field(default_factory=list)
+    acceptance_criteria: list[str] = Field(default_factory=list)
+    failure_handling: list[str] = Field(default_factory=list)
+
+
+class DataFlowStepModel(StateModel):
+    step: int
+    contract_name: str
+    from_: str = Field(alias="from")
+    to: list[str]
+    trigger: str
+    notes: str = ""
+
+
 class SystemDesignState(StateModel):
     project_structure: ProjectStructure = Field(default_factory=ProjectStructure)
-    contracts: list[dict[str, object]] = Field(default_factory=list)
-    data_flow: list[dict[str, object]] = Field(default_factory=list)
+    contracts: list[ContractModel] = Field(default_factory=list)
+    data_flow: list[DataFlowStepModel] = Field(default_factory=list)
     mvp_plan: MvpPlan = Field(default_factory=MvpPlan)

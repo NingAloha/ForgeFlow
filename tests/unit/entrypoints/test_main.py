@@ -23,6 +23,18 @@ class MainDiagnosticViewTests(unittest.TestCase):
 
         self.assertEqual(classify_decision(result), "BOOTSTRAP")
 
+    def test_classify_decision_uses_stage_enum_for_bootstrap(self) -> None:
+        result = OrchestrationResult(
+            decision=TransitionDecision(
+                computed_stage=Stage.INIT,
+                final_stage=Stage.INIT,
+                should_stay=False,
+                reason="Bootstrap run.",
+            ),
+            executed_stage=Stage.REQUIREMENTS,
+        )
+        self.assertEqual(classify_decision(result), "BOOTSTRAP")
+
     def test_changed_state_keys_returns_only_modified_states(self) -> None:
         result = OrchestrationResult(
             decision=TransitionDecision(
@@ -86,6 +98,28 @@ class MainDiagnosticViewTests(unittest.TestCase):
         self.assertIn("question state: awaiting_user (blocking)", report)
         self.assertIn("changed states: question_state", report)
         self.assertIn("Evidence:", report)
+
+    def test_format_diagnostic_report_surfaces_state_validation_errors(self) -> None:
+        result = OrchestrationResult(
+            decision=TransitionDecision(
+                computed_stage=Stage.INIT,
+                final_stage=Stage.INIT,
+                should_stay=True,
+                reason="Stay on current stage.",
+            ),
+            diagnostic={
+                "decision_type": "STAY",
+                "state_changes": [],
+                "question_state": {"status": "idle"},
+                "transition": {"reason": "Stay on current stage.", "evidence": []},
+                "stages": {"computed": "INIT", "source": "", "final": "INIT", "executed": ""},
+                "state_validation_errors": {"spec": "Input should be a valid string"},
+            },
+            summary="ok",
+        )
+        report = format_diagnostic_report(result)
+        self.assertIn("State Validation Errors:", report)
+        self.assertIn("spec: Input should be a valid string", report)
 
     @patch("main.print")
     @patch("main.Orchestrator")

@@ -92,6 +92,7 @@ class StateManagerResilienceTests(unittest.TestCase):
                 manager.load_state("spec"),
                 StateManager.DEFAULT_STATES["spec"],
             )
+            self.assertIn("spec", manager.validation_errors)
 
     def test_load_state_normalizes_missing_fields_via_schema_defaults(self) -> None:
         with TemporaryDirectory() as temp_dir:
@@ -109,6 +110,18 @@ class StateManagerResilienceTests(unittest.TestCase):
             manager = StateManager(state_dir=temp_dir)
             with self.assertRaises(ValueError):
                 manager.save_state("spec", {"project_goal": 123})  # type: ignore[arg-type]
+
+    def test_load_all_states_resets_previous_validation_errors(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            manager = StateManager(state_dir=temp_dir)
+            spec_path = manager.get_state_path("spec")
+            spec_path.parent.mkdir(parents=True, exist_ok=True)
+            spec_path.write_text('{"project_goal": 123}\n', encoding="utf-8")
+            _ = manager.load_state("spec")
+            self.assertIn("spec", manager.validation_errors)
+            states = manager.load_all_states()
+            self.assertEqual(states["spec"], StateManager.DEFAULT_STATES["spec"])
+            self.assertIn("spec", manager.validation_errors)
 
 
 if __name__ == "__main__":

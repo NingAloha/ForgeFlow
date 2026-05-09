@@ -280,6 +280,9 @@ class Orchestrator:
                 else False,
                 "blockers": list(agent_result.blockers) if agent_result else [],
             },
+            "state_validation_errors": dict(
+                getattr(self.state_manager, "validation_errors", {})
+            ),
             "summary": summary,
         }
 

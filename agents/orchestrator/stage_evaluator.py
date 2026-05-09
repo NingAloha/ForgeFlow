@@ -6,6 +6,14 @@ from .models import Stage, StageFlags
 
 
 class StageEvaluator:
+    @staticmethod
+    def _normalize_items(items: list[Any]) -> set[str]:
+        return {
+            str(item).strip().casefold()
+            for item in items
+            if str(item).strip()
+        }
+
     def _has_minimal_design_artifacts(self, states: dict[str, dict[str, Any]]) -> bool:
         design = states.get("system_design", {})
         project_structure = design.get("project_structure", {})
@@ -60,17 +68,20 @@ class StageEvaluator:
             if module.get("module") and module.get("responsibilities")
         ]
         covered_requirements = {
-            requirement
+            str(requirement)
             for module in stable_modules
             for requirement in module.get("covers_requirements", [])
             if requirement
         }
+        normalized_required = self._normalize_items(functional_requirements)
+        normalized_covered = self._normalize_items(list(covered_requirements))
 
         return bool(
             has_core_backend
             and stable_modules
             and functional_requirements
-            and covered_requirements
+            and normalized_required
+            and normalized_required.issubset(normalized_covered)
         )
 
     def is_design_ready(self, states: dict[str, dict[str, Any]]) -> bool:
@@ -133,6 +144,7 @@ class StageEvaluator:
             and test_report.get("test_scope")
             and implementation_status.get("files_touched")
             and implementation_status.get("tests_added_or_updated")
+            and implementation_status.get("contract_compliance") is True
         )
 
     def is_done(self, states: dict[str, dict[str, Any]]) -> bool:

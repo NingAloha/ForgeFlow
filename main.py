@@ -5,6 +5,7 @@ import sys
 from typing import Any
 
 from agents.orchestrator import OrchestrationResult, Orchestrator
+from agents.orchestrator.models import Stage
 from agents.state_manager import StateManager
 
 
@@ -26,7 +27,7 @@ def classify_decision(result: OrchestrationResult) -> str:
         return "BACKFLOW"
     if decision.forward_target is not None:
         return "FORWARD"
-    if decision.final_stage == "INIT" and result.executed_stage is not None:
+    if decision.final_stage == Stage.INIT and result.executed_stage is not None:
         return "BOOTSTRAP"
     if decision.should_stay:
         return "STAY"
@@ -125,6 +126,11 @@ def format_diagnostic_report(result: OrchestrationResult) -> str:
     if evidence:
         lines.append("Evidence:")
         lines.extend(f"- {item}" for item in evidence)
+    validation_errors = diagnostic.get("state_validation_errors", {})
+    if validation_errors:
+        lines.append("State Validation Errors:")
+        for key, message in sorted(validation_errors.items()):
+            lines.append(f"- {key}: {message}")
 
     return "\n".join(lines)
 

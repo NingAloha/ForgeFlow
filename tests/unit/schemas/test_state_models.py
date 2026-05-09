@@ -44,6 +44,37 @@ class StateModelsTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             QuestionStateModel.model_validate({"questions": "not-a-list"})
 
+    def test_models_reject_unknown_fields(self) -> None:
+        with self.assertRaises(ValidationError):
+            SpecState.model_validate({"project_goal": "x", "functional_requirement": []})
+
+    def test_system_design_requires_structured_contract_and_data_flow(self) -> None:
+        valid_design = SystemDesignState.model_validate(
+            {
+                "contracts": [
+                    {
+                        "name": "c1",
+                        "producer": "A",
+                        "consumers": ["B"],
+                        "input": [{"name": "i1", "description": "d", "required": True}],
+                        "output": [{"name": "o1", "description": "d", "required": True}],
+                    }
+                ],
+                "data_flow": [
+                    {
+                        "step": 1,
+                        "contract_name": "c1",
+                        "from": "A",
+                        "to": ["B"],
+                        "trigger": "go",
+                    }
+                ],
+            }
+        )
+        self.assertEqual(valid_design.contracts[0].name, "c1")
+        with self.assertRaises(ValidationError):
+            SystemDesignState.model_validate({"contracts": [{"name": "c1"}]})
+
 
 if __name__ == "__main__":
     unittest.main()

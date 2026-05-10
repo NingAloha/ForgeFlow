@@ -13,6 +13,7 @@ from ..common import (
     resolve_gateway_failure,
     should_use_llm,
 )
+from schemas.llm_trace import EMPTY_LLM_TRACE, LLMTraceModel
 from schemas.implementation import ImplementationStatusState
 from .planning import ImplementationPlanningMixin
 
@@ -48,7 +49,7 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
             blockers.append("No matching design contract found for the active module.")
 
         llm_config = self.get_llm_runtime_config()
-        llm_trace: dict[str, object] = {}
+        llm_trace: LLMTraceModel = EMPTY_LLM_TRACE
         fallback_source = ""
 
         workspace_path = str(context.metadata.get("generated_project_dir", "")).strip()

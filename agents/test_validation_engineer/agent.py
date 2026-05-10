@@ -14,6 +14,7 @@ from ..common import (
     resolve_gateway_failure,
     should_use_llm,
 )
+from schemas.llm_trace import EMPTY_LLM_TRACE, LLMTraceModel
 from .planning import TestValidationPlanningMixin
 
 
@@ -37,7 +38,7 @@ class TestValidationEngineerAgent(TestValidationPlanningMixin, BaseAgent):
 
         issues = self.build_issues(spec, implementation_status, design)
         llm_config = self.get_llm_runtime_config()
-        llm_trace: dict[str, object] = {}
+        llm_trace: LLMTraceModel = EMPTY_LLM_TRACE
 
         test_scope = current_state.get("test_scope") or "integration"
         result = self.pick_result(issues, implementation_status)

@@ -7,6 +7,7 @@ from ..common.llm_policy import (
     should_use_llm,
 )
 from ..common.runtime_config import LLMRuntimeConfig, load_llm_runtime_config
+from schemas.llm_trace import EMPTY_LLM_TRACE, LLMTraceModel
 from schemas.spec import SpecState
 from .extraction import RequirementsExtractionMixin
 from .questions import RequirementsQuestionMixin
@@ -30,7 +31,7 @@ class RequirementsEngineerAgent(
         answers = self.extract_answers(context)
         user_input = context.user_input.strip()
         llm_config = self.get_llm_runtime_config()
-        llm_trace: dict[str, object] = {}
+        llm_trace: LLMTraceModel = EMPTY_LLM_TRACE
         llm_project_goal = ""
         llm_functional_requirements: list[str] = []
         llm_acceptance_criteria: list[str] = []

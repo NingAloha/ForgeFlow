@@ -9,6 +9,7 @@ from ..common.llm_policy import (
     should_use_llm,
 )
 from ..common.runtime_config import LLMRuntimeConfig, load_llm_runtime_config
+from schemas.llm_trace import EMPTY_LLM_TRACE, LLMTraceModel
 from schemas.design import SystemDesignState
 from .planning import SystemDesignPlanningMixin
 
@@ -50,7 +51,7 @@ class SystemDesignerAgent(SystemDesignPlanningMixin, BaseAgent):
         data_flow = self.build_data_flow(contracts)
         mvp_plan = self.build_mvp_plan(spec, module_mapping)
         llm_config = self.get_llm_runtime_config()
-        llm_trace: dict[str, object] = {}
+        llm_trace: LLMTraceModel = EMPTY_LLM_TRACE
         llm_stage_enabled = should_use_llm(llm_config, self.stage_name)
         if llm_stage_enabled and user_input:
             contract = PromptContract(

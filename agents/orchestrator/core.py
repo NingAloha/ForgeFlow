@@ -32,6 +32,15 @@ class Orchestrator:
                 changed.append(state_key)
         return changed
 
+    @staticmethod
+    def _normalize_llm_trace(raw_llm_trace: object) -> dict[str, Any]:
+        if hasattr(raw_llm_trace, "model_dump"):
+            dumped = raw_llm_trace.model_dump(mode="python")
+            return dumped if isinstance(dumped, dict) else {}
+        if isinstance(raw_llm_trace, dict):
+            return dict(raw_llm_trace)
+        return {}
+
     def __init__(self, state_manager: StateManager | None = None) -> None:
         self.state_manager = state_manager or StateManager()
         state_dir_value = getattr(self.state_manager, "state_dir", None)
@@ -316,7 +325,7 @@ class Orchestrator:
         if agent_result:
             raw_llm_trace = agent_result.diagnostics.get("llm_trace")
             if raw_llm_trace:
-                diagnostic_payload["llm_trace"] = dict(raw_llm_trace)
+                diagnostic_payload["llm_trace"] = self._normalize_llm_trace(raw_llm_trace)
         return diagnostic_payload
 
     def determine_execution_stage(self, decision: TransitionDecision) -> Stage | None:

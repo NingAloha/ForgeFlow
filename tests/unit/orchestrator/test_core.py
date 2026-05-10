@@ -1,9 +1,18 @@
 from __future__ import annotations
 
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
 from agents.base import AgentResult
-from agents.orchestrator import Orchestrator, Stage, TransitionDecision
+from agents.orchestrator import (
+    OrchestrationResult,
+    Orchestrator,
+    Stage,
+    TransitionDecision,
+)
+from schemas.run_summary import RunSummaryModel
 from tests.unit.support.orchestrator_fixtures import (
     make_design_ready_states,
     make_done_states,
@@ -152,6 +161,52 @@ class OrchestratorCoreTests(unittest.TestCase):
             executed_stage=None,
         )
         self.assertIn("no agent execution was required", noop_summary)
+
+    def test_write_run_manifest_writes_schema_v1_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_dir = Path(temp_dir) / "state"
+            orchestrator = Orchestrator()
+            orchestrator.state_manager.state_dir = state_dir
+            orchestrator.runs_dir = state_dir.parent / "runs" / orchestrator.run_id
+            orchestrator.generated_project_dir = (
+                state_dir.parent / "generated" / orchestrator.run_id
+            )
+            orchestrator.runs_dir.mkdir(parents=True, exist_ok=True)
+            orchestrator.generated_project_dir.mkdir(parents=True, exist_ok=True)
+
+            result = OrchestrationResult(
+                decision=TransitionDecision(
+                    computed_stage=Stage.REQUIREMENTS,
+                    final_stage=Stage.REQUIREMENTS,
+                    should_stay=True,
+                    reason="Stay on current stage.",
+                ),
+                diagnostic={
+                    "decision_type": "STAY",
+                    "stages": {
+                        "computed": "REQUIREMENTS",
+                        "final": "REQUIREMENTS",
+                        "executed": "REQUIREMENTS",
+                    },
+                    "llm_trace": {},
+                    "execution_trace": {},
+                    "state_changes": [],
+                    "question_state": {"status": "idle"},
+                },
+                summary="ok",
+            )
+            orchestrator._write_run_manifest(
+                result,
+                step_input="build todo",
+                original_request="build todo",
+            )
+
+            payload = json.loads(
+                (orchestrator.runs_dir / "summary.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(payload["schema_version"], "1")
+            model = RunSummaryModel.model_validate(payload)
+            self.assertEqual(model.schema_version, "1")
 
 
 if __name__ == "__main__":

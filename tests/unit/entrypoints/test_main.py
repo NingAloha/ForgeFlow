@@ -294,7 +294,12 @@ class MainDiagnosticViewTests(unittest.TestCase):
             summary_dir.mkdir(parents=True, exist_ok=True)
             summary_path = summary_dir / "summary.json"
             summary_path.write_text(
-                '{"run_id":"20260101T000000Z-demo","steps":[]}\n',
+                (
+                    '{"schema_version":"1","run_id":"20260101T000000Z-demo",'
+                    '"original_request":"build todo","generated_project_dir":"/tmp/generated/demo",'
+                    '"state_dir":"/tmp/state","latest_summary":"ok","latest_final_stage":"REQUIREMENTS",'
+                    '"latest_decision_type":"STAY","steps":[]}\n'
+                ),
                 encoding="utf-8",
             )
             payload = load_run_summary(run_id, str(state_dir))
@@ -339,7 +344,12 @@ class MainDiagnosticViewTests(unittest.TestCase):
             runs_dir = Path(temp_dir) / "runs" / run_id
             runs_dir.mkdir(parents=True, exist_ok=True)
             (runs_dir / "summary.json").write_text(
-                '{"run_id":"20260101T000000Z-demo","steps":[]}\n',
+                (
+                    '{"schema_version":"1","run_id":"20260101T000000Z-demo",'
+                    '"original_request":"build todo","generated_project_dir":"/tmp/generated/demo",'
+                    '"state_dir":"/tmp/state","latest_summary":"ok","latest_final_stage":"REQUIREMENTS",'
+                    '"latest_decision_type":"STAY","steps":[]}\n'
+                ),
                 encoding="utf-8",
             )
             state_dir = Path(temp_dir) / "state"
@@ -375,6 +385,69 @@ class MainDiagnosticViewTests(unittest.TestCase):
                     str(state_dir),
                     "--replay-run",
                     "missing-run",
+                ],
+            ):
+                exit_code = main()
+        self.assertEqual(exit_code, 1)
+        mock_orchestrator_cls.assert_not_called()
+        _, kwargs = mock_print.call_args
+        self.assertEqual(kwargs.get("file"), sys.stderr)
+        self.assertIn("Replay error:", mock_print.call_args.args[0])
+
+    @patch("main.print")
+    @patch("main.Orchestrator")
+    def test_main_replay_mode_invalid_json_returns_error(
+        self,
+        mock_orchestrator_cls: MagicMock,
+        mock_print: MagicMock,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_id = "bad-json-run"
+            runs_dir = Path(temp_dir) / "runs" / run_id
+            runs_dir.mkdir(parents=True, exist_ok=True)
+            (runs_dir / "summary.json").write_text("{bad json", encoding="utf-8")
+            state_dir = Path(temp_dir) / "state"
+            with patch(
+                "sys.argv",
+                [
+                    "main.py",
+                    "--state-dir",
+                    str(state_dir),
+                    "--replay-run",
+                    run_id,
+                ],
+            ):
+                exit_code = main()
+        self.assertEqual(exit_code, 1)
+        mock_orchestrator_cls.assert_not_called()
+        _, kwargs = mock_print.call_args
+        self.assertEqual(kwargs.get("file"), sys.stderr)
+        self.assertIn("Replay error:", mock_print.call_args.args[0])
+
+    @patch("main.print")
+    @patch("main.Orchestrator")
+    def test_main_replay_mode_schema_invalid_returns_error(
+        self,
+        mock_orchestrator_cls: MagicMock,
+        mock_print: MagicMock,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_id = "invalid-schema-run"
+            runs_dir = Path(temp_dir) / "runs" / run_id
+            runs_dir.mkdir(parents=True, exist_ok=True)
+            (runs_dir / "summary.json").write_text(
+                '{\"run_id\":\"invalid-schema-run\",\"steps\":[]}\n',
+                encoding="utf-8",
+            )
+            state_dir = Path(temp_dir) / "state"
+            with patch(
+                "sys.argv",
+                [
+                    "main.py",
+                    "--state-dir",
+                    str(state_dir),
+                    "--replay-run",
+                    run_id,
                 ],
             ):
                 exit_code = main()

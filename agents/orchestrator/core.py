@@ -13,6 +13,7 @@ from ..solution_engineer import SolutionEngineerAgent
 from ..state_manager import StateManager
 from ..system_designer import SystemDesignerAgent
 from ..test_validation_engineer import TestValidationEngineerAgent
+from schemas.run_summary import RunSummaryModel
 from .backflow_evaluator import BackflowEvaluator
 from .models import OrchestrationResult, Stage, TransitionDecision
 from .question_flow import QuestionFlow
@@ -412,6 +413,7 @@ class Orchestrator:
         }
         self._run_steps.append(step)
         manifest = {
+            "schema_version": "1",
             "run_id": self.run_id,
             "original_request": original_request,
             "generated_project_dir": str(self.generated_project_dir),
@@ -421,8 +423,12 @@ class Orchestrator:
             "latest_decision_type": result.diagnostic.get("decision_type", ""),
             "steps": self._run_steps,
         }
+        normalized_manifest = RunSummaryModel.model_validate(manifest).model_dump(mode="python")
         path = self.runs_dir / "summary.json"
-        path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        path.write_text(
+            json.dumps(normalized_manifest, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
 
     def run_stage(
         self,

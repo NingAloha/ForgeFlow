@@ -9,6 +9,7 @@ from typing import Any
 from agents.orchestrator import OrchestrationResult, Orchestrator
 from agents.orchestrator.models import Stage
 from agents.state_manager import StateManager
+from schemas.run_summary import RunSummaryModel
 
 
 def build_user_input(args: argparse.Namespace) -> str:
@@ -199,7 +200,7 @@ def load_run_summary(run_id: str, state_dir: str | None) -> dict[str, Any]:
     payload = json.loads(summary_path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError("Run summary payload must be an object.")
-    return payload
+    return RunSummaryModel.model_validate(payload).model_dump(mode="python")
 
 
 def format_replay_report(summary: dict[str, Any]) -> str:

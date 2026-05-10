@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
+from .models import OrchestrationResult
 from schemas.run_summary import RunStepModel, RunSummaryModel
 
 
@@ -24,7 +24,7 @@ class RunManifestWriter:
 
     def append_step(
         self,
-        result: Any,
+        result: OrchestrationResult,
         step_input: str,
         original_request: str,
     ) -> RunSummaryModel:

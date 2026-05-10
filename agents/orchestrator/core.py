@@ -13,7 +13,7 @@ from ..solution_engineer import SolutionEngineerAgent
 from ..state_manager import StateManager
 from ..system_designer import SystemDesignerAgent
 from ..test_validation_engineer import TestValidationEngineerAgent
-from schemas.run_summary import RunSummaryModel
+from schemas.run_summary import RunStepModel, RunSummaryModel
 from .backflow_evaluator import BackflowEvaluator
 from .models import OrchestrationResult, Stage, TransitionDecision
 from .question_flow import QuestionFlow
@@ -398,32 +398,32 @@ class Orchestrator:
         step_input: str,
         original_request: str,
     ) -> None:
-        step = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "input": step_input,
-            "decision_type": result.diagnostic.get("decision_type", ""),
-            "computed_stage": result.diagnostic.get("stages", {}).get("computed", ""),
-            "final_stage": result.diagnostic.get("stages", {}).get("final", ""),
-            "executed_stage": result.diagnostic.get("stages", {}).get("executed", ""),
-            "summary": result.summary,
-            "llm_trace": result.diagnostic.get("llm_trace", {}),
-            "execution_trace": result.diagnostic.get("execution_trace", {}),
-            "state_changes": result.diagnostic.get("state_changes", []),
-            "question_state": result.diagnostic.get("question_state", {}),
-        }
-        self._run_steps.append(step)
-        manifest = {
-            "schema_version": "1",
-            "run_id": self.run_id,
-            "original_request": original_request,
-            "generated_project_dir": str(self.generated_project_dir),
-            "state_dir": str(getattr(self.state_manager, "state_dir", "")),
-            "latest_summary": result.summary,
-            "latest_final_stage": result.diagnostic.get("stages", {}).get("final", ""),
-            "latest_decision_type": result.diagnostic.get("decision_type", ""),
-            "steps": self._run_steps,
-        }
-        normalized_manifest = RunSummaryModel.model_validate(manifest).model_dump(mode="python")
+        step_model = RunStepModel(
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            input=step_input,
+            decision_type=result.diagnostic.get("decision_type", ""),
+            computed_stage=result.diagnostic.get("stages", {}).get("computed", ""),
+            final_stage=result.diagnostic.get("stages", {}).get("final", ""),
+            executed_stage=result.diagnostic.get("stages", {}).get("executed", ""),
+            summary=result.summary,
+            llm_trace=result.diagnostic.get("llm_trace", {}),
+            execution_trace=result.diagnostic.get("execution_trace", {}),
+            state_changes=result.diagnostic.get("state_changes", []),
+            question_state=result.diagnostic.get("question_state", {}),
+        )
+        self._run_steps.append(step_model.model_dump(mode="python"))
+        summary_model = RunSummaryModel(
+            schema_version="1",
+            run_id=self.run_id,
+            original_request=original_request,
+            generated_project_dir=str(self.generated_project_dir),
+            state_dir=str(getattr(self.state_manager, "state_dir", "")),
+            latest_summary=result.summary,
+            latest_final_stage=result.diagnostic.get("stages", {}).get("final", ""),
+            latest_decision_type=result.diagnostic.get("decision_type", ""),
+            steps=self._run_steps,
+        )
+        normalized_manifest = summary_model.model_dump(mode="python")
         path = self.runs_dir / "summary.json"
         path.write_text(
             json.dumps(normalized_manifest, ensure_ascii=False, indent=2) + "\n",

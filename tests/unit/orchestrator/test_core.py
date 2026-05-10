@@ -12,6 +12,7 @@ from agents.orchestrator import (
     Stage,
     TransitionDecision,
 )
+from agents.orchestrator.run_manifest import RunManifestWriter
 from schemas.run_summary import RunStepModel, RunSummaryModel
 from tests.unit.support.orchestrator_fixtures import (
     make_design_ready_states,
@@ -173,6 +174,12 @@ class OrchestratorCoreTests(unittest.TestCase):
             )
             orchestrator.runs_dir.mkdir(parents=True, exist_ok=True)
             orchestrator.generated_project_dir.mkdir(parents=True, exist_ok=True)
+            orchestrator.run_manifest = RunManifestWriter(
+                runs_dir=orchestrator.runs_dir,
+                run_id=orchestrator.run_id,
+                generated_project_dir=orchestrator.generated_project_dir,
+                state_dir=str(state_dir),
+            )
 
             result = OrchestrationResult(
                 decision=TransitionDecision(
@@ -195,12 +202,13 @@ class OrchestratorCoreTests(unittest.TestCase):
                 },
                 summary="ok",
             )
-            orchestrator._write_run_manifest(
+            summary_model = orchestrator.run_manifest.append_step(
                 result,
                 step_input="build todo",
                 original_request="build todo",
             )
-            self.assertIsInstance(orchestrator._run_steps[0], RunStepModel)
+            orchestrator.run_manifest.write(summary_model)
+            self.assertIsInstance(orchestrator.run_manifest._run_steps[0], RunStepModel)
 
             payload = json.loads(
                 (orchestrator.runs_dir / "summary.json").read_text(encoding="utf-8")

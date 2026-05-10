@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -13,10 +12,10 @@ from ..solution_engineer import SolutionEngineerAgent
 from ..state_manager import StateManager
 from ..system_designer import SystemDesignerAgent
 from ..test_validation_engineer import TestValidationEngineerAgent
-from schemas.run_summary import RunStepModel, RunSummaryModel
 from .backflow_evaluator import BackflowEvaluator
 from .models import OrchestrationResult, Stage, TransitionDecision
 from .question_flow import QuestionFlow
+from .run_manifest import RunManifestWriter
 from .stage_evaluator import StageEvaluator
 
 
@@ -42,7 +41,12 @@ class Orchestrator:
         self.generated_project_dir = state_dir.parent / "generated" / self.run_id
         self.runs_dir.mkdir(parents=True, exist_ok=True)
         self.generated_project_dir.mkdir(parents=True, exist_ok=True)
-        self._run_steps: list[RunStepModel] = []
+        self.run_manifest = RunManifestWriter(
+            runs_dir=self.runs_dir,
+            run_id=self.run_id,
+            generated_project_dir=self.generated_project_dir,
+            state_dir=str(state_dir),
+        )
         self.question_flow = QuestionFlow()
         self.stage_evaluator = StageEvaluator()
         self.backflow_evaluator = BackflowEvaluator(
@@ -385,50 +389,13 @@ class Orchestrator:
             ),
             summary=summary,
         )
-        self._write_run_manifest(
+        summary_model = self.run_manifest.append_step(
             result,
             step_input=user_input,
             original_request=original_request or user_input,
         )
+        self.run_manifest.write(summary_model)
         return result
-
-    def _write_run_manifest(
-        self,
-        result: OrchestrationResult,
-        step_input: str,
-        original_request: str,
-    ) -> None:
-        step_model = RunStepModel(
-            timestamp=datetime.now(timezone.utc).isoformat(),
-            input=step_input,
-            decision_type=result.diagnostic.get("decision_type", ""),
-            computed_stage=result.diagnostic.get("stages", {}).get("computed", ""),
-            final_stage=result.diagnostic.get("stages", {}).get("final", ""),
-            executed_stage=result.diagnostic.get("stages", {}).get("executed", ""),
-            summary=result.summary,
-            llm_trace=result.diagnostic.get("llm_trace", {}),
-            execution_trace=result.diagnostic.get("execution_trace", {}),
-            state_changes=result.diagnostic.get("state_changes", []),
-            question_state=result.diagnostic.get("question_state", {}),
-        )
-        self._run_steps.append(step_model)
-        summary_model = RunSummaryModel(
-            schema_version="1",
-            run_id=self.run_id,
-            original_request=original_request,
-            generated_project_dir=str(self.generated_project_dir),
-            state_dir=str(getattr(self.state_manager, "state_dir", "")),
-            latest_summary=result.summary,
-            latest_final_stage=result.diagnostic.get("stages", {}).get("final", ""),
-            latest_decision_type=result.diagnostic.get("decision_type", ""),
-            steps=self._run_steps,
-        )
-        normalized_manifest = summary_model.model_dump(mode="python")
-        path = self.runs_dir / "summary.json"
-        path.write_text(
-            json.dumps(normalized_manifest, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
 
     def run_stage(
         self,

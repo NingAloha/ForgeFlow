@@ -1,5 +1,6 @@
 from .execution_tools import CommandResult, ExecutionTrace, WorkspaceExecutor
 from .llm_adapter import LLMAdapter, LLMCallResult
+from .llm_gateway import LLMGateway, LLMStructuredResult, PromptContract
 from .llm_policy import (
     build_llm_failure_question_state,
     should_block_on_llm_failure,
@@ -13,6 +14,9 @@ __all__ = [
     "WorkspaceExecutor",
     "LLMAdapter",
     "LLMCallResult",
+    "LLMGateway",
+    "LLMStructuredResult",
+    "PromptContract",
     "should_use_llm",
     "should_block_on_llm_failure",
     "build_llm_failure_question_state",

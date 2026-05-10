@@ -15,6 +15,7 @@ from .runtime_config import LLMRuntimeConfig
 class LLMCallResult:
     ok: bool
     content: dict[str, Any]
+    raw_output: str = ""
     error: str = ""
     model: str = ""
     latency_ms: int = 0
@@ -45,6 +46,43 @@ class LLMAdapter:
         )
 
     def generate_json(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        config: LLMRuntimeConfig,
+    ) -> LLMCallResult:
+        transport = self.generate_text(system_prompt, user_prompt, config)
+        if not transport.ok:
+            return transport
+        try:
+            content = json.loads(transport.raw_output) if transport.raw_output else {}
+        except json.JSONDecodeError as exc:
+            return LLMCallResult(
+                ok=False,
+                content={},
+                raw_output=transport.raw_output,
+                error=str(exc),
+                model=config.model,
+                latency_ms=transport.latency_ms,
+            )
+        if not isinstance(content, dict):
+            return LLMCallResult(
+                ok=False,
+                content={},
+                raw_output=transport.raw_output,
+                error="LLM content is not a JSON object.",
+                model=config.model,
+                latency_ms=transport.latency_ms,
+            )
+        return LLMCallResult(
+            ok=True,
+            content=content,
+            raw_output=transport.raw_output,
+            model=config.model,
+            latency_ms=transport.latency_ms,
+        )
+
+    def generate_text(
         self,
         system_prompt: str,
         user_prompt: str,
@@ -94,19 +132,11 @@ class LLMAdapter:
                 .get("message", {})
                 .get("content", "")
             )
-            content = json.loads(content_text) if content_text else {}
             latency_ms = int((time.time() - start) * 1000)
-            if not isinstance(content, dict):
-                return LLMCallResult(
-                    ok=False,
-                    content={},
-                    error="LLM content is not a JSON object.",
-                    model=config.model,
-                    latency_ms=latency_ms,
-                )
             return LLMCallResult(
                 ok=True,
-                content=content,
+                content={},
+                raw_output=content_text if isinstance(content_text, str) else "",
                 model=config.model,
                 latency_ms=latency_ms,
             )

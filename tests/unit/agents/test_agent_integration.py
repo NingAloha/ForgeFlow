@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import tempfile
 import unittest
+from pathlib import Path
 
 from agents.base import AgentContext, QuestionAnswer, QuestionItem, QuestionState
 from agents.implementation_engineer import ImplementationEngineerAgent
@@ -244,18 +246,35 @@ class TestValidationEngineerAgentTests(unittest.TestCase):
         self.agent = TestValidationEngineerAgent()
 
     def test_agent_produces_pass_result_for_clean_ready_states(self) -> None:
-        context = AgentContext(user_input="", states=make_testing_states())
-        result = self.agent.run(context)
-        self.assertEqual(result.updated_state["result"], "pass")
-        self.assertEqual(result.updated_state["issues"], [])
-        self.assertTrue(result.handoff_ready)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = Path(temp_dir)
+            tests_dir = workspace / "tests"
+            tests_dir.mkdir(parents=True, exist_ok=True)
+            (tests_dir / "test_smoke.py").write_text(
+                "import unittest\n\n"
+                "class SmokeTests(unittest.TestCase):\n"
+                "    def test_ok(self):\n"
+                "        self.assertTrue(True)\n\n"
+                "if __name__ == '__main__':\n"
+                "    unittest.main()\n",
+                encoding="utf-8",
+            )
+            states = make_testing_states()
+            states["implementation_status"]["workspace_path"] = str(workspace)
+            context = AgentContext(user_input="", states=states)
+            result = self.agent.run(context)
+            self.assertEqual(result.updated_state["result"], "pass")
+            self.assertGreater(result.updated_state["tests_run"], 0)
+            self.assertEqual(result.updated_state["issues"], [])
+            self.assertTrue(result.handoff_ready)
 
     def test_agent_produces_fail_result_with_blocking_issues(self) -> None:
         states = make_testing_states()
-        states["implementation_status"]["contract_compliance"] = False
+        states["implementation_status"]["workspace_path"] = "/tmp/forgeflow-missing-workspace"
         result = self.agent.run(AgentContext(user_input="", states=states))
         self.assertEqual(result.updated_state["result"], "fail")
-        self.assertTrue(result.updated_state["issues"])
+        self.assertEqual(result.updated_state["exit_code"], 1)
+        self.assertIn("workspace_missing", result.updated_state["failed_tests"])
         self.assertFalse(result.handoff_ready)
 
 

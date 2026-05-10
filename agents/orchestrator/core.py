@@ -56,7 +56,7 @@ class Orchestrator:
             Stage.TESTING: TestValidationEngineerAgent(),
         }
 
-    def build_context(self, user_input: str = "") -> AgentContext:
+    def build_context(self, user_input: str = "", original_request: str = "") -> AgentContext:
         states = self.state_manager.load_all_states()
         state_dir = getattr(self.state_manager, "state_dir", "")
         return AgentContext(
@@ -67,6 +67,7 @@ class Orchestrator:
                 "runs_dir": str(self.runs_dir),
                 "generated_project_dir": str(self.generated_project_dir),
                 "state_dir": str(state_dir),
+                "original_request": original_request,
             },
             question_state=self.question_flow.parse_question_state(
                 states.get("question_state", {})
@@ -347,14 +348,18 @@ class Orchestrator:
             f"executed {executed_stage} via {agent_name}."
         )
 
-    def orchestrate(self, user_input: str = "") -> OrchestrationResult:
+    def orchestrate(self, user_input: str = "", original_request: str = "") -> OrchestrationResult:
         states_before = self.state_manager.load_all_states()
         decision = self.resolve_transition(states_before)
 
         executed_stage = self.determine_execution_stage(decision)
         agent_result: AgentResult | None = None
         if executed_stage is not None:
-            agent_result = self.run_stage(executed_stage, user_input=user_input)
+            agent_result = self.run_stage(
+                executed_stage,
+                user_input=user_input,
+                original_request=original_request or user_input,
+            )
 
         states_after = self.state_manager.load_all_states()
         summary = self.build_result_summary(
@@ -379,13 +384,22 @@ class Orchestrator:
             ),
             summary=summary,
         )
-        self._write_run_manifest(result, user_input)
+        self._write_run_manifest(
+            result,
+            step_input=user_input,
+            original_request=original_request or user_input,
+        )
         return result
 
-    def _write_run_manifest(self, result: OrchestrationResult, user_input: str) -> None:
+    def _write_run_manifest(
+        self,
+        result: OrchestrationResult,
+        step_input: str,
+        original_request: str,
+    ) -> None:
         step = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "input": user_input,
+            "input": step_input,
             "decision_type": result.diagnostic.get("decision_type", ""),
             "computed_stage": result.diagnostic.get("stages", {}).get("computed", ""),
             "final_stage": result.diagnostic.get("stages", {}).get("final", ""),
@@ -399,6 +413,7 @@ class Orchestrator:
         self._run_steps.append(step)
         manifest = {
             "run_id": self.run_id,
+            "original_request": original_request,
             "generated_project_dir": str(self.generated_project_dir),
             "state_dir": str(getattr(self.state_manager, "state_dir", "")),
             "latest_summary": result.summary,
@@ -410,7 +425,10 @@ class Orchestrator:
         path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     def run_stage(
-        self, stage_name: Stage | str, user_input: str = ""
+        self,
+        stage_name: Stage | str,
+        user_input: str = "",
+        original_request: str = "",
     ) -> AgentResult:
         stage = Stage(stage_name)
         try:
@@ -418,7 +436,10 @@ class Orchestrator:
         except KeyError as exc:
             raise KeyError(f"Unknown stage: {stage}") from exc
 
-        context = self.build_context(user_input=user_input)
+        context = self.build_context(
+            user_input=user_input,
+            original_request=original_request or user_input,
+        )
         result = agent.run(context)
         try:
             self.state_manager.save_state(result.state_key, result.updated_state)

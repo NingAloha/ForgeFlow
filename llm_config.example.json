@@ -11,5 +11,14 @@
   "max_tokens": 800,
   "execution_mode": "strict_llm",
   "fallback_on_error": true,
-  "enabled_stages": ["REQUIREMENTS", "SOLUTION", "DESIGN", "IMPLEMENTATION", "TESTING"]
+  "enabled_stages": ["REQUIREMENTS", "SOLUTION", "DESIGN", "IMPLEMENTATION", "TESTING"],
+  "max_repair_attempts": 1,
+  "strict_unknown_fields": true,
+  "retry_policy_by_stage": {
+    "REQUIREMENTS": 2,
+    "SOLUTION": 2,
+    "DESIGN": 2,
+    "IMPLEMENTATION": 2,
+    "TESTING": 1
+  }
 }

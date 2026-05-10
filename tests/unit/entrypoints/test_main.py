@@ -158,6 +158,48 @@ class MainDiagnosticViewTests(unittest.TestCase):
         self.assertIn("fallback used: yes", report)
         self.assertIn("error: timeout", report)
 
+    def test_format_diagnostic_report_surfaces_command_override_trace(self) -> None:
+        result = OrchestrationResult(
+            decision=TransitionDecision(
+                computed_stage=Stage.TESTING,
+                final_stage=Stage.TESTING,
+                should_stay=True,
+                reason="Stay on current stage.",
+            ),
+            diagnostic={
+                "decision_type": "STAY",
+                "state_changes": ["test_report"],
+                "question_state": {"status": "idle"},
+                "transition": {"reason": "Stay on current stage.", "evidence": []},
+                "stages": {
+                    "computed": "TESTING",
+                    "source": "TESTING",
+                    "final": "TESTING",
+                    "executed": "TESTING",
+                },
+                "execution_trace": {
+                    "workspace_path": "/tmp/generated/x",
+                    "suggested_command": ["pytest", "-q"],
+                    "executed_command": [
+                        "python3",
+                        "-m",
+                        "unittest",
+                        "discover",
+                        "-s",
+                        "tests",
+                        "-p",
+                        "test_*.py",
+                        "-v",
+                    ],
+                    "command_results": [],
+                },
+            },
+            summary="ok",
+        )
+        report = format_diagnostic_report(result)
+        self.assertIn("suggested command: pytest -q", report)
+        self.assertIn("executed command: python3 -m unittest discover -s tests -p test_*.py -v", report)
+
     @patch("main.print")
     @patch("main.Orchestrator")
     @patch("main.StateManager")
@@ -227,6 +269,12 @@ class MainDiagnosticViewTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(mock_orchestrator.orchestrate.call_count, 2)
+        first_call = mock_orchestrator.orchestrate.call_args_list[0]
+        second_call = mock_orchestrator.orchestrate.call_args_list[1]
+        self.assertEqual(first_call.args[0], "build todo")
+        self.assertEqual(second_call.args[0], "")
+        self.assertEqual(first_call.kwargs.get("original_request"), "build todo")
+        self.assertEqual(second_call.kwargs.get("original_request"), "build todo")
 
 
 if __name__ == "__main__":

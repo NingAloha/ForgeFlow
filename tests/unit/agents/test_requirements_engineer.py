@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import unittest
-from unittest.mock import MagicMock
 
 from agents.base import AgentContext, QuestionAnswer, QuestionItem, QuestionState
+from agents.common.llm_gateway import LLMStructuredResult
 from agents.requirements_engineer import RequirementsEngineerAgent
-from agents.common.llm_adapter import LLMCallResult
 from agents.common.runtime_config import LLMRuntimeConfig
 from tests.unit.support.orchestrator_fixtures import make_empty_states
 
@@ -160,23 +159,32 @@ class RequirementsEngineerHelperTests(unittest.TestCase):
         )
 
     def test_agent_prefers_llm_result_when_enabled_and_valid(self) -> None:
-        class TestableRequirementsEngineerAgent(RequirementsEngineerAgent):
-            def get_llm_runtime_config(self) -> LLMRuntimeConfig:
-                return LLMRuntimeConfig(enabled=True, execution_mode="compat")
-
-            def get_llm_adapter(self):  # type: ignore[override]
-                adapter = MagicMock()
-                adapter.generate_requirements.return_value = LLMCallResult(
-                    ok=True,
-                    content={
+        class GatewayStub:
+            def generate(self, contract, user_prompt, config):  # noqa: ANN001
+                return LLMStructuredResult(
+                    status="success",
+                    parsed_output={
                         "project_goal": "Build todo app",
                         "functional_requirements": ["Create tasks", "Mark done"],
                         "acceptance_criteria": ["User can create and complete a task"],
                     },
+                    validation_errors=[],
+                    raw_output="{}",
+                    repair_attempts=0,
+                    confidence=None,
+                    failure_type="none",
                     model="deepseek-v4-flash",
+                    provider="deepseek",
+                    protocol="openai",
                     latency_ms=12,
                 )
-                return adapter
+
+        class TestableRequirementsEngineerAgent(RequirementsEngineerAgent):
+            def get_llm_runtime_config(self) -> LLMRuntimeConfig:
+                return LLMRuntimeConfig(enabled=True, execution_mode="compat")
+
+            def get_llm_gateway(self):  # type: ignore[override]
+                return GatewayStub()
 
         agent = TestableRequirementsEngineerAgent()
         context = AgentContext(
@@ -190,24 +198,32 @@ class RequirementsEngineerHelperTests(unittest.TestCase):
             ["Create tasks", "Mark done"],
         )
         self.assertTrue(result.handoff_ready)
-        self.assertTrue(result.diagnostics["llm_trace"]["used"])
-        self.assertFalse(result.diagnostics["llm_trace"]["fallback_used"])
+        self.assertEqual(result.diagnostics["llm_trace"]["status"], "success")
 
     def test_agent_falls_back_to_rules_when_llm_fails(self) -> None:
+        class GatewayStub:
+            def generate(self, contract, user_prompt, config):  # noqa: ANN001
+                return LLMStructuredResult(
+                    status="retryable_error",
+                    parsed_output=None,
+                    validation_errors=[],
+                    raw_output="",
+                    repair_attempts=0,
+                    confidence=None,
+                    failure_type="timeout",
+                    model="deepseek-v4-flash",
+                    provider="deepseek",
+                    protocol="openai",
+                    latency_ms=30,
+                    error="timeout",
+                )
+
         class TestableRequirementsEngineerAgent(RequirementsEngineerAgent):
             def get_llm_runtime_config(self) -> LLMRuntimeConfig:
                 return LLMRuntimeConfig(enabled=True, execution_mode="compat")
 
-            def get_llm_adapter(self):  # type: ignore[override]
-                adapter = MagicMock()
-                adapter.generate_requirements.return_value = LLMCallResult(
-                    ok=False,
-                    content={},
-                    error="timeout",
-                    model="deepseek-v4-flash",
-                    latency_ms=30,
-                )
-                return adapter
+            def get_llm_gateway(self):  # type: ignore[override]
+                return GatewayStub()
 
         agent = TestableRequirementsEngineerAgent()
         context = AgentContext(
@@ -217,24 +233,32 @@ class RequirementsEngineerHelperTests(unittest.TestCase):
         result = agent.run(context)
         self.assertTrue(result.updated_state["project_goal"])
         self.assertTrue(result.updated_state["functional_requirements"])
-        self.assertTrue(result.diagnostics["llm_trace"]["used"])
-        self.assertTrue(result.diagnostics["llm_trace"]["fallback_used"])
+        self.assertEqual(result.diagnostics["llm_trace"]["status"], "retryable_error")
 
     def test_agent_blocks_in_strict_llm_mode_when_llm_fails(self) -> None:
+        class GatewayStub:
+            def generate(self, contract, user_prompt, config):  # noqa: ANN001
+                return LLMStructuredResult(
+                    status="retryable_error",
+                    parsed_output=None,
+                    validation_errors=[],
+                    raw_output="",
+                    repair_attempts=0,
+                    confidence=None,
+                    failure_type="timeout",
+                    model="deepseek-v4-flash",
+                    provider="deepseek",
+                    protocol="openai",
+                    latency_ms=30,
+                    error="timeout",
+                )
+
         class TestableRequirementsEngineerAgent(RequirementsEngineerAgent):
             def get_llm_runtime_config(self) -> LLMRuntimeConfig:
                 return LLMRuntimeConfig(enabled=True, execution_mode="strict_llm")
 
-            def get_llm_adapter(self):  # type: ignore[override]
-                adapter = MagicMock()
-                adapter.generate_requirements.return_value = LLMCallResult(
-                    ok=False,
-                    content={},
-                    error="timeout",
-                    model="deepseek-v4-flash",
-                    latency_ms=30,
-                )
-                return adapter
+            def get_llm_gateway(self):  # type: ignore[override]
+                return GatewayStub()
 
         agent = TestableRequirementsEngineerAgent()
         context = AgentContext(

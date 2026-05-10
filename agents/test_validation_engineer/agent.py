@@ -6,12 +6,12 @@ from pathlib import Path
 
 from ..base import AgentContext, AgentResult, BaseAgent
 from ..common import (
-    LLMAdapter,
+    LLMGateway,
     LLMRuntimeConfig,
+    PromptContract,
     WorkspaceExecutor,
     build_llm_failure_question_state,
     load_llm_runtime_config,
-    should_block_on_llm_failure,
     should_use_llm,
 )
 from .planning import TestValidationPlanningMixin
@@ -25,8 +25,8 @@ class TestValidationEngineerAgent(TestValidationPlanningMixin, BaseAgent):
     def get_llm_runtime_config(self) -> LLMRuntimeConfig:
         return load_llm_runtime_config()
 
-    def get_llm_adapter(self) -> LLMAdapter:
-        return LLMAdapter()
+    def get_llm_gateway(self) -> LLMGateway:
+        return LLMGateway()
 
     def run(self, context: AgentContext) -> AgentResult:
         current_state = dict(context.states.get(self.state_key, {}))
@@ -37,23 +37,13 @@ class TestValidationEngineerAgent(TestValidationPlanningMixin, BaseAgent):
 
         issues = self.build_issues(spec, implementation_status, design)
         llm_config = self.get_llm_runtime_config()
-        llm_trace = {
-            "enabled": llm_config.enabled,
-            "provider": llm_config.provider,
-            "model": llm_config.model,
-            "protocol": llm_config.protocol,
-            "used": False,
-            "fallback_used": False,
-            "error": "",
-            "latency_ms": 0,
-            "source": "fallback",
-        }
+        llm_trace: dict[str, object] = {}
 
         test_scope = current_state.get("test_scope") or "integration"
         result = self.pick_result(issues, implementation_status)
 
         workspace_path = str(implementation_status.get("workspace_path", "")).strip()
-        command = list(implementation_status.get("suggested_test_command", [])) or [
+        fixed_command = [
             "python3",
             "-m",
             "unittest",
@@ -64,37 +54,45 @@ class TestValidationEngineerAgent(TestValidationPlanningMixin, BaseAgent):
             "test_*.py",
             "-v",
         ]
+        llm_suggested_command = list(implementation_status.get("suggested_test_command", []))
+        command = list(fixed_command)
 
         if not workspace_path or not Path(workspace_path).exists():
             updated_state = {
                 **current_state,
                 "test_scope": test_scope,
-                "result": self.pick_result(issues, implementation_status),
+                "result": "fail",
                 "issues": issues,
                 "command": command,
-                "exit_code": 0 if self.pick_result(issues, implementation_status) == "pass" else 1,
+                "exit_code": 1,
                 "tests_run": 0,
-                "failed_tests": ["workspace_missing"] if self.pick_result(issues, implementation_status) != "pass" else [],
-                "log_excerpt": "workspace is missing; synthetic validation used in compatibility path.",
+                "failed_tests": ["workspace_missing"],
+                "log_excerpt": "real validation skipped because workspace is missing.",
             }
             return AgentResult(
                 agent_name=self.agent_name,
                 stage_name=self.stage_name,
                 state_key=self.state_key,
                 updated_state=updated_state,
-                summary="Validation used synthetic path because workspace is unavailable.",
-                notes=["Real test execution skipped due missing workspace path."],
-                blockers=["workspace_missing"] if updated_state["result"] != "pass" else [],
-                handoff_ready=updated_state["result"] == "pass",
+                summary="Validation failed because workspace is unavailable.",
+                notes=["Real test execution skipped because workspace path is missing or invalid."],
+                blockers=["workspace_missing"],
+                handoff_ready=False,
                 diagnostics={"llm_trace": llm_trace, "execution_trace": {}},
             )
 
         llm_stage_enabled = should_use_llm(llm_config, self.stage_name)
+        llm_success = False
         if llm_stage_enabled and user_input:
-            llm_result = self.get_llm_adapter().generate_json(
-                system_prompt=(
-                    "Return strict JSON only with keys: test_scope, command, issues_hint. "
-                    "command must be an array of command tokens suitable for unittest/pytest."
+            llm_result = self.get_llm_gateway().generate(
+                contract=PromptContract(
+                    stage_name=self.stage_name,
+                    system_prompt=(
+                        "Return strict JSON only with keys: test_scope, command, issues_hint. "
+                        "command must be an array of command tokens suitable for unittest."
+                    ),
+                    required_fields=["test_scope", "command"],
+                    output_model=None,
                 ),
                 user_prompt=(
                     f"User request: {user_input}\n"
@@ -102,24 +100,76 @@ class TestValidationEngineerAgent(TestValidationPlanningMixin, BaseAgent):
                 ),
                 config=llm_config,
             )
-            llm_trace["used"] = True
-            llm_trace["latency_ms"] = llm_result.latency_ms
-            llm_trace["error"] = llm_result.error
-            if llm_result.ok and isinstance(llm_result.content, dict):
-                payload = llm_result.content
+            llm_trace = llm_result.to_trace()
+            if llm_result.status == "success" and isinstance(llm_result.parsed_output, dict):
+                llm_success = True
+                payload = llm_result.parsed_output
                 test_scope = str(payload.get("test_scope", test_scope))
                 candidate_command = payload.get("command")
                 if isinstance(candidate_command, list) and candidate_command:
-                    command = [str(x) for x in candidate_command if str(x).strip()]
-                llm_trace["source"] = "llm"
-            else:
-                llm_trace["fallback_used"] = True
+                    llm_suggested_command = [str(x) for x in candidate_command if str(x).strip()]
+            elif llm_result.status in {"fatal_error", "needs_user_input"}:
+                updated_state = {
+                    **current_state,
+                    "test_scope": test_scope,
+                    "result": "fail",
+                    "issues": issues,
+                    "command": command,
+                    "exit_code": 1,
+                    "failed_tests": ["llm_generation_failed"],
+                    "log_excerpt": llm_result.error or "LLM output unavailable.",
+                }
+                return AgentResult(
+                    agent_name=self.agent_name,
+                    stage_name=self.stage_name,
+                    state_key=self.state_key,
+                    updated_state=updated_state,
+                    summary="Testing blocked: LLM output is unavailable.",
+                    notes=["LLM output invalid for testing command synthesis."],
+                    blockers=["llm_generation_failed"],
+                    handoff_ready=False,
+                    requires_user_input=True,
+                    question_state_update=build_llm_failure_question_state(
+                        self.stage_name,
+                        self.state_key,
+                        llm_result.error,
+                    ),
+                    diagnostics={"llm_trace": llm_result.to_trace(), "execution_trace": {}},
+                )
+            elif llm_result.status == "retryable_error" and llm_config.execution_mode == "strict_llm":
+                updated_state = {
+                    **current_state,
+                    "test_scope": test_scope,
+                    "result": "fail",
+                    "issues": issues,
+                    "command": command,
+                    "exit_code": 1,
+                    "failed_tests": ["llm_generation_failed"],
+                    "log_excerpt": llm_result.error or "strict_llm blocked.",
+                }
+                return AgentResult(
+                    agent_name=self.agent_name,
+                    stage_name=self.stage_name,
+                    state_key=self.state_key,
+                    updated_state=updated_state,
+                    summary="Testing blocked: strict_llm mode requires successful LLM output.",
+                    notes=["LLM output invalid for testing command synthesis."],
+                    blockers=["llm_generation_failed"],
+                    handoff_ready=False,
+                    requires_user_input=True,
+                    question_state_update=build_llm_failure_question_state(
+                        self.stage_name,
+                        self.state_key,
+                        llm_result.error,
+                    ),
+                    diagnostics={"llm_trace": llm_result.to_trace(), "execution_trace": {}},
+                )
 
-        if should_block_on_llm_failure(
-            llm_config,
-            self.stage_name,
-            llm_trace["used"],
-            llm_trace["fallback_used"],
+        if (
+            llm_config.execution_mode == "strict_llm"
+            and llm_stage_enabled
+            and user_input
+            and not llm_success
         ):
             updated_state = {
                 **current_state,
@@ -129,7 +179,7 @@ class TestValidationEngineerAgent(TestValidationPlanningMixin, BaseAgent):
                 "command": command,
                 "exit_code": 1,
                 "failed_tests": ["llm_generation_failed"],
-                "log_excerpt": llm_trace.get("error", "strict_llm blocked."),
+                "log_excerpt": str(llm_trace.get("error", "strict_llm blocked.")),
             }
             return AgentResult(
                 agent_name=self.agent_name,
@@ -144,7 +194,7 @@ class TestValidationEngineerAgent(TestValidationPlanningMixin, BaseAgent):
                 question_state_update=build_llm_failure_question_state(
                     self.stage_name,
                     self.state_key,
-                    llm_trace.get("error", ""),
+                    str(llm_trace.get("error", "")),
                 ),
                 diagnostics={"llm_trace": llm_trace, "execution_trace": {}},
             )
@@ -212,6 +262,8 @@ class TestValidationEngineerAgent(TestValidationPlanningMixin, BaseAgent):
                 "execution_trace": {
                     "workspace_path": executor.trace.workspace_path,
                     "file_writes": executor.trace.file_writes,
+                    "suggested_command": llm_suggested_command,
+                    "executed_command": list(command),
                     "command_results": [
                         {
                             "command": cmd_result.command,

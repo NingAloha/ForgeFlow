@@ -162,6 +162,12 @@ def format_diagnostic_report(result: OrchestrationResult) -> str:
         if file_writes:
             lines.append(f"- files written: {len(file_writes)}")
         command_results = execution_trace.get("command_results", [])
+        suggested_command = execution_trace.get("suggested_command", [])
+        if suggested_command:
+            lines.append(f"- suggested command: {' '.join(suggested_command)}")
+        executed_command = execution_trace.get("executed_command", [])
+        if executed_command:
+            lines.append(f"- executed command: {' '.join(executed_command)}")
         for item in command_results:
             cmd = " ".join(item.get("command", []))
             exit_code = item.get("exit_code", "")
@@ -217,7 +223,11 @@ def main() -> int:
     if args.auto_run:
         max_steps = max(1, args.max_steps)
         for step in range(1, max_steps + 1):
-            result = orchestrator.orchestrate(user_input)
+            step_input = user_input if step == 1 else ""
+            result = orchestrator.orchestrate(
+                step_input,
+                original_request=user_input,
+            )
             print(f"=== Auto Run Step {step} ===")
             print(format_diagnostic_report(result))
             if result.decision.wait_for_user_input:
@@ -225,7 +235,10 @@ def main() -> int:
             if result.decision.final_stage == Stage.DONE:
                 break
     else:
-        result = orchestrator.orchestrate(user_input)
+        result = orchestrator.orchestrate(
+            user_input,
+            original_request=user_input,
+        )
         print(format_diagnostic_report(result))
     return 0
 

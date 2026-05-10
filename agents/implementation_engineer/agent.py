@@ -5,14 +5,15 @@ from pathlib import Path
 
 from ..base import AgentContext, AgentResult, BaseAgent
 from ..common import (
-    LLMAdapter,
+    LLMGateway,
     LLMRuntimeConfig,
+    PromptContract,
     WorkspaceExecutor,
     build_llm_failure_question_state,
     load_llm_runtime_config,
-    should_block_on_llm_failure,
     should_use_llm,
 )
+from schemas.implementation import ImplementationStatusState
 from .planning import ImplementationPlanningMixin
 
 
@@ -24,8 +25,8 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
     def get_llm_runtime_config(self) -> LLMRuntimeConfig:
         return load_llm_runtime_config()
 
-    def get_llm_adapter(self) -> LLMAdapter:
-        return LLMAdapter()
+    def get_llm_gateway(self) -> LLMGateway:
+        return LLMGateway()
 
     def run(self, context: AgentContext) -> AgentResult:
         current_state = dict(context.states.get(self.state_key, {}))
@@ -47,17 +48,7 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
             blockers.append("No matching design contract found for the active module.")
 
         llm_config = self.get_llm_runtime_config()
-        llm_trace = {
-            "enabled": llm_config.enabled,
-            "provider": llm_config.provider,
-            "model": llm_config.model,
-            "protocol": llm_config.protocol,
-            "used": False,
-            "fallback_used": False,
-            "error": "",
-            "latency_ms": 0,
-            "source": "fallback",
-        }
+        llm_trace: dict[str, object] = {}
 
         workspace_path = str(context.metadata.get("generated_project_dir", "")).strip()
         if not workspace_path:
@@ -82,14 +73,21 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
         executor = WorkspaceExecutor(workspace_root=workspace_path or ".")
         llm_stage_enabled = should_use_llm(llm_config, self.stage_name)
         llm_files: list[dict[str, str]] = []
+        llm_success = False
 
         if llm_stage_enabled and user_input:
-            llm_result = self.get_llm_adapter().generate_json(
+            contract = PromptContract(
+                stage_name=self.stage_name,
                 system_prompt=(
-                    "Return strict JSON only with keys: project_name, files, tests, "
-                    "suggested_test_command. files/tests are arrays of objects with path and content. "
+                    "Return strict JSON only with keys: files, tests, suggested_test_command. "
+                    "files/tests are arrays of objects with path and content. "
                     "Generate a minimal runnable Python project with unittest tests."
                 ),
+                required_fields=["files", "tests", "suggested_test_command"],
+                output_model=None,
+            )
+            llm_result = self.get_llm_gateway().generate(
+                contract=contract,
                 user_prompt=(
                     f"User request: {user_input}\n"
                     f"Design JSON: {json.dumps(design, ensure_ascii=False)}\n"
@@ -97,11 +95,10 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
                 ),
                 config=llm_config,
             )
-            llm_trace["used"] = True
-            llm_trace["latency_ms"] = llm_result.latency_ms
-            llm_trace["error"] = llm_result.error
-            if llm_result.ok and isinstance(llm_result.content, dict):
-                payload = llm_result.content
+            llm_trace = llm_result.to_trace()
+            if llm_result.status == "success" and isinstance(llm_result.parsed_output, dict):
+                llm_success = True
+                payload = llm_result.parsed_output
                 raw_files = payload.get("files", [])
                 raw_tests = payload.get("tests", [])
                 if isinstance(raw_files, list) and isinstance(raw_tests, list):
@@ -117,22 +114,76 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
                     suggested = payload.get("suggested_test_command")
                     if isinstance(suggested, list) and suggested:
                         suggested_test_command = [str(x) for x in suggested if str(x).strip()]
-                    if llm_files:
-                        llm_trace["source"] = "llm"
-                    else:
-                        llm_trace["fallback_used"] = True
-                        llm_trace["error"] = "LLM returned empty file set."
-                else:
-                    llm_trace["fallback_used"] = True
-                    llm_trace["error"] = "LLM response missing files/tests arrays."
-            else:
-                llm_trace["fallback_used"] = True
+            elif llm_result.status in {"fatal_error", "needs_user_input"}:
+                updated_state = {
+                    **current_state,
+                    "module_name": module_name,
+                    "implementation_status": "blocked",
+                    "files_touched": [],
+                    "tests_added_or_updated": [],
+                    "contract_compliance": contract_compliance,
+                    "known_limitations": ["LLM output unavailable."],
+                    "blockers": ["llm_generation_failed"],
+                    "workspace_path": workspace_path,
+                    "commands_executed": [],
+                    "artifacts_generated": [],
+                    "suggested_test_command": suggested_test_command,
+                }
+                return AgentResult(
+                    agent_name=self.agent_name,
+                    stage_name=self.stage_name,
+                    state_key=self.state_key,
+                    updated_state=updated_state,
+                    summary="Implementation blocked: LLM output is unavailable.",
+                    notes=["LLM output was invalid or unavailable; waiting for user action."],
+                    blockers=["llm_generation_failed"],
+                    handoff_ready=False,
+                    requires_user_input=True,
+                    question_state_update=build_llm_failure_question_state(
+                        self.stage_name,
+                        self.state_key,
+                        llm_result.error,
+                    ),
+                    diagnostics={"llm_trace": llm_result.to_trace(), "execution_trace": {}},
+                )
+            elif llm_result.status == "retryable_error" and llm_config.execution_mode == "strict_llm":
+                updated_state = {
+                    **current_state,
+                    "module_name": module_name,
+                    "implementation_status": "blocked",
+                    "files_touched": [],
+                    "tests_added_or_updated": [],
+                    "contract_compliance": contract_compliance,
+                    "known_limitations": ["strict_llm mode requires successful LLM generation."],
+                    "blockers": ["llm_generation_failed"],
+                    "workspace_path": workspace_path,
+                    "commands_executed": [],
+                    "artifacts_generated": [],
+                    "suggested_test_command": suggested_test_command,
+                }
+                return AgentResult(
+                    agent_name=self.agent_name,
+                    stage_name=self.stage_name,
+                    state_key=self.state_key,
+                    updated_state=updated_state,
+                    summary="Implementation blocked: strict_llm mode requires successful LLM output.",
+                    notes=["LLM retry budget exhausted; waiting for user action."],
+                    blockers=["llm_generation_failed"],
+                    handoff_ready=False,
+                    requires_user_input=True,
+                    question_state_update=build_llm_failure_question_state(
+                        self.stage_name,
+                        self.state_key,
+                        llm_result.error,
+                    ),
+                    diagnostics={"llm_trace": llm_result.to_trace(), "execution_trace": {}},
+                )
 
-        if should_block_on_llm_failure(
-            llm_config,
-            self.stage_name,
-            llm_trace["used"],
-            llm_trace["fallback_used"],
+        if (
+            llm_config.execution_mode == "strict_llm"
+            and llm_stage_enabled
+            and user_input
+            and not llm_success
         ):
             updated_state = {
                 **current_state,
@@ -161,7 +212,7 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
                 question_state_update=build_llm_failure_question_state(
                     self.stage_name,
                     self.state_key,
-                    llm_trace.get("error", ""),
+                    str(llm_trace.get("error", "")),
                 ),
                 diagnostics={"llm_trace": llm_trace, "execution_trace": {}},
             )
@@ -204,6 +255,7 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
             "artifacts_generated": artifacts_generated,
             "suggested_test_command": suggested_test_command,
         }
+        updated_state = ImplementationStatusState.model_validate(updated_state).model_dump(mode="python")
 
         if blockers:
             return AgentResult(

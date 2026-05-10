@@ -22,9 +22,8 @@ class ExecutionTrace:
 
 class WorkspaceExecutor:
     COMMAND_ALLOWLIST: tuple[tuple[str, ...], ...] = (
-        ("python3", "-m", "unittest"),
-        ("python", "-m", "unittest"),
-        ("pytest",),
+        ("python3", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-v"),
+        ("python", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-v"),
     )
 
     def __init__(self, workspace_root: str | Path) -> None:

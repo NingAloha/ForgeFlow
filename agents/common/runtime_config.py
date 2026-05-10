@@ -23,6 +23,9 @@ class LLMRuntimeConfig:
     fallback_on_error: bool = True
     execution_mode: str = "strict_llm"
     enabled_stages: list[str] = None  # type: ignore[assignment]
+    retry_policy_by_stage: dict[str, int] = None  # type: ignore[assignment]
+    max_repair_attempts: int = 1
+    strict_unknown_fields: bool = True
 
     def __post_init__(self) -> None:
         if self.enabled_stages is None:
@@ -33,6 +36,14 @@ class LLMRuntimeConfig:
                 "IMPLEMENTATION",
                 "TESTING",
             ]
+        if self.retry_policy_by_stage is None:
+            self.retry_policy_by_stage = {
+                "REQUIREMENTS": 2,
+                "SOLUTION": 2,
+                "DESIGN": 2,
+                "IMPLEMENTATION": 2,
+                "TESTING": 1,
+            }
 
 
 def _as_bool(value: Any, default: bool) -> bool:
@@ -45,6 +56,13 @@ def _as_bool(value: Any, default: bool) -> bool:
         if normalized in {"0", "false", "no", "off"}:
             return False
     return default
+
+
+def _as_int(value: Any, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def load_llm_runtime_config(
@@ -97,6 +115,24 @@ def load_llm_runtime_config(
             for item in payload_enabled_stages
             if str(item).strip()
         ] or config.enabled_stages
+    payload_retry_policy = payload.get("retry_policy_by_stage")
+    if isinstance(payload_retry_policy, dict):
+        retry_policy: dict[str, int] = {}
+        for stage, attempts in payload_retry_policy.items():
+            key = str(stage).strip().upper()
+            if not key:
+                continue
+            retry_policy[key] = max(0, _as_int(attempts, 0))
+        if retry_policy:
+            config.retry_policy_by_stage = retry_policy
+    config.max_repair_attempts = max(
+        0,
+        _as_int(payload.get("max_repair_attempts"), config.max_repair_attempts),
+    )
+    config.strict_unknown_fields = _as_bool(
+        payload.get("strict_unknown_fields"),
+        config.strict_unknown_fields,
+    )
 
     # Environment variable overrides for quick testing.
     config.enabled = _as_bool(os.getenv("FORGEFLOW_LLM_ENABLED"), config.enabled)
@@ -123,6 +159,32 @@ def load_llm_runtime_config(
             for item in raw_enabled_stages.split(",")
             if item.strip()
         ] or config.enabled_stages
+    raw_retry_policy = os.getenv("FORGEFLOW_LLM_RETRY_POLICY_BY_STAGE", "")
+    if raw_retry_policy.strip():
+        try:
+            parsed_retry = json.loads(raw_retry_policy)
+        except json.JSONDecodeError:
+            parsed_retry = {}
+        if isinstance(parsed_retry, dict):
+            retry_policy: dict[str, int] = {}
+            for stage, attempts in parsed_retry.items():
+                key = str(stage).strip().upper()
+                if not key:
+                    continue
+                retry_policy[key] = max(0, _as_int(attempts, 0))
+            if retry_policy:
+                config.retry_policy_by_stage = retry_policy
+    config.max_repair_attempts = max(
+        0,
+        _as_int(
+            os.getenv("FORGEFLOW_LLM_MAX_REPAIR_ATTEMPTS"),
+            config.max_repair_attempts,
+        ),
+    )
+    config.strict_unknown_fields = _as_bool(
+        os.getenv("FORGEFLOW_LLM_STRICT_UNKNOWN_FIELDS"),
+        config.strict_unknown_fields,
+    )
     config.fallback_on_error = _as_bool(
         os.getenv("FORGEFLOW_LLM_FALLBACK_ON_ERROR"),
         config.fallback_on_error,

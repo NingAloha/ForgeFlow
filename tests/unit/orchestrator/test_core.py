@@ -12,7 +12,7 @@ from agents.orchestrator import (
     Stage,
     TransitionDecision,
 )
-from schemas.run_summary import RunSummaryModel
+from schemas.run_summary import RunStepModel, RunSummaryModel
 from tests.unit.support.orchestrator_fixtures import (
     make_design_ready_states,
     make_done_states,
@@ -200,11 +200,42 @@ class OrchestratorCoreTests(unittest.TestCase):
                 step_input="build todo",
                 original_request="build todo",
             )
+            self.assertIsInstance(orchestrator._run_steps[0], RunStepModel)
 
             payload = json.loads(
                 (orchestrator.runs_dir / "summary.json").read_text(encoding="utf-8")
             )
             self.assertEqual(payload["schema_version"], "1")
+            self.assertEqual(
+                set(payload.keys()),
+                {
+                    "schema_version",
+                    "run_id",
+                    "original_request",
+                    "generated_project_dir",
+                    "state_dir",
+                    "latest_summary",
+                    "latest_final_stage",
+                    "latest_decision_type",
+                    "steps",
+                },
+            )
+            self.assertEqual(
+                set(payload["steps"][0].keys()),
+                {
+                    "timestamp",
+                    "input",
+                    "decision_type",
+                    "computed_stage",
+                    "final_stage",
+                    "executed_stage",
+                    "summary",
+                    "llm_trace",
+                    "execution_trace",
+                    "state_changes",
+                    "question_state",
+                },
+            )
             model = RunSummaryModel.model_validate(payload)
             self.assertEqual(model.schema_version, "1")
 

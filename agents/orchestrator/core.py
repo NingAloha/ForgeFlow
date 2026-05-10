@@ -42,7 +42,7 @@ class Orchestrator:
         self.generated_project_dir = state_dir.parent / "generated" / self.run_id
         self.runs_dir.mkdir(parents=True, exist_ok=True)
         self.generated_project_dir.mkdir(parents=True, exist_ok=True)
-        self._run_steps: list[dict[str, Any]] = []
+        self._run_steps: list[RunStepModel] = []
         self.question_flow = QuestionFlow()
         self.stage_evaluator = StageEvaluator()
         self.backflow_evaluator = BackflowEvaluator(
@@ -411,7 +411,7 @@ class Orchestrator:
             state_changes=result.diagnostic.get("state_changes", []),
             question_state=result.diagnostic.get("question_state", {}),
         )
-        self._run_steps.append(step_model.model_dump(mode="python"))
+        self._run_steps.append(step_model)
         summary_model = RunSummaryModel(
             schema_version="1",
             run_id=self.run_id,

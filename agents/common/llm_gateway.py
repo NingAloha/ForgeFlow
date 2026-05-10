@@ -7,6 +7,8 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
+from schemas.llm_trace import LLMTraceModel
+
 from .llm_adapter import LLMAdapter
 from .runtime_config import LLMRuntimeConfig
 
@@ -46,22 +48,22 @@ class LLMStructuredResult:
     latency_ms: int
     error: str = ""
 
-    def to_trace(self) -> dict[str, object]:
+    def to_trace(self) -> LLMTraceModel:
         excerpt = self.raw_output.strip()
         if len(excerpt) > 800:
             excerpt = excerpt[:800]
-        return {
-            "status": self.status,
-            "failure_type": self.failure_type,
-            "repair_attempts": self.repair_attempts,
-            "validation_errors": list(self.validation_errors),
-            "raw_excerpt": excerpt,
-            "model": self.model,
-            "provider": self.provider,
-            "protocol": self.protocol,
-            "latency_ms": self.latency_ms,
-            "error": self.error,
-        }
+        return LLMTraceModel(
+            status=self.status,
+            failure_type=self.failure_type,
+            repair_attempts=self.repair_attempts,
+            validation_errors=list(self.validation_errors),
+            raw_excerpt=excerpt,
+            model=self.model,
+            provider=self.provider,
+            protocol=self.protocol,
+            latency_ms=self.latency_ms,
+            error=self.error or None,
+        )
 
 
 class LLMGateway:

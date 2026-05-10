@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .models import OrchestrationResult
+from schemas.llm_trace import EMPTY_LLM_TRACE, LLMTraceModel
 from schemas.run_summary import RunStepModel, RunSummaryModel
 
 
@@ -22,12 +23,21 @@ class RunManifestWriter:
         self.state_dir = state_dir
         self._run_steps: list[RunStepModel] = []
 
+    def _normalize_llm_trace(self, trace: object) -> LLMTraceModel:
+        if isinstance(trace, LLMTraceModel):
+            return trace
+        if isinstance(trace, dict):
+            return LLMTraceModel.model_validate(trace)
+        raise TypeError("llm_trace must be LLMTraceModel or dict payload")
+
     def append_step(
         self,
         result: OrchestrationResult,
         step_input: str,
         original_request: str,
     ) -> RunSummaryModel:
+        raw_trace = result.diagnostic.get("llm_trace", EMPTY_LLM_TRACE)
+        llm_trace = self._normalize_llm_trace(raw_trace)
         step_model = RunStepModel(
             timestamp=datetime.now(timezone.utc).isoformat(),
             input=step_input,
@@ -36,7 +46,7 @@ class RunManifestWriter:
             final_stage=result.diagnostic.get("stages", {}).get("final", ""),
             executed_stage=result.diagnostic.get("stages", {}).get("executed", ""),
             summary=result.summary,
-            llm_trace=result.diagnostic.get("llm_trace", {}),
+            llm_trace=llm_trace,
             execution_trace=result.diagnostic.get("execution_trace", {}),
             state_changes=result.diagnostic.get("state_changes", []),
             question_state=result.diagnostic.get("question_state", {}),

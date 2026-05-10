@@ -49,6 +49,7 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
 
         llm_config = self.get_llm_runtime_config()
         llm_trace: dict[str, object] = {}
+        fallback_source = ""
 
         workspace_path = str(context.metadata.get("generated_project_dir", "")).strip()
         if not workspace_path:
@@ -153,7 +154,7 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
                 blockers.append(f"File generation failed: {exc}")
         else:
             # compat mode fallback template
-            llm_trace["source"] = "fallback"
+            fallback_source = "implementation_compat"
             fallback_files = self._build_fallback_template_files(user_input)
             for path, content in fallback_files:
                 written = executor.write_file(path, content)
@@ -181,6 +182,12 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
         updated_state = ImplementationStatusState.model_validate(updated_state).model_dump(mode="python")
 
         if blockers:
+            diagnostics = {
+                "llm_trace": llm_trace,
+                "execution_trace": self._trace_to_dict(executor.trace),
+            }
+            if fallback_source:
+                diagnostics["fallback_source"] = fallback_source
             return AgentResult(
                 agent_name=self.agent_name,
                 stage_name=self.stage_name,
@@ -192,12 +199,15 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
                 ],
                 blockers=blockers,
                 handoff_ready=False,
-                diagnostics={
-                    "llm_trace": llm_trace,
-                    "execution_trace": self._trace_to_dict(executor.trace),
-                },
+                diagnostics=diagnostics,
             )
 
+        diagnostics = {
+            "llm_trace": llm_trace,
+            "execution_trace": self._trace_to_dict(executor.trace),
+        }
+        if fallback_source:
+            diagnostics["fallback_source"] = fallback_source
         return AgentResult(
             agent_name=self.agent_name,
             stage_name=self.stage_name,
@@ -208,10 +218,7 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
                 "Generated project files in isolated workspace and prepared test command for validation."
             ],
             handoff_ready=True,
-            diagnostics={
-                "llm_trace": llm_trace,
-                "execution_trace": self._trace_to_dict(executor.trace),
-            },
+            diagnostics=diagnostics,
         )
 
     def _trace_to_dict(self, trace) -> dict[str, object]:

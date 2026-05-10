@@ -16,6 +16,7 @@ from main import (
     load_run_summary,
     main,
 )
+from schemas.llm_trace import LLMTraceModel
 
 
 class MainDiagnosticViewTests(unittest.TestCase):
@@ -169,6 +170,44 @@ class MainDiagnosticViewTests(unittest.TestCase):
         self.assertIn("failure type: timeout", report)
         self.assertIn("outcome: retry exhausted", report)
         self.assertIn("error: timeout", report)
+
+    def test_format_diagnostic_report_accepts_typed_llm_trace(self) -> None:
+        result = OrchestrationResult(
+            decision=TransitionDecision(
+                computed_stage=Stage.REQUIREMENTS,
+                final_stage=Stage.REQUIREMENTS,
+                should_stay=True,
+                reason="Stay on current stage.",
+            ),
+            diagnostic={
+                "decision_type": "STAY",
+                "state_changes": [],
+                "question_state": {"status": "idle"},
+                "transition": {"reason": "Stay on current stage.", "evidence": []},
+                "stages": {
+                    "computed": "REQUIREMENTS",
+                    "source": "REQUIREMENTS",
+                    "final": "REQUIREMENTS",
+                    "executed": "REQUIREMENTS",
+                },
+                "llm_trace": LLMTraceModel(
+                    status="success",
+                    failure_type="none",
+                    repair_attempts=0,
+                    validation_errors=[],
+                    raw_excerpt="{}",
+                    model="m",
+                    provider="p",
+                    protocol="openai",
+                    latency_ms=1,
+                    error=None,
+                ),
+            },
+            summary="ok",
+        )
+        report = format_diagnostic_report(result)
+        self.assertIn("status: success", report)
+        self.assertIn("outcome: success", report)
 
     def test_format_diagnostic_report_uses_status_failure_without_legacy_flags(self) -> None:
         for status, failure, expect_outcome in [
@@ -452,6 +491,47 @@ class MainDiagnosticViewTests(unittest.TestCase):
                     f"llm: status={status} failure={failure} latency_ms=10 outcome={outcome}",
                     report,
                 )
+
+    def test_format_replay_report_accepts_typed_llm_trace(self) -> None:
+        report = format_replay_report(
+            {
+                "run_id": "run-1",
+                "original_request": "build todo",
+                "generated_project_dir": "/tmp/generated/run-1",
+                "latest_decision_type": "STAY",
+                "latest_final_stage": "REQUIREMENTS",
+                "steps": [
+                    {
+                        "timestamp": "2026-05-10T00:00:00Z",
+                        "input": "build todo",
+                        "decision_type": "STAY",
+                        "computed_stage": "REQUIREMENTS",
+                        "final_stage": "REQUIREMENTS",
+                        "executed_stage": "REQUIREMENTS",
+                        "summary": "ok",
+                        "llm_trace": LLMTraceModel(
+                            status="fatal_error",
+                            failure_type="auth_error",
+                            repair_attempts=0,
+                            validation_errors=[],
+                            raw_excerpt="",
+                            model="",
+                            provider="",
+                            protocol="",
+                            latency_ms=10,
+                            error="401",
+                        ),
+                        "execution_trace": {},
+                        "state_changes": [],
+                        "question_state": {"status": "idle"},
+                    }
+                ],
+            }
+        )
+        self.assertIn(
+            "llm: status=fatal_error failure=auth_error latency_ms=10 outcome=blocked",
+            report,
+        )
 
     def test_format_replay_report_ignores_legacy_flags_when_status_exists(self) -> None:
         report = format_replay_report(

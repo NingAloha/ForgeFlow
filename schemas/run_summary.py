@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from .common import StateModel
+from .llm_trace import LLMTraceModel
 
 
 class RunStepModel(StateModel):
@@ -13,7 +14,7 @@ class RunStepModel(StateModel):
     final_stage: str
     executed_stage: str
     summary: str
-    llm_trace: dict[str, Any]
+    llm_trace: LLMTraceModel
     execution_trace: dict[str, Any]
     state_changes: list[str]
     question_state: dict[str, Any]

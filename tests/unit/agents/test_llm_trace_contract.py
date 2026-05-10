@@ -11,6 +11,7 @@ from agents.common.runtime_config import LLMRuntimeConfig
 from agents.orchestrator import Orchestrator, Stage
 from agents.requirements_engineer import RequirementsEngineerAgent
 from agents.test_validation_engineer import TestValidationEngineerAgent
+from schemas.llm_trace import LLMTraceModel
 from tests.unit.support.orchestrator_fixtures import make_empty_states, make_testing_states
 from tests.unit.support.orchestrator_stubs import InMemoryStateManager
 
@@ -32,6 +33,8 @@ class LLMTraceContractTests(unittest.TestCase):
             error="",
         )
         trace = result.to_trace()
+        self.assertIsInstance(trace, LLMTraceModel)
+        trace_dict = trace.model_dump(mode="python")
         expected_keys = {
             "status",
             "failure_type",
@@ -44,7 +47,7 @@ class LLMTraceContractTests(unittest.TestCase):
             "latency_ms",
             "error",
         }
-        self.assertTrue(expected_keys.issubset(set(trace.keys())))
+        self.assertTrue(expected_keys.issubset(set(trace_dict.keys())))
 
     def test_to_trace_raw_excerpt_is_truncated(self) -> None:
         raw = "x" * 2000
@@ -63,8 +66,8 @@ class LLMTraceContractTests(unittest.TestCase):
             error="invalid",
         )
         trace = result.to_trace()
-        self.assertEqual(len(trace["raw_excerpt"]), 800)
-        self.assertEqual(trace["raw_excerpt"], "x" * 800)
+        self.assertEqual(len(trace.raw_excerpt), 800)
+        self.assertEqual(trace.raw_excerpt, "x" * 800)
 
     def test_stage_agents_do_not_reintroduce_legacy_llm_trace_flags(self) -> None:
         repo_root = Path(__file__).resolve().parents[3]
@@ -134,7 +137,10 @@ class LLMTraceContractTests(unittest.TestCase):
         orchestrator.agents[Stage.REQUIREMENTS] = TestableRequirementsEngineerAgent()
 
         result = orchestrator.orchestrate("build a simple todo app")
-        self.assertEqual(result.diagnostic["llm_trace"], sentinel_trace)
+        self.assertEqual(
+            result.diagnostic["llm_trace"],
+            sentinel_trace.model_dump(mode="python"),
+        )
 
     def test_orchestrator_diagnostic_uses_gateway_trace_for_testing_agent(self) -> None:
         llm_result = LLMStructuredResult(
@@ -181,7 +187,10 @@ class LLMTraceContractTests(unittest.TestCase):
             orchestrator.agents[Stage.TESTING] = TestableValidationAgent()
 
             result = orchestrator.orchestrate("run tests")
-            self.assertEqual(result.diagnostic["llm_trace"], sentinel_trace)
+            self.assertEqual(
+                result.diagnostic["llm_trace"],
+                sentinel_trace.model_dump(mode="python"),
+            )
 
 
 if __name__ == "__main__":

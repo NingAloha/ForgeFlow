@@ -5,6 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from agents.base import AgentResult
 from agents.orchestrator import (
     OrchestrationResult,
@@ -13,6 +15,7 @@ from agents.orchestrator import (
     TransitionDecision,
 )
 from agents.orchestrator.run_manifest import RunManifestWriter
+from schemas.llm_trace import EMPTY_LLM_TRACE, LLMTraceModel
 from schemas.run_summary import RunStepModel, RunSummaryModel
 from tests.unit.support.orchestrator_fixtures import (
     make_design_ready_states,
@@ -195,7 +198,6 @@ class OrchestratorCoreTests(unittest.TestCase):
                         "final": "REQUIREMENTS",
                         "executed": "REQUIREMENTS",
                     },
-                    "llm_trace": {},
                     "execution_trace": {},
                     "state_changes": [],
                     "question_state": {"status": "idle"},
@@ -209,6 +211,10 @@ class OrchestratorCoreTests(unittest.TestCase):
             )
             orchestrator.run_manifest.write(summary_model)
             self.assertIsInstance(orchestrator.run_manifest._run_steps[0], RunStepModel)
+            self.assertEqual(
+                orchestrator.run_manifest._run_steps[0].llm_trace.model_dump(mode="python"),
+                EMPTY_LLM_TRACE.model_dump(mode="python"),
+            )
 
             payload = json.loads(
                 (orchestrator.runs_dir / "summary.json").read_text(encoding="utf-8")
@@ -246,6 +252,82 @@ class OrchestratorCoreTests(unittest.TestCase):
             )
             model = RunSummaryModel.model_validate(payload)
             self.assertEqual(model.schema_version, "1")
+
+    def test_write_run_manifest_normalizes_valid_dict_llm_trace(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            writer = RunManifestWriter(
+                runs_dir=Path(temp_dir),
+                run_id="run-1",
+                generated_project_dir=Path(temp_dir) / "generated",
+                state_dir=str(Path(temp_dir) / "state"),
+            )
+            result = OrchestrationResult(
+                decision=TransitionDecision(
+                    computed_stage=Stage.REQUIREMENTS,
+                    final_stage=Stage.REQUIREMENTS,
+                    should_stay=True,
+                    reason="Stay on current stage.",
+                ),
+                diagnostic={
+                    "decision_type": "STAY",
+                    "stages": {
+                        "computed": "REQUIREMENTS",
+                        "final": "REQUIREMENTS",
+                        "executed": "REQUIREMENTS",
+                    },
+                    "llm_trace": {
+                        "status": "success",
+                        "failure_type": "none",
+                        "repair_attempts": 0,
+                        "validation_errors": [],
+                        "raw_excerpt": '{"ok": true}',
+                        "model": "m",
+                        "provider": "p",
+                        "protocol": "openai",
+                        "latency_ms": 1,
+                        "error": None,
+                    },
+                    "execution_trace": {},
+                    "state_changes": [],
+                    "question_state": {"status": "idle"},
+                },
+                summary="ok",
+            )
+            summary = writer.append_step(result, step_input="", original_request="")
+            self.assertIsInstance(summary.steps[0].llm_trace, LLMTraceModel)
+            self.assertEqual(summary.steps[0].llm_trace.status, "success")
+
+    def test_write_run_manifest_rejects_explicit_empty_dict_llm_trace(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            writer = RunManifestWriter(
+                runs_dir=Path(temp_dir),
+                run_id="run-1",
+                generated_project_dir=Path(temp_dir) / "generated",
+                state_dir=str(Path(temp_dir) / "state"),
+            )
+            result = OrchestrationResult(
+                decision=TransitionDecision(
+                    computed_stage=Stage.REQUIREMENTS,
+                    final_stage=Stage.REQUIREMENTS,
+                    should_stay=True,
+                    reason="Stay on current stage.",
+                ),
+                diagnostic={
+                    "decision_type": "STAY",
+                    "stages": {
+                        "computed": "REQUIREMENTS",
+                        "final": "REQUIREMENTS",
+                        "executed": "REQUIREMENTS",
+                    },
+                    "llm_trace": {},
+                    "execution_trace": {},
+                    "state_changes": [],
+                    "question_state": {"status": "idle"},
+                },
+                summary="ok",
+            )
+            with self.assertRaises(ValidationError):
+                writer.append_step(result, step_input="", original_request="")
 
 
 if __name__ == "__main__":

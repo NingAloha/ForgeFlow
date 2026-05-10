@@ -262,7 +262,7 @@ class Orchestrator:
             decision_type = "BOOTSTRAP"
         elif not decision.should_stay:
             decision_type = "EXECUTE"
-        return {
+        diagnostic_payload = {
             "decision_type": decision_type,
             "stages": {
                 "computed": str(decision.computed_stage),
@@ -300,9 +300,6 @@ class Orchestrator:
                 else False,
                 "blockers": list(agent_result.blockers) if agent_result else [],
             },
-            "llm_trace": dict(agent_result.diagnostics.get("llm_trace", {}))
-            if agent_result
-            else {},
             "execution_trace": dict(agent_result.diagnostics.get("execution_trace", {}))
             if agent_result
             else {},
@@ -316,6 +313,11 @@ class Orchestrator:
             },
             "summary": summary,
         }
+        if agent_result:
+            raw_llm_trace = agent_result.diagnostics.get("llm_trace")
+            if raw_llm_trace:
+                diagnostic_payload["llm_trace"] = dict(raw_llm_trace)
+        return diagnostic_payload
 
     def determine_execution_stage(self, decision: TransitionDecision) -> Stage | None:
         if decision.wait_for_user_input:

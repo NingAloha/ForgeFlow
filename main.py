@@ -6,6 +6,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from pydantic import BaseModel
+
 from agents.orchestrator import OrchestrationResult, Orchestrator
 from agents.orchestrator.models import Stage
 from agents.state_manager import StateManager
@@ -79,6 +81,15 @@ def llm_outcome_from_status(status: str) -> str:
     }.get(status, "unknown")
 
 
+def normalize_mapping(value: Any) -> dict[str, Any]:
+    if isinstance(value, BaseModel):
+        dumped = value.model_dump(mode="python")
+        return dumped if isinstance(dumped, dict) else {}
+    if isinstance(value, dict):
+        return value
+    return {}
+
+
 def format_diagnostic_report(result: OrchestrationResult) -> str:
     decision = result.decision
     diagnostic = result.diagnostic
@@ -140,7 +151,7 @@ def format_diagnostic_report(result: OrchestrationResult) -> str:
         lines.append("Evidence:")
         lines.extend(f"- {item}" for item in evidence)
 
-    llm_trace = diagnostic.get("llm_trace", {})
+    llm_trace = normalize_mapping(diagnostic.get("llm_trace", {}))
     if llm_trace:
         lines.append("LLM Trace:")
         status = str(llm_trace.get("status", ""))
@@ -241,8 +252,8 @@ def format_replay_report(summary: dict[str, Any]) -> str:
             f"final={step.get('final_stage', '')} "
             f"executed={step.get('executed_stage', '')}"
         )
-        llm_trace = step.get("llm_trace", {})
-        if isinstance(llm_trace, dict) and llm_trace:
+        llm_trace = normalize_mapping(step.get("llm_trace", {}))
+        if llm_trace:
             status = str(llm_trace.get("status", ""))
             failure_type = str(llm_trace.get("failure_type", ""))
             lines.append(

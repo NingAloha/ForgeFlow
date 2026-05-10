@@ -198,7 +198,7 @@ class RequirementsEngineerHelperTests(unittest.TestCase):
             ["Create tasks", "Mark done"],
         )
         self.assertTrue(result.handoff_ready)
-        self.assertEqual(result.diagnostics["llm_trace"]["status"], "success")
+        self.assertEqual(result.diagnostics["llm_trace"].status, "success")
 
     def test_agent_falls_back_to_rules_when_llm_fails(self) -> None:
         class GatewayStub:
@@ -233,7 +233,7 @@ class RequirementsEngineerHelperTests(unittest.TestCase):
         result = agent.run(context)
         self.assertTrue(result.updated_state["project_goal"])
         self.assertTrue(result.updated_state["functional_requirements"])
-        self.assertEqual(result.diagnostics["llm_trace"]["status"], "retryable_error")
+        self.assertEqual(result.diagnostics["llm_trace"].status, "retryable_error")
 
     def test_agent_blocks_in_strict_llm_mode_when_llm_fails(self) -> None:
         class GatewayStub:

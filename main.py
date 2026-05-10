@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
+from pathlib import Path
 from typing import Any
 
 from agents.orchestrator import OrchestrationResult, Orchestrator
@@ -186,6 +188,76 @@ def format_diagnostic_report(result: OrchestrationResult) -> str:
     return "\n".join(lines)
 
 
+def load_run_summary(run_id: str, state_dir: str | None) -> dict[str, Any]:
+    if state_dir:
+        runs_root = Path(state_dir).parent / "runs"
+    else:
+        runs_root = Path.cwd() / ".forgeflow" / "runs"
+    summary_path = runs_root / run_id / "summary.json"
+    if not summary_path.exists():
+        raise FileNotFoundError(f"Run summary not found: {summary_path}")
+    payload = json.loads(summary_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("Run summary payload must be an object.")
+    return payload
+
+
+def format_replay_report(summary: dict[str, Any]) -> str:
+    lines = ["ForgeFlow Replay"]
+    lines.append(f"Run ID: {summary.get('run_id', '')}")
+    lines.append(f"Original Request: {summary.get('original_request', '')}")
+    lines.append(f"Generated Project Dir: {summary.get('generated_project_dir', '')}")
+    lines.append(f"Latest Decision: {summary.get('latest_decision_type', '')}")
+    lines.append(f"Latest Stage: {summary.get('latest_final_stage', '')}")
+
+    steps = summary.get("steps", [])
+    if not isinstance(steps, list):
+        steps = []
+    lines.append(f"Steps: {len(steps)}")
+
+    for idx, step in enumerate(steps, start=1):
+        if not isinstance(step, dict):
+            continue
+        lines.append(f"--- Step {idx} ---")
+        lines.append(f"time: {step.get('timestamp', '')}")
+        lines.append(
+            "decision: "
+            f"{step.get('decision_type', '')} | "
+            f"computed={step.get('computed_stage', '')} "
+            f"final={step.get('final_stage', '')} "
+            f"executed={step.get('executed_stage', '')}"
+        )
+        llm_trace = step.get("llm_trace", {})
+        if isinstance(llm_trace, dict) and llm_trace:
+            lines.append(
+                "llm: "
+                f"status={llm_trace.get('status', '') or llm_trace.get('source', '')} "
+                f"failure={llm_trace.get('failure_type', '')} "
+                f"latency_ms={llm_trace.get('latency_ms', 0)}"
+            )
+        execution_trace = step.get("execution_trace", {})
+        if isinstance(execution_trace, dict) and execution_trace:
+            lines.append(
+                "execution: "
+                f"workspace={execution_trace.get('workspace_path', '')} "
+                f"writes={len(execution_trace.get('file_writes', [])) if isinstance(execution_trace.get('file_writes', []), list) else 0} "
+                f"commands={len(execution_trace.get('command_results', [])) if isinstance(execution_trace.get('command_results', []), list) else 0}"
+            )
+        state_changes = step.get("state_changes", [])
+        if isinstance(state_changes, list):
+            lines.append(f"state_changes: {', '.join(state_changes) if state_changes else 'None'}")
+        question_state = step.get("question_state", {})
+        if isinstance(question_state, dict):
+            lines.append(
+                "question_state: "
+                f"{question_state.get('status', 'idle')} "
+                f"blocking={question_state.get('blocking', False)} "
+                f"stage={question_state.get('stage_name', '')}"
+            )
+
+    return "\n".join(lines)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Run the ForgeFlow orchestrator for a single input."
@@ -212,7 +284,22 @@ def main() -> int:
         default=20,
         help="Max orchestration steps in --auto-run mode.",
     )
+    parser.add_argument(
+        "--replay-run",
+        dest="replay_run",
+        default=None,
+        help="Replay diagnostics from runs/<run_id>/summary.json in read-only mode.",
+    )
     args = parser.parse_args()
+
+    if args.replay_run:
+        try:
+            summary = load_run_summary(args.replay_run, args.state_dir)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"Replay error: {exc}", file=sys.stderr)
+            return 1
+        print(format_replay_report(summary))
+        return 0
 
     orchestrator = Orchestrator(
         state_manager=StateManager(state_dir=args.state_dir)

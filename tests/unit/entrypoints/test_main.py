@@ -1,11 +1,21 @@
 from __future__ import annotations
 
+import tempfile
 import unittest
+import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from agents.base import AgentResult
 from agents.orchestrator import OrchestrationResult, Stage, TransitionDecision
-from main import changed_state_keys, classify_decision, format_diagnostic_report, main
+from main import (
+    changed_state_keys,
+    classify_decision,
+    format_diagnostic_report,
+    format_replay_report,
+    load_run_summary,
+    main,
+)
 
 
 class MainDiagnosticViewTests(unittest.TestCase):
@@ -275,6 +285,104 @@ class MainDiagnosticViewTests(unittest.TestCase):
         self.assertEqual(second_call.args[0], "")
         self.assertEqual(first_call.kwargs.get("original_request"), "build todo")
         self.assertEqual(second_call.kwargs.get("original_request"), "build todo")
+
+    def test_load_run_summary_reads_expected_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_dir = Path(temp_dir) / "state"
+            run_id = "20260101T000000Z-demo"
+            summary_dir = Path(temp_dir) / "runs" / run_id
+            summary_dir.mkdir(parents=True, exist_ok=True)
+            summary_path = summary_dir / "summary.json"
+            summary_path.write_text(
+                '{"run_id":"20260101T000000Z-demo","steps":[]}\n',
+                encoding="utf-8",
+            )
+            payload = load_run_summary(run_id, str(state_dir))
+            self.assertEqual(payload["run_id"], run_id)
+
+    def test_format_replay_report_renders_steps(self) -> None:
+        report = format_replay_report(
+            {
+                "run_id": "run-1",
+                "original_request": "build x",
+                "generated_project_dir": "/tmp/generated/run-1",
+                "latest_decision_type": "FORWARD",
+                "latest_final_stage": "DESIGN",
+                "steps": [
+                    {
+                        "timestamp": "2026-05-10T00:00:00Z",
+                        "decision_type": "FORWARD",
+                        "computed_stage": "SOLUTION",
+                        "final_stage": "DESIGN",
+                        "executed_stage": "DESIGN",
+                        "llm_trace": {"status": "success", "latency_ms": 10},
+                        "execution_trace": {"workspace_path": "/tmp/w", "file_writes": [], "command_results": []},
+                        "state_changes": ["system_design"],
+                        "question_state": {"status": "idle", "blocking": False, "stage_name": ""},
+                    }
+                ],
+            }
+        )
+        self.assertIn("ForgeFlow Replay", report)
+        self.assertIn("Steps: 1", report)
+        self.assertIn("decision: FORWARD", report)
+
+    @patch("main.print")
+    @patch("main.Orchestrator")
+    def test_main_replay_mode_does_not_create_orchestrator(
+        self,
+        mock_orchestrator_cls: MagicMock,
+        mock_print: MagicMock,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_id = "20260101T000000Z-demo"
+            runs_dir = Path(temp_dir) / "runs" / run_id
+            runs_dir.mkdir(parents=True, exist_ok=True)
+            (runs_dir / "summary.json").write_text(
+                '{"run_id":"20260101T000000Z-demo","steps":[]}\n',
+                encoding="utf-8",
+            )
+            state_dir = Path(temp_dir) / "state"
+            with patch(
+                "sys.argv",
+                [
+                    "main.py",
+                    "--state-dir",
+                    str(state_dir),
+                    "--replay-run",
+                    run_id,
+                ],
+            ):
+                exit_code = main()
+        self.assertEqual(exit_code, 0)
+        mock_orchestrator_cls.assert_not_called()
+        mock_print.assert_called()
+
+    @patch("main.print")
+    @patch("main.Orchestrator")
+    def test_main_replay_mode_missing_run_returns_error(
+        self,
+        mock_orchestrator_cls: MagicMock,
+        mock_print: MagicMock,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_dir = Path(temp_dir) / "state"
+            with patch(
+                "sys.argv",
+                [
+                    "main.py",
+                    "--state-dir",
+                    str(state_dir),
+                    "--replay-run",
+                    "missing-run",
+                ],
+            ):
+                exit_code = main()
+        self.assertEqual(exit_code, 1)
+        mock_orchestrator_cls.assert_not_called()
+        _, kwargs = mock_print.call_args
+        self.assertEqual(kwargs.get("file"), sys.stderr)
+        self.assertIn("Replay error:", mock_print.call_args.args[0])
 
 
 if __name__ == "__main__":

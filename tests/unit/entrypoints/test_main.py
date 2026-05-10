@@ -166,15 +166,15 @@ class MainDiagnosticViewTests(unittest.TestCase):
         self.assertIn("LLM Trace:", report)
         self.assertIn("status: retryable_error", report)
         self.assertIn("failure type: timeout", report)
-        self.assertIn("fallback used: yes", report)
+        self.assertIn("outcome: retry exhausted", report)
         self.assertIn("error: timeout", report)
 
     def test_format_diagnostic_report_uses_status_failure_without_legacy_flags(self) -> None:
-        for status, failure, expect_fallback in [
-            ("success", "none", "no"),
-            ("retryable_error", "schema_error", "yes"),
-            ("fatal_error", "auth_error", "yes"),
-            ("needs_user_input", "policy_block", "yes"),
+        for status, failure, expect_outcome in [
+            ("success", "none", "success"),
+            ("retryable_error", "schema_error", "retry exhausted"),
+            ("fatal_error", "auth_error", "blocked"),
+            ("needs_user_input", "policy_block", "needs user input"),
         ]:
             with self.subTest(status=status):
                 result = OrchestrationResult(
@@ -206,7 +206,7 @@ class MainDiagnosticViewTests(unittest.TestCase):
                 report = format_diagnostic_report(result)
                 self.assertIn(f"status: {status}", report)
                 self.assertIn(f"failure type: {failure}", report)
-                self.assertIn(f"fallback used: {expect_fallback}", report)
+                self.assertIn(f"outcome: {expect_outcome}", report)
 
     def test_format_diagnostic_report_ignores_legacy_flags_when_status_exists(self) -> None:
         result = OrchestrationResult(
@@ -239,7 +239,7 @@ class MainDiagnosticViewTests(unittest.TestCase):
         )
         report = format_diagnostic_report(result)
         self.assertIn("status: fatal_error", report)
-        self.assertIn("fallback used: yes", report)
+        self.assertIn("outcome: blocked", report)
 
     def test_format_diagnostic_report_surfaces_command_override_trace(self) -> None:
         result = OrchestrationResult(
@@ -439,7 +439,16 @@ class MainDiagnosticViewTests(unittest.TestCase):
                         ],
                     }
                 )
-                self.assertIn(f"llm: status={status} failure={failure} latency_ms=10", report)
+                outcome = {
+                    "success": "success",
+                    "retryable_error": "retry exhausted",
+                    "fatal_error": "blocked",
+                    "needs_user_input": "needs user input",
+                }[status]
+                self.assertIn(
+                    f"llm: status={status} failure={failure} latency_ms=10 outcome={outcome}",
+                    report,
+                )
 
     def test_format_replay_report_ignores_legacy_flags_when_status_exists(self) -> None:
         report = format_replay_report(
@@ -471,7 +480,10 @@ class MainDiagnosticViewTests(unittest.TestCase):
                 ],
             }
         )
-        self.assertIn("llm: status=fatal_error failure=auth_error latency_ms=10", report)
+        self.assertIn(
+            "llm: status=fatal_error failure=auth_error latency_ms=10 outcome=blocked",
+            report,
+        )
 
     @patch("main.print")
     @patch("main.Orchestrator")

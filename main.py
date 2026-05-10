@@ -70,6 +70,15 @@ def format_question_state(question_state: dict[str, Any]) -> str:
     )
 
 
+def llm_outcome_from_status(status: str) -> str:
+    return {
+        "success": "success",
+        "retryable_error": "retry exhausted",
+        "fatal_error": "blocked",
+        "needs_user_input": "needs user input",
+    }.get(status, "unknown")
+
+
 def format_diagnostic_report(result: OrchestrationResult) -> str:
     decision = result.decision
     diagnostic = result.diagnostic
@@ -142,14 +151,7 @@ def format_diagnostic_report(result: OrchestrationResult) -> str:
             lines.append(f"- failure type: {failure_type}")
         if status:
             lines.append(f"- used: {'yes' if status != 'none' else 'no'}")
-            lines.append(
-                "- fallback used: "
-                + (
-                    "yes"
-                    if status in {"retryable_error", "fatal_error", "needs_user_input"}
-                    else "no"
-                )
-            )
+            lines.append(f"- outcome: {llm_outcome_from_status(status)}")
         if llm_trace.get("provider"):
             lines.append(f"- provider: {llm_trace.get('provider')}")
         if llm_trace.get("model"):
@@ -247,7 +249,8 @@ def format_replay_report(summary: dict[str, Any]) -> str:
                 "llm: "
                 f"status={status} "
                 f"failure={failure_type} "
-                f"latency_ms={llm_trace.get('latency_ms', 0)}"
+                f"latency_ms={llm_trace.get('latency_ms', 0)} "
+                f"outcome={llm_outcome_from_status(status)}"
             )
         execution_trace = step.get("execution_trace", {})
         if isinstance(execution_trace, dict) and execution_trace:

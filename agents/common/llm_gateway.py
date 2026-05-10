@@ -10,7 +10,14 @@ from pydantic import BaseModel, ValidationError
 from .llm_adapter import LLMAdapter
 from .runtime_config import LLMRuntimeConfig
 
-RETRYABLE_FAILURES = {"timeout", "network_error", "rate_limit"}
+RETRYABLE_FAILURES = {
+    "timeout",
+    "network_error",
+    "rate_limit",
+    "invalid_json",
+    "schema_error",
+    "empty_output",
+}
 FINAL_ERROR_STATUSES = {"retryable_error", "fatal_error", "needs_user_input"}
 
 

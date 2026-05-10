@@ -72,10 +72,7 @@ def resolve_gateway_failure(
         )
 
     if llm_result.status in {"fatal_error", "needs_user_input"}:
-        if llm_config.execution_mode != "strict_llm" and fallback_factory is not None:
-            return fallback_factory()
-        if llm_config.execution_mode != "strict_llm":
-            return None
+        # fatal_error / needs_user_input must not fall back in compat mode.
         return AgentResult(
             agent_name=agent_name,
             stage_name=stage_name,

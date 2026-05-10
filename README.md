@@ -132,6 +132,7 @@ forgeflow/
 * 运行态 state 默认写入 `.forgeflow/state/`，避免污染仓库中的契约示例文件
 * design / implementation / testing 三层已不再是 placeholder，当前会输出最小可执行工件并给出可回流的验证归因
 * implementation 阶段当前是 implementation planning / status，不是自动代码生成器
+* testing 阶段允许 LLM 提供建议命令，但真实执行仅使用固定 allowlisted `python3 -m unittest discover -s tests -p test_*.py -v`
 * 实现仍处于早期阶段
 
 ## 给第一次阅读的人

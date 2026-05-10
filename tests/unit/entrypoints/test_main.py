@@ -151,9 +151,8 @@ class MainDiagnosticViewTests(unittest.TestCase):
                     "executed": "REQUIREMENTS",
                 },
                 "llm_trace": {
-                    "enabled": True,
-                    "used": True,
-                    "fallback_used": True,
+                    "status": "retryable_error",
+                    "failure_type": "timeout",
                     "provider": "deepseek",
                     "model": "deepseek-v4-flash",
                     "protocol": "openai",
@@ -165,8 +164,82 @@ class MainDiagnosticViewTests(unittest.TestCase):
         )
         report = format_diagnostic_report(result)
         self.assertIn("LLM Trace:", report)
+        self.assertIn("status: retryable_error", report)
+        self.assertIn("failure type: timeout", report)
         self.assertIn("fallback used: yes", report)
         self.assertIn("error: timeout", report)
+
+    def test_format_diagnostic_report_uses_status_failure_without_legacy_flags(self) -> None:
+        for status, failure, expect_fallback in [
+            ("success", "none", "no"),
+            ("retryable_error", "schema_error", "yes"),
+            ("fatal_error", "auth_error", "yes"),
+            ("needs_user_input", "policy_block", "yes"),
+        ]:
+            with self.subTest(status=status):
+                result = OrchestrationResult(
+                    decision=TransitionDecision(
+                        computed_stage=Stage.REQUIREMENTS,
+                        final_stage=Stage.REQUIREMENTS,
+                        should_stay=True,
+                        reason="Stay on current stage.",
+                    ),
+                    diagnostic={
+                        "decision_type": "STAY",
+                        "state_changes": ["spec"],
+                        "question_state": {"status": "idle"},
+                        "transition": {"reason": "Stay on current stage.", "evidence": []},
+                        "stages": {
+                            "computed": "REQUIREMENTS",
+                            "source": "REQUIREMENTS",
+                            "final": "REQUIREMENTS",
+                            "executed": "REQUIREMENTS",
+                        },
+                        "llm_trace": {
+                            "status": status,
+                            "failure_type": failure,
+                            "latency_ms": 10,
+                        },
+                    },
+                    summary="ok",
+                )
+                report = format_diagnostic_report(result)
+                self.assertIn(f"status: {status}", report)
+                self.assertIn(f"failure type: {failure}", report)
+                self.assertIn(f"fallback used: {expect_fallback}", report)
+
+    def test_format_diagnostic_report_ignores_legacy_flags_when_status_exists(self) -> None:
+        result = OrchestrationResult(
+            decision=TransitionDecision(
+                computed_stage=Stage.REQUIREMENTS,
+                final_stage=Stage.REQUIREMENTS,
+                should_stay=True,
+                reason="Stay on current stage.",
+            ),
+            diagnostic={
+                "decision_type": "STAY",
+                "state_changes": ["spec"],
+                "question_state": {"status": "idle"},
+                "transition": {"reason": "Stay on current stage.", "evidence": []},
+                "stages": {
+                    "computed": "REQUIREMENTS",
+                    "source": "REQUIREMENTS",
+                    "final": "REQUIREMENTS",
+                    "executed": "REQUIREMENTS",
+                },
+                "llm_trace": {
+                    "status": "fatal_error",
+                    "failure_type": "auth_error",
+                    "enabled": True,
+                    "used": False,
+                    "fallback_used": False,
+                },
+            },
+            summary="ok",
+        )
+        report = format_diagnostic_report(result)
+        self.assertIn("status: fatal_error", report)
+        self.assertIn("fallback used: yes", report)
 
     def test_format_diagnostic_report_surfaces_command_override_trace(self) -> None:
         result = OrchestrationResult(
@@ -331,6 +404,74 @@ class MainDiagnosticViewTests(unittest.TestCase):
         self.assertIn("ForgeFlow Replay", report)
         self.assertIn("Steps: 1", report)
         self.assertIn("decision: FORWARD", report)
+
+    def test_format_replay_report_uses_status_failure_without_legacy_flags(self) -> None:
+        for status, failure in [
+            ("success", "none"),
+            ("retryable_error", "schema_error"),
+            ("fatal_error", "auth_error"),
+            ("needs_user_input", "policy_block"),
+        ]:
+            with self.subTest(status=status):
+                report = format_replay_report(
+                    {
+                        "run_id": "run-1",
+                        "original_request": "build x",
+                        "generated_project_dir": "/tmp/generated/run-1",
+                        "latest_decision_type": "FORWARD",
+                        "latest_final_stage": "DESIGN",
+                        "steps": [
+                            {
+                                "timestamp": "2026-05-10T00:00:00Z",
+                                "decision_type": "FORWARD",
+                                "computed_stage": "SOLUTION",
+                                "final_stage": "DESIGN",
+                                "executed_stage": "DESIGN",
+                                "llm_trace": {
+                                    "status": status,
+                                    "failure_type": failure,
+                                    "latency_ms": 10,
+                                },
+                                "execution_trace": {},
+                                "state_changes": [],
+                                "question_state": {"status": "idle"},
+                            }
+                        ],
+                    }
+                )
+                self.assertIn(f"llm: status={status} failure={failure} latency_ms=10", report)
+
+    def test_format_replay_report_ignores_legacy_flags_when_status_exists(self) -> None:
+        report = format_replay_report(
+            {
+                "run_id": "run-1",
+                "original_request": "build x",
+                "generated_project_dir": "/tmp/generated/run-1",
+                "latest_decision_type": "FORWARD",
+                "latest_final_stage": "DESIGN",
+                "steps": [
+                    {
+                        "timestamp": "2026-05-10T00:00:00Z",
+                        "decision_type": "FORWARD",
+                        "computed_stage": "SOLUTION",
+                        "final_stage": "DESIGN",
+                        "executed_stage": "DESIGN",
+                        "llm_trace": {
+                            "status": "fatal_error",
+                            "failure_type": "auth_error",
+                            "enabled": True,
+                            "used": False,
+                            "fallback_used": False,
+                            "latency_ms": 10,
+                        },
+                        "execution_trace": {},
+                        "state_changes": [],
+                        "question_state": {"status": "idle"},
+                    }
+                ],
+            }
+        )
+        self.assertIn("llm: status=fatal_error failure=auth_error latency_ms=10", report)
 
     @patch("main.print")
     @patch("main.Orchestrator")

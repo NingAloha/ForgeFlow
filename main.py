@@ -134,11 +134,22 @@ def format_diagnostic_report(result: OrchestrationResult) -> str:
     llm_trace = diagnostic.get("llm_trace", {})
     if llm_trace:
         lines.append("LLM Trace:")
-        lines.append(f"- enabled: {'yes' if llm_trace.get('enabled') else 'no'}")
-        lines.append(f"- used: {'yes' if llm_trace.get('used') else 'no'}")
-        lines.append(
-            f"- fallback used: {'yes' if llm_trace.get('fallback_used') else 'no'}"
-        )
+        status = str(llm_trace.get("status", ""))
+        failure_type = str(llm_trace.get("failure_type", ""))
+        if status:
+            lines.append(f"- status: {status}")
+        if failure_type:
+            lines.append(f"- failure type: {failure_type}")
+        if status:
+            lines.append(f"- used: {'yes' if status != 'none' else 'no'}")
+            lines.append(
+                "- fallback used: "
+                + (
+                    "yes"
+                    if status in {"retryable_error", "fatal_error", "needs_user_input"}
+                    else "no"
+                )
+            )
         if llm_trace.get("provider"):
             lines.append(f"- provider: {llm_trace.get('provider')}")
         if llm_trace.get("model"):
@@ -230,10 +241,12 @@ def format_replay_report(summary: dict[str, Any]) -> str:
         )
         llm_trace = step.get("llm_trace", {})
         if isinstance(llm_trace, dict) and llm_trace:
+            status = str(llm_trace.get("status", ""))
+            failure_type = str(llm_trace.get("failure_type", ""))
             lines.append(
                 "llm: "
-                f"status={llm_trace.get('status', '') or llm_trace.get('source', '')} "
-                f"failure={llm_trace.get('failure_type', '')} "
+                f"status={status} "
+                f"failure={failure_type} "
                 f"latency_ms={llm_trace.get('latency_ms', 0)}"
             )
         execution_trace = step.get("execution_trace", {})

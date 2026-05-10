@@ -10,8 +10,8 @@ from ..common import (
     LLMRuntimeConfig,
     PromptContract,
     WorkspaceExecutor,
-    build_llm_failure_question_state,
     load_llm_runtime_config,
+    resolve_gateway_failure,
     should_use_llm,
 )
 from .planning import TestValidationPlanningMixin
@@ -82,7 +82,6 @@ class TestValidationEngineerAgent(TestValidationPlanningMixin, BaseAgent):
             )
 
         llm_stage_enabled = should_use_llm(llm_config, self.stage_name)
-        llm_success = False
         if llm_stage_enabled and user_input:
             llm_result = self.get_llm_gateway().generate(
                 contract=PromptContract(
@@ -101,43 +100,13 @@ class TestValidationEngineerAgent(TestValidationPlanningMixin, BaseAgent):
                 config=llm_config,
             )
             llm_trace = llm_result.to_trace()
-            if llm_result.status == "success" and isinstance(llm_result.parsed_output, dict):
-                llm_success = True
-                payload = llm_result.parsed_output
-                test_scope = str(payload.get("test_scope", test_scope))
-                candidate_command = payload.get("command")
-                if isinstance(candidate_command, list) and candidate_command:
-                    llm_suggested_command = [str(x) for x in candidate_command if str(x).strip()]
-            elif llm_result.status in {"fatal_error", "needs_user_input"}:
-                updated_state = {
-                    **current_state,
-                    "test_scope": test_scope,
-                    "result": "fail",
-                    "issues": issues,
-                    "command": command,
-                    "exit_code": 1,
-                    "failed_tests": ["llm_generation_failed"],
-                    "log_excerpt": llm_result.error or "LLM output unavailable.",
-                }
-                return AgentResult(
-                    agent_name=self.agent_name,
-                    stage_name=self.stage_name,
-                    state_key=self.state_key,
-                    updated_state=updated_state,
-                    summary="Testing blocked: LLM output is unavailable.",
-                    notes=["LLM output invalid for testing command synthesis."],
-                    blockers=["llm_generation_failed"],
-                    handoff_ready=False,
-                    requires_user_input=True,
-                    question_state_update=build_llm_failure_question_state(
-                        self.stage_name,
-                        self.state_key,
-                        llm_result.error,
-                    ),
-                    diagnostics={"llm_trace": llm_result.to_trace(), "execution_trace": {}},
-                )
-            elif llm_result.status == "retryable_error" and llm_config.execution_mode == "strict_llm":
-                updated_state = {
+            failure_result = resolve_gateway_failure(
+                llm_result=llm_result,
+                llm_config=llm_config,
+                stage_name=self.stage_name,
+                state_key=self.state_key,
+                agent_name=self.agent_name,
+                updated_state={
                     **current_state,
                     "test_scope": test_scope,
                     "result": "fail",
@@ -146,58 +115,20 @@ class TestValidationEngineerAgent(TestValidationPlanningMixin, BaseAgent):
                     "exit_code": 1,
                     "failed_tests": ["llm_generation_failed"],
                     "log_excerpt": llm_result.error or "strict_llm blocked.",
-                }
-                return AgentResult(
-                    agent_name=self.agent_name,
-                    stage_name=self.stage_name,
-                    state_key=self.state_key,
-                    updated_state=updated_state,
-                    summary="Testing blocked: strict_llm mode requires successful LLM output.",
-                    notes=["LLM output invalid for testing command synthesis."],
-                    blockers=["llm_generation_failed"],
-                    handoff_ready=False,
-                    requires_user_input=True,
-                    question_state_update=build_llm_failure_question_state(
-                        self.stage_name,
-                        self.state_key,
-                        llm_result.error,
-                    ),
-                    diagnostics={"llm_trace": llm_result.to_trace(), "execution_trace": {}},
-                )
-
-        if (
-            llm_config.execution_mode == "strict_llm"
-            and llm_stage_enabled
-            and user_input
-            and not llm_success
-        ):
-            updated_state = {
-                **current_state,
-                "test_scope": test_scope,
-                "result": "fail",
-                "issues": issues,
-                "command": command,
-                "exit_code": 1,
-                "failed_tests": ["llm_generation_failed"],
-                "log_excerpt": str(llm_trace.get("error", "strict_llm blocked.")),
-            }
-            return AgentResult(
-                agent_name=self.agent_name,
-                stage_name=self.stage_name,
-                state_key=self.state_key,
-                updated_state=updated_state,
-                summary="Testing blocked: strict_llm mode requires successful LLM output.",
-                notes=["LLM output invalid for testing command synthesis."],
-                blockers=["llm_generation_failed"],
-                handoff_ready=False,
-                requires_user_input=True,
-                question_state_update=build_llm_failure_question_state(
-                    self.stage_name,
-                    self.state_key,
-                    str(llm_trace.get("error", "")),
-                ),
-                diagnostics={"llm_trace": llm_trace, "execution_trace": {}},
+                },
+                fallback_factory=None,
+                strict_summary="Testing blocked: strict_llm mode requires successful LLM output.",
+                fatal_summary="Testing blocked: LLM output is unavailable.",
             )
+            if failure_result is not None:
+                failure_result.diagnostics["execution_trace"] = {}
+                return failure_result
+            if llm_result.status == "success" and isinstance(llm_result.parsed_output, dict):
+                payload = llm_result.parsed_output
+                test_scope = str(payload.get("test_scope", test_scope))
+                candidate_command = payload.get("command")
+                if isinstance(candidate_command, list) and candidate_command:
+                    llm_suggested_command = [str(x) for x in candidate_command if str(x).strip()]
 
         executor = WorkspaceExecutor(workspace_root=Path(workspace_path))
         cmd_result = executor.run_command(command)

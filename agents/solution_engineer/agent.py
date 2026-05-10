@@ -5,7 +5,7 @@ import json
 from ..base import AgentContext, AgentResult, BaseAgent
 from ..common import LLMGateway, PromptContract
 from ..common.llm_policy import (
-    build_llm_failure_question_state,
+    resolve_gateway_failure,
     should_use_llm,
 )
 from ..common.runtime_config import LLMRuntimeConfig, load_llm_runtime_config
@@ -53,9 +53,10 @@ class SolutionEngineerAgent(SolutionPlanningMixin, SolutionQuestionMixin, BaseAg
 
         selected_stack = self.pick_stack(spec, answers, current_state)
         module_mapping = self.build_module_mapping(spec)
+        risks = self.build_risks(spec, selected_stack)
+        alternatives = self.build_alternatives(selected_stack)
         llm_config = self.get_llm_runtime_config()
         llm_trace: dict[str, object] = {}
-        llm_success = False
         llm_stage_enabled = should_use_llm(llm_config, self.stage_name)
         if llm_stage_enabled and user_input:
             contract = PromptContract(
@@ -83,8 +84,20 @@ class SolutionEngineerAgent(SolutionPlanningMixin, SolutionQuestionMixin, BaseAg
                 config=llm_config,
             )
             llm_trace = llm_result.to_trace()
+            failure_result = resolve_gateway_failure(
+                llm_result=llm_result,
+                llm_config=llm_config,
+                stage_name=self.stage_name,
+                state_key=self.state_key,
+                agent_name=self.agent_name,
+                updated_state=current_state,
+                fallback_factory=None,
+                strict_summary="Solution blocked: strict_llm mode requires successful LLM output.",
+                fatal_summary="Solution blocked: LLM output is unavailable.",
+            )
+            if failure_result is not None:
+                return failure_result
             if llm_result.status == "success" and isinstance(llm_result.parsed_output, dict):
-                llm_success = True
                 payload = llm_result.parsed_output
                 if isinstance(payload, dict):
                     candidate_stack = payload.get("selected_stack")
@@ -135,71 +148,6 @@ class SolutionEngineerAgent(SolutionPlanningMixin, SolutionQuestionMixin, BaseAg
                         if isinstance(candidate_alternatives, list)
                         else self.build_alternatives(selected_stack)
                     )
-            elif llm_result.status in {"fatal_error", "needs_user_input"}:
-                return AgentResult(
-                    agent_name=self.agent_name,
-                    stage_name=self.stage_name,
-                    state_key=self.state_key,
-                    updated_state=current_state,
-                    summary="Solution blocked: LLM output is unavailable.",
-                    notes=["LLM output was invalid or unavailable; waiting for user action."],
-                    blockers=["llm_generation_failed"],
-                    handoff_ready=False,
-                    requires_user_input=True,
-                    question_state_update=build_llm_failure_question_state(
-                        self.stage_name,
-                        self.state_key,
-                        llm_result.error,
-                    ),
-                    diagnostics={"llm_trace": llm_result.to_trace()},
-                )
-            elif llm_result.status == "retryable_error" and llm_config.execution_mode == "strict_llm":
-                return AgentResult(
-                    agent_name=self.agent_name,
-                    stage_name=self.stage_name,
-                    state_key=self.state_key,
-                    updated_state=current_state,
-                    summary="Solution blocked: strict_llm mode requires successful LLM output.",
-                    notes=["LLM retry budget exhausted; waiting for user action."],
-                    blockers=["llm_generation_failed"],
-                    handoff_ready=False,
-                    requires_user_input=True,
-                    question_state_update=build_llm_failure_question_state(
-                        self.stage_name,
-                        self.state_key,
-                        llm_result.error,
-                    ),
-                    diagnostics={"llm_trace": llm_result.to_trace()},
-                )
-            else:
-                risks = self.build_risks(spec, selected_stack)
-                alternatives = self.build_alternatives(selected_stack)
-        else:
-            risks = self.build_risks(spec, selected_stack)
-            alternatives = self.build_alternatives(selected_stack)
-        if (
-            llm_config.execution_mode == "strict_llm"
-            and llm_stage_enabled
-            and user_input
-            and not llm_success
-        ):
-            return AgentResult(
-                agent_name=self.agent_name,
-                stage_name=self.stage_name,
-                state_key=self.state_key,
-                updated_state=current_state,
-                summary="Solution blocked: strict_llm mode requires successful LLM output.",
-                notes=["LLM output was invalid or unavailable; waiting for user action."],
-                blockers=["llm_generation_failed"],
-                handoff_ready=False,
-                requires_user_input=True,
-                question_state_update=build_llm_failure_question_state(
-                    self.stage_name,
-                    self.state_key,
-                    str(llm_trace.get("error", "")),
-                ),
-                diagnostics={"llm_trace": llm_trace},
-            )
         updated_state = {
             **current_state,
             "selected_stack": selected_stack,

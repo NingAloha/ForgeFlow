@@ -5,7 +5,7 @@ import json
 from ..base import AgentContext, AgentResult, BaseAgent
 from ..common import LLMGateway, PromptContract
 from ..common.llm_policy import (
-    build_llm_failure_question_state,
+    resolve_gateway_failure,
     should_use_llm,
 )
 from ..common.runtime_config import LLMRuntimeConfig, load_llm_runtime_config
@@ -51,7 +51,6 @@ class SystemDesignerAgent(SystemDesignPlanningMixin, BaseAgent):
         mvp_plan = self.build_mvp_plan(spec, module_mapping)
         llm_config = self.get_llm_runtime_config()
         llm_trace: dict[str, object] = {}
-        llm_success = False
         llm_stage_enabled = should_use_llm(llm_config, self.stage_name)
         if llm_stage_enabled and user_input:
             contract = PromptContract(
@@ -74,8 +73,20 @@ class SystemDesignerAgent(SystemDesignPlanningMixin, BaseAgent):
                 config=llm_config,
             )
             llm_trace = llm_result.to_trace()
+            failure_result = resolve_gateway_failure(
+                llm_result=llm_result,
+                llm_config=llm_config,
+                stage_name=self.stage_name,
+                state_key=self.state_key,
+                agent_name=self.agent_name,
+                updated_state=current_state,
+                fallback_factory=None,
+                strict_summary="Design blocked: strict_llm mode requires successful LLM output.",
+                fatal_summary="Design blocked: LLM output is unavailable.",
+            )
+            if failure_result is not None:
+                return failure_result
             if llm_result.status == "success" and isinstance(llm_result.parsed_output, dict):
-                llm_success = True
                 payload = llm_result.parsed_output
                 candidate_state = {
                     "project_structure": payload.get("project_structure", project_structure),
@@ -88,66 +99,6 @@ class SystemDesignerAgent(SystemDesignPlanningMixin, BaseAgent):
                 contracts = normalized["contracts"]
                 data_flow = normalized["data_flow"]
                 mvp_plan = normalized["mvp_plan"]
-            elif llm_result.status in {"fatal_error", "needs_user_input"}:
-                return AgentResult(
-                    agent_name=self.agent_name,
-                    stage_name=self.stage_name,
-                    state_key=self.state_key,
-                    updated_state=current_state,
-                    summary="Design blocked: LLM output is unavailable.",
-                    notes=["LLM output was invalid or unavailable; waiting for user action."],
-                    blockers=["llm_generation_failed"],
-                    handoff_ready=False,
-                    requires_user_input=True,
-                    question_state_update=build_llm_failure_question_state(
-                        self.stage_name,
-                        self.state_key,
-                        llm_result.error,
-                    ),
-                    diagnostics={"llm_trace": llm_result.to_trace()},
-                )
-            elif llm_result.status == "retryable_error" and llm_config.execution_mode == "strict_llm":
-                return AgentResult(
-                    agent_name=self.agent_name,
-                    stage_name=self.stage_name,
-                    state_key=self.state_key,
-                    updated_state=current_state,
-                    summary="Design blocked: strict_llm mode requires successful LLM output.",
-                    notes=["LLM retry budget exhausted; waiting for user action."],
-                    blockers=["llm_generation_failed"],
-                    handoff_ready=False,
-                    requires_user_input=True,
-                    question_state_update=build_llm_failure_question_state(
-                        self.stage_name,
-                        self.state_key,
-                        llm_result.error,
-                    ),
-                    diagnostics={"llm_trace": llm_result.to_trace()},
-                )
-
-        if (
-            llm_config.execution_mode == "strict_llm"
-            and llm_stage_enabled
-            and user_input
-            and not llm_success
-        ):
-            return AgentResult(
-                agent_name=self.agent_name,
-                stage_name=self.stage_name,
-                state_key=self.state_key,
-                updated_state=current_state,
-                summary="Design blocked: strict_llm mode requires successful LLM output.",
-                notes=["LLM output was invalid or unavailable; waiting for user action."],
-                blockers=["llm_generation_failed"],
-                handoff_ready=False,
-                requires_user_input=True,
-                question_state_update=build_llm_failure_question_state(
-                    self.stage_name,
-                    self.state_key,
-                    str(llm_trace.get("error", "")),
-                ),
-                diagnostics={"llm_trace": llm_trace},
-            )
         updated_state = {
             **current_state,
             "project_structure": project_structure,

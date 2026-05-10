@@ -3,7 +3,7 @@ from __future__ import annotations
 from ..base import AgentContext, AgentResult, BaseAgent
 from ..common import LLMGateway, PromptContract
 from ..common.llm_policy import (
-    build_llm_failure_question_state,
+    resolve_gateway_failure,
     should_use_llm,
 )
 from ..common.runtime_config import LLMRuntimeConfig, load_llm_runtime_config
@@ -34,7 +34,6 @@ class RequirementsEngineerAgent(
         llm_project_goal = ""
         llm_functional_requirements: list[str] = []
         llm_acceptance_criteria: list[str] = []
-        llm_success = False
 
         llm_stage_enabled = should_use_llm(llm_config, self.stage_name)
         if llm_stage_enabled and user_input:
@@ -57,8 +56,20 @@ class RequirementsEngineerAgent(
                 config=llm_config,
             )
             llm_trace = llm_result.to_trace()
+            failure_result = resolve_gateway_failure(
+                llm_result=llm_result,
+                llm_config=llm_config,
+                stage_name=self.stage_name,
+                state_key=self.state_key,
+                agent_name=self.agent_name,
+                updated_state={**current_state, "open_questions": ["llm_generation_failed"]},
+                fallback_factory=None,
+                strict_summary="Requirements blocked: strict_llm mode requires successful LLM output.",
+                fatal_summary="Requirements blocked: LLM output is unavailable.",
+            )
+            if failure_result is not None:
+                return failure_result
             if llm_result.status == "success" and isinstance(llm_result.parsed_output, dict):
-                llm_success = True
                 payload = llm_result.parsed_output
                 llm_project_goal = self.normalize_text(
                     str(payload.get("project_goal", ""))
@@ -77,78 +88,6 @@ class RequirementsEngineerAgent(
                         for item in payload.get("acceptance_criteria", [])
                     ]
                 )
-            elif llm_result.status in {"fatal_error", "needs_user_input"}:
-                updated_state = {
-                    **current_state,
-                    "open_questions": ["llm_generation_failed"],
-                }
-                return AgentResult(
-                    agent_name=self.agent_name,
-                    stage_name=self.stage_name,
-                    state_key=self.state_key,
-                    updated_state=updated_state,
-                    summary="Requirements blocked: LLM output is unavailable.",
-                    notes=["LLM output was invalid or unavailable; waiting for user action."],
-                    blockers=["llm_generation_failed"],
-                    handoff_ready=False,
-                    requires_user_input=True,
-                    question_state_update=build_llm_failure_question_state(
-                        self.stage_name,
-                        self.state_key,
-                        llm_result.error,
-                    ),
-                    diagnostics={"llm_trace": llm_result.to_trace()},
-                )
-            elif llm_result.status == "retryable_error" and llm_config.execution_mode == "strict_llm":
-                updated_state = {
-                    **current_state,
-                    "open_questions": ["llm_generation_failed"],
-                }
-                return AgentResult(
-                    agent_name=self.agent_name,
-                    stage_name=self.stage_name,
-                    state_key=self.state_key,
-                    updated_state=updated_state,
-                    summary="Requirements blocked: strict_llm mode requires successful LLM output.",
-                    notes=["LLM retry budget exhausted; waiting for user action."],
-                    blockers=["llm_generation_failed"],
-                    handoff_ready=False,
-                    requires_user_input=True,
-                    question_state_update=build_llm_failure_question_state(
-                        self.stage_name,
-                        self.state_key,
-                        llm_result.error,
-                    ),
-                    diagnostics={"llm_trace": llm_result.to_trace()},
-                )
-
-        if (
-            llm_config.execution_mode == "strict_llm"
-            and llm_stage_enabled
-            and user_input
-            and not llm_success
-        ):
-            updated_state = {
-                **current_state,
-                "open_questions": ["llm_generation_failed"],
-            }
-            return AgentResult(
-                agent_name=self.agent_name,
-                stage_name=self.stage_name,
-                state_key=self.state_key,
-                updated_state=updated_state,
-                summary="Requirements blocked: strict_llm mode requires successful LLM output.",
-                notes=["LLM output was invalid or unavailable; waiting for user action."],
-                blockers=["llm_generation_failed"],
-                handoff_ready=False,
-                requires_user_input=True,
-                question_state_update=build_llm_failure_question_state(
-                    self.stage_name,
-                    self.state_key,
-                    str(llm_trace.get("error", "")),
-                ),
-                diagnostics={"llm_trace": llm_trace},
-            )
 
         project_goal = self.normalize_text(str(current_state.get("project_goal", "")))
         if not project_goal:

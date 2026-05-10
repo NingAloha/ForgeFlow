@@ -3,7 +3,7 @@ from .llm_adapter import LLMAdapter, LLMCallResult
 from .llm_gateway import LLMGateway, LLMStructuredResult, PromptContract
 from .llm_policy import (
     build_llm_failure_question_state,
-    should_block_on_llm_failure,
+    resolve_gateway_failure,
     should_use_llm,
 )
 from .runtime_config import LLMRuntimeConfig, load_llm_runtime_config
@@ -18,7 +18,7 @@ __all__ = [
     "LLMStructuredResult",
     "PromptContract",
     "should_use_llm",
-    "should_block_on_llm_failure",
+    "resolve_gateway_failure",
     "build_llm_failure_question_state",
     "LLMRuntimeConfig",
     "load_llm_runtime_config",

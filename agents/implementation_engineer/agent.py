@@ -9,8 +9,8 @@ from ..common import (
     LLMRuntimeConfig,
     PromptContract,
     WorkspaceExecutor,
-    build_llm_failure_question_state,
     load_llm_runtime_config,
+    resolve_gateway_failure,
     should_use_llm,
 )
 from schemas.implementation import ImplementationStatusState
@@ -73,7 +73,6 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
         executor = WorkspaceExecutor(workspace_root=workspace_path or ".")
         llm_stage_enabled = should_use_llm(llm_config, self.stage_name)
         llm_files: list[dict[str, str]] = []
-        llm_success = False
 
         if llm_stage_enabled and user_input:
             contract = PromptContract(
@@ -96,8 +95,34 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
                 config=llm_config,
             )
             llm_trace = llm_result.to_trace()
+            failure_result = resolve_gateway_failure(
+                llm_result=llm_result,
+                llm_config=llm_config,
+                stage_name=self.stage_name,
+                state_key=self.state_key,
+                agent_name=self.agent_name,
+                updated_state={
+                    **current_state,
+                    "module_name": module_name,
+                    "implementation_status": "blocked",
+                    "files_touched": [],
+                    "tests_added_or_updated": [],
+                    "contract_compliance": contract_compliance,
+                    "known_limitations": ["strict_llm mode requires successful LLM generation."],
+                    "blockers": ["llm_generation_failed"],
+                    "workspace_path": workspace_path,
+                    "commands_executed": [],
+                    "artifacts_generated": [],
+                    "suggested_test_command": suggested_test_command,
+                },
+                fallback_factory=None,
+                strict_summary="Implementation blocked: strict_llm mode requires successful LLM output.",
+                fatal_summary="Implementation blocked: LLM output is unavailable.",
+            )
+            if failure_result is not None:
+                failure_result.diagnostics["execution_trace"] = {}
+                return failure_result
             if llm_result.status == "success" and isinstance(llm_result.parsed_output, dict):
-                llm_success = True
                 payload = llm_result.parsed_output
                 raw_files = payload.get("files", [])
                 raw_tests = payload.get("tests", [])
@@ -114,108 +139,6 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
                     suggested = payload.get("suggested_test_command")
                     if isinstance(suggested, list) and suggested:
                         suggested_test_command = [str(x) for x in suggested if str(x).strip()]
-            elif llm_result.status in {"fatal_error", "needs_user_input"}:
-                updated_state = {
-                    **current_state,
-                    "module_name": module_name,
-                    "implementation_status": "blocked",
-                    "files_touched": [],
-                    "tests_added_or_updated": [],
-                    "contract_compliance": contract_compliance,
-                    "known_limitations": ["LLM output unavailable."],
-                    "blockers": ["llm_generation_failed"],
-                    "workspace_path": workspace_path,
-                    "commands_executed": [],
-                    "artifacts_generated": [],
-                    "suggested_test_command": suggested_test_command,
-                }
-                return AgentResult(
-                    agent_name=self.agent_name,
-                    stage_name=self.stage_name,
-                    state_key=self.state_key,
-                    updated_state=updated_state,
-                    summary="Implementation blocked: LLM output is unavailable.",
-                    notes=["LLM output was invalid or unavailable; waiting for user action."],
-                    blockers=["llm_generation_failed"],
-                    handoff_ready=False,
-                    requires_user_input=True,
-                    question_state_update=build_llm_failure_question_state(
-                        self.stage_name,
-                        self.state_key,
-                        llm_result.error,
-                    ),
-                    diagnostics={"llm_trace": llm_result.to_trace(), "execution_trace": {}},
-                )
-            elif llm_result.status == "retryable_error" and llm_config.execution_mode == "strict_llm":
-                updated_state = {
-                    **current_state,
-                    "module_name": module_name,
-                    "implementation_status": "blocked",
-                    "files_touched": [],
-                    "tests_added_or_updated": [],
-                    "contract_compliance": contract_compliance,
-                    "known_limitations": ["strict_llm mode requires successful LLM generation."],
-                    "blockers": ["llm_generation_failed"],
-                    "workspace_path": workspace_path,
-                    "commands_executed": [],
-                    "artifacts_generated": [],
-                    "suggested_test_command": suggested_test_command,
-                }
-                return AgentResult(
-                    agent_name=self.agent_name,
-                    stage_name=self.stage_name,
-                    state_key=self.state_key,
-                    updated_state=updated_state,
-                    summary="Implementation blocked: strict_llm mode requires successful LLM output.",
-                    notes=["LLM retry budget exhausted; waiting for user action."],
-                    blockers=["llm_generation_failed"],
-                    handoff_ready=False,
-                    requires_user_input=True,
-                    question_state_update=build_llm_failure_question_state(
-                        self.stage_name,
-                        self.state_key,
-                        llm_result.error,
-                    ),
-                    diagnostics={"llm_trace": llm_result.to_trace(), "execution_trace": {}},
-                )
-
-        if (
-            llm_config.execution_mode == "strict_llm"
-            and llm_stage_enabled
-            and user_input
-            and not llm_success
-        ):
-            updated_state = {
-                **current_state,
-                "module_name": module_name,
-                "implementation_status": "blocked",
-                "files_touched": [],
-                "tests_added_or_updated": [],
-                "contract_compliance": contract_compliance,
-                "known_limitations": ["strict_llm mode requires successful LLM generation."],
-                "blockers": ["llm_generation_failed"],
-                "workspace_path": workspace_path,
-                "commands_executed": [],
-                "artifacts_generated": [],
-                "suggested_test_command": suggested_test_command,
-            }
-            return AgentResult(
-                agent_name=self.agent_name,
-                stage_name=self.stage_name,
-                state_key=self.state_key,
-                updated_state=updated_state,
-                summary="Implementation blocked: strict_llm mode requires successful LLM output.",
-                notes=["LLM output was invalid or unavailable; waiting for user action."],
-                blockers=["llm_generation_failed"],
-                handoff_ready=False,
-                requires_user_input=True,
-                question_state_update=build_llm_failure_question_state(
-                    self.stage_name,
-                    self.state_key,
-                    str(llm_trace.get("error", "")),
-                ),
-                diagnostics={"llm_trace": llm_trace, "execution_trace": {}},
-            )
 
         if llm_files:
             try:

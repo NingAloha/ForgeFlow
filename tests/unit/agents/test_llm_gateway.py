@@ -54,7 +54,7 @@ class LLMGatewayTests(unittest.TestCase):
         result = gateway.generate(
             PromptContract(stage_name="REQUIREMENTS", system_prompt="x", required_fields=["project_goal"]),
             "build",
-            LLMRuntimeConfig(enabled=True),
+            LLMRuntimeConfig(enabled=True, retry_policy_by_stage={"REQUIREMENTS": 0}),
         )
         self.assertEqual(result.status, "success")
 
@@ -81,12 +81,34 @@ class LLMGatewayTests(unittest.TestCase):
         result = gateway.generate(
             PromptContract(stage_name="REQUIREMENTS", system_prompt="x", required_fields=["project_goal"]),
             "build",
-            LLMRuntimeConfig(enabled=True),
+            LLMRuntimeConfig(enabled=True, retry_policy_by_stage={"REQUIREMENTS": 0}),
         )
-        self.assertEqual(result.status, "fatal_error")
+        self.assertEqual(result.status, "retryable_error")
         self.assertEqual(result.failure_type, "schema_error")
 
-    def test_unknown_field_rejection(self) -> None:
+    def test_unknown_field_rejection_with_allowed_fields(self) -> None:
+        gateway = LLMGateway(
+            adapter=_FakeAdapter([LLMCallResult(ok=True, content={}, raw_output='{"project_goal":"x","extra":"z"}')])
+        )
+        result = gateway.generate(
+            PromptContract(
+                stage_name="REQUIREMENTS",
+                system_prompt="x",
+                required_fields=["project_goal"],
+                output_model=None,
+                allowed_fields=["project_goal"],
+            ),
+            "build",
+            LLMRuntimeConfig(
+                enabled=True,
+                strict_unknown_fields=True,
+                retry_policy_by_stage={"REQUIREMENTS": 0},
+            ),
+        )
+        self.assertEqual(result.status, "retryable_error")
+        self.assertEqual(result.failure_type, "schema_error")
+
+    def test_output_model_none_allows_unknown_fields_when_no_allowed_fields(self) -> None:
         gateway = LLMGateway(
             adapter=_FakeAdapter([LLMCallResult(ok=True, content={}, raw_output='{"project_goal":"x","extra":"z"}')])
         )
@@ -95,13 +117,28 @@ class LLMGatewayTests(unittest.TestCase):
             "build",
             LLMRuntimeConfig(enabled=True, strict_unknown_fields=True),
         )
-        self.assertEqual(result.status, "fatal_error")
-        self.assertEqual(result.failure_type, "schema_error")
+        self.assertEqual(result.status, "success")
 
     def test_retry_only_on_retryable_error(self) -> None:
         adapter = _FakeAdapter(
             [
                 LLMCallResult(ok=False, content={}, error="timeout"),
+                LLMCallResult(ok=True, content={}, raw_output='{"project_goal":"x"}'),
+            ]
+        )
+        gateway = LLMGateway(adapter=adapter)
+        result = gateway.generate(
+            PromptContract(stage_name="REQUIREMENTS", system_prompt="x", required_fields=["project_goal"]),
+            "build",
+            LLMRuntimeConfig(enabled=True, retry_policy_by_stage={"REQUIREMENTS": 1}),
+        )
+        self.assertEqual(result.status, "success")
+        self.assertEqual(adapter.calls, 2)
+
+    def test_schema_error_then_success_retries_and_recovers(self) -> None:
+        adapter = _FakeAdapter(
+            [
+                LLMCallResult(ok=True, content={}, raw_output='{"unexpected":"x"}'),
                 LLMCallResult(ok=True, content={}, raw_output='{"project_goal":"x"}'),
             ]
         )

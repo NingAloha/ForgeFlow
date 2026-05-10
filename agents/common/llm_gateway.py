@@ -20,6 +20,7 @@ class PromptContract:
     system_prompt: str
     required_fields: list[str] = field(default_factory=list)
     reject_unknown_fields: bool = True
+    allowed_fields: list[str] | None = None
     output_model: type[BaseModel] | None = None
 
 
@@ -67,11 +68,16 @@ class LLMGateway:
         config: LLMRuntimeConfig,
     ) -> LLMStructuredResult:
         max_attempts = 1 + max(0, self._retry_count(config, contract.stage_name))
-        last_result = self._fatal_result(
-            config=config,
+        last_result = self._retryable_result(
             failure_type="unknown",
+            raw_output="",
             error="LLM call did not run.",
+            repair_attempts=0,
         )
+        last_result.model = config.model
+        last_result.provider = config.provider
+        last_result.protocol = config.protocol
+
         for _ in range(max_attempts):
             transport = self.adapter.generate_text(
                 system_prompt=contract.system_prompt,
@@ -80,7 +86,13 @@ class LLMGateway:
             )
             if not transport.ok:
                 failure_type = self._classify_transport_error(transport.error)
-                status = "retryable_error" if failure_type in RETRYABLE_FAILURES else "fatal_error"
+                status = (
+                    "needs_user_input"
+                    if failure_type == "policy_block"
+                    else "retryable_error"
+                    if failure_type in RETRYABLE_FAILURES
+                    else "fatal_error"
+                )
                 last_result = LLMStructuredResult(
                     status=status,
                     parsed_output=None,
@@ -129,11 +141,11 @@ class LLMGateway:
     ) -> LLMStructuredResult:
         text = raw_output.strip()
         if not text:
-            return self._fatal_result(
-                config=None,
+            return self._retryable_result(
                 failure_type="empty_output",
                 raw_output=raw_output,
                 error="Empty LLM output.",
+                repair_attempts=0,
             )
 
         candidate = self._extract_json_text(text)
@@ -165,8 +177,7 @@ class LLMGateway:
                 repair_attempts += 1
 
         if not isinstance(parsed_obj, dict):
-            return self._fatal_result(
-                config=None,
+            return self._retryable_result(
                 failure_type="schema_error",
                 raw_output=raw_output,
                 error="LLM output JSON root must be an object.",
@@ -176,7 +187,7 @@ class LLMGateway:
 
         validation_errors: list[str] = []
         if strict_unknown and contract.reject_unknown_fields and contract.output_model is None:
-            allowed = set(contract.required_fields)
+            allowed = set(contract.allowed_fields or [])
             if allowed:
                 extras = sorted([key for key in parsed_obj if key not in allowed])
                 if extras:
@@ -194,8 +205,7 @@ class LLMGateway:
                 validation_errors.extend(self._format_validation_errors(exc))
 
         if validation_errors:
-            return self._fatal_result(
-                config=None,
+            return self._retryable_result(
                 failure_type="schema_error",
                 raw_output=raw_output,
                 error="Schema validation failed.",
@@ -287,11 +297,12 @@ class LLMGateway:
         raw_output: str,
         error: str,
         repair_attempts: int,
+        validation_errors: list[str] | None = None,
     ) -> LLMStructuredResult:
         return LLMStructuredResult(
             status="retryable_error",
             parsed_output=None,
-            validation_errors=[],
+            validation_errors=validation_errors or [],
             raw_output=raw_output,
             repair_attempts=repair_attempts,
             confidence=None,

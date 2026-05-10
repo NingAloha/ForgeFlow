@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 import tempfile
 import unittest
-from dataclasses import dataclass
 from pathlib import Path
 
 from agents.base import AgentContext
@@ -64,7 +63,8 @@ class LLMTraceContractTests(unittest.TestCase):
             error="invalid",
         )
         trace = result.to_trace()
-        self.assertLessEqual(len(str(trace["raw_excerpt"])), 800)
+        self.assertEqual(len(trace["raw_excerpt"]), 800)
+        self.assertEqual(trace["raw_excerpt"], "x" * 800)
 
     def test_stage_agents_do_not_reintroduce_legacy_llm_trace_flags(self) -> None:
         repo_root = Path(__file__).resolve().parents[3]
@@ -98,39 +98,29 @@ class LLMTraceContractTests(unittest.TestCase):
                 )
 
     def test_orchestrator_diagnostic_uses_gateway_trace_for_requirements_agent(self) -> None:
-        sentinel_trace = {
-            "status": "success",
-            "failure_type": "none",
-            "repair_attempts": 0,
-            "validation_errors": [],
-            "raw_excerpt": "...",
-            "model": "test-model",
-            "provider": "test-provider",
-            "protocol": "test-protocol",
-            "latency_ms": 1,
-            "error": None,
-        }
-
-        @dataclass
-        class GatewayResult:
-            status: str
-            parsed_output: dict[str, object] | None
-            error: str
-
-            def to_trace(self) -> dict[str, object]:
-                return dict(sentinel_trace)
+        llm_result = LLMStructuredResult(
+            status="success",
+            parsed_output={
+                "project_goal": "Build todo app",
+                "functional_requirements": ["Create tasks"],
+                "acceptance_criteria": ["User can create tasks"],
+            },
+            validation_errors=[],
+            raw_output='{"project_goal":"Build todo app"}',
+            repair_attempts=0,
+            confidence=None,
+            failure_type="none",
+            model="test-model",
+            provider="test-provider",
+            protocol="test-protocol",
+            latency_ms=1,
+            error=None,
+        )
+        sentinel_trace = llm_result.to_trace()
 
         class GatewayStub:
             def generate(self, contract, user_prompt, config):  # noqa: ANN001
-                return GatewayResult(
-                    status="success",
-                    parsed_output={
-                        "project_goal": "Build todo app",
-                        "functional_requirements": ["Create tasks"],
-                        "acceptance_criteria": ["User can create tasks"],
-                    },
-                    error="",
-                )
+                return llm_result
 
         class TestableRequirementsEngineerAgent(RequirementsEngineerAgent):
             def get_llm_runtime_config(self) -> LLMRuntimeConfig:
@@ -147,38 +137,28 @@ class LLMTraceContractTests(unittest.TestCase):
         self.assertEqual(result.diagnostic["llm_trace"], sentinel_trace)
 
     def test_orchestrator_diagnostic_uses_gateway_trace_for_testing_agent(self) -> None:
-        sentinel_trace = {
-            "status": "success",
-            "failure_type": "none",
-            "repair_attempts": 0,
-            "validation_errors": [],
-            "raw_excerpt": "...",
-            "model": "test-model",
-            "provider": "test-provider",
-            "protocol": "test-protocol",
-            "latency_ms": 1,
-            "error": None,
-        }
-
-        @dataclass
-        class GatewayResult:
-            status: str
-            parsed_output: dict[str, object] | None
-            error: str
-
-            def to_trace(self) -> dict[str, object]:
-                return dict(sentinel_trace)
+        llm_result = LLMStructuredResult(
+            status="success",
+            parsed_output={
+                "test_scope": "integration",
+                "command": ["python3", "-m", "unittest"],
+            },
+            validation_errors=[],
+            raw_output='{"test_scope":"integration"}',
+            repair_attempts=0,
+            confidence=None,
+            failure_type="none",
+            model="test-model",
+            provider="test-provider",
+            protocol="test-protocol",
+            latency_ms=1,
+            error=None,
+        )
+        sentinel_trace = llm_result.to_trace()
 
         class GatewayStub:
             def generate(self, contract, user_prompt, config):  # noqa: ANN001
-                return GatewayResult(
-                    status="success",
-                    parsed_output={
-                        "test_scope": "integration",
-                        "command": ["python3", "-m", "unittest"],
-                    },
-                    error="",
-                )
+                return llm_result
 
         class TestableValidationAgent(TestValidationEngineerAgent):
             def get_llm_runtime_config(self) -> LLMRuntimeConfig:

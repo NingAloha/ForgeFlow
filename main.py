@@ -150,7 +150,7 @@ def format_diagnostic_report(result: OrchestrationResult) -> str:
         if failure_type:
             lines.append(f"- failure type: {failure_type}")
         if status:
-            lines.append(f"- used: {'yes' if status != 'none' else 'no'}")
+            lines.append(f"- invoked: {'yes' if status != 'none' else 'no'}")
             lines.append(f"- outcome: {llm_outcome_from_status(status)}")
         if llm_trace.get("provider"):
             lines.append(f"- provider: {llm_trace.get('provider')}")

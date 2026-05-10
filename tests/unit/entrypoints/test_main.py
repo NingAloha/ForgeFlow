@@ -165,6 +165,7 @@ class MainDiagnosticViewTests(unittest.TestCase):
         report = format_diagnostic_report(result)
         self.assertIn("LLM Trace:", report)
         self.assertIn("status: retryable_error", report)
+        self.assertIn("invoked: yes", report)
         self.assertIn("failure type: timeout", report)
         self.assertIn("outcome: retry exhausted", report)
         self.assertIn("error: timeout", report)
@@ -205,6 +206,8 @@ class MainDiagnosticViewTests(unittest.TestCase):
                 )
                 report = format_diagnostic_report(result)
                 self.assertIn(f"status: {status}", report)
+                expected_invoked = "no" if status == "none" else "yes"
+                self.assertIn(f"invoked: {expected_invoked}", report)
                 self.assertIn(f"failure type: {failure}", report)
                 self.assertIn(f"outcome: {expect_outcome}", report)
 

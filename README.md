@@ -100,6 +100,15 @@ Approval objects can be saved as run-local artifacts under `.forgeflow/runs/<run
 Approval artifacts are ignored by default and are not committed.
 They record approval state and contract fingerprint only; they do not store or apply patch content.
 
+### Approval-aware execution gate
+ForgeFlow can evaluate whether a validated execution contract has a valid approval artifact before entering mutation runtime.
+The current gate always blocks actual mutation because mutation runtime is not enabled yet.
+This separates approval validity from execution capability:
+- invalid contract -> blocked
+- missing approval -> blocked
+- stale approval -> blocked
+- approved contract -> still blocked until mutation runtime is enabled
+
 ## Runtime Artifact Boundary
 - 以下属于 runtime cache，不应入库：
   - `.forgeflow/state/`

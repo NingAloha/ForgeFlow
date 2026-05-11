@@ -76,12 +76,33 @@ class StageEvaluatorTests(unittest.TestCase):
         states = make_testing_states()
         self.assertTrue(self.evaluator.has_validation_context(states))
 
+        # Handoff-only done should still be validation-ready without execution-only fields.
+        states["implementation_status"]["workspace_path"] = ""
+        states["implementation_status"]["suggested_test_command"] = []
+        self.assertTrue(self.evaluator.has_validation_context(states))
+
         states["implementation_status"]["blockers"] = ["Need API clarification"]
         self.assertFalse(self.evaluator.has_validation_context(states))
 
         states = make_testing_states()
         states["implementation_status"]["contract_compliance"] = False
         self.assertFalse(self.evaluator.has_validation_context(states))
+
+    def test_implementation_handoff_ready_rejects_blocked_execute_preview_status(
+        self,
+    ) -> None:
+        states = make_design_ready_states()
+        states["implementation_status"].update(
+            {
+                "module_name": "orchestrator",
+                "implementation_status": "blocked",
+                "files_touched": ["module=orchestrator; files_to_create=[src/orchestrator/]"],
+                "tests_added_or_updated": ["module=orchestrator; test_plan=[pytest tests/orchestrator]"],
+                "contract_compliance": False,
+                "blockers": ["code execution mode is not enabled; missing execution safety boundary"],
+            }
+        )
+        self.assertFalse(self.evaluator.is_implementation_handoff_ready(states))
 
     def test_is_done_rejects_high_severity_open_issues_even_when_result_passes(
         self,

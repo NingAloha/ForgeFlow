@@ -77,6 +77,17 @@ Patch draft constraints in current implementation:
 - no file writes
 - no command execution
 
+## Runtime Artifact Boundary
+- Runtime cache artifacts must not be committed:
+  - `.forgeflow/state/`
+  - `.forgeflow/generated/`
+  - `.forgeflow/runs/`
+  - non-curated runtime outputs under `runs/*`
+  - `/tmp/forgeflow_*` (outside repository scope)
+- Repository knowledge that should remain versioned:
+  - `runs/manual_reviews/` (curated review artifacts)
+- Goal: keep runtime outputs (generated files, run summaries, previews) from polluting repository history.
+
 ## Installation
 
 ```bash

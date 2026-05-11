@@ -348,6 +348,8 @@ def main() -> int:
     user_input = build_user_input(args)
     if args.auto_run:
         max_steps = max(1, args.max_steps)
+        prev_final_stage = ""
+        prev_decision_type = ""
         for step in range(1, max_steps + 1):
             step_input = user_input if step == 1 else ""
             result = orchestrator.orchestrate(
@@ -360,6 +362,36 @@ def main() -> int:
                 break
             if result.decision.final_stage == Stage.DONE:
                 break
+            decision_type = classify_decision(result)
+            changed_states = changed_state_keys(result)
+            same_stage = str(result.decision.final_stage) == prev_final_stage
+            same_decision = decision_type == prev_decision_type
+            no_state_change = not changed_states
+            requires_user_input = bool(
+                result.agent_result.requires_user_input
+                if result.agent_result is not None
+                else False
+            )
+            if (
+                same_stage
+                and same_decision
+                and no_state_change
+                and not result.decision.wait_for_user_input
+                and not requires_user_input
+            ):
+                print(
+                    "NO_PROGRESS: stopping auto-run "
+                    f"(stage={result.decision.final_stage}, decision={decision_type}, step={step})"
+                )
+                orchestrator.record_auto_run_stop(
+                    stop_reason="no_progress",
+                    repeated_stage=result.decision.final_stage,
+                    repeated_decision=decision_type,
+                    step_index=step,
+                )
+                break
+            prev_final_stage = str(result.decision.final_stage)
+            prev_decision_type = decision_type
     else:
         result = orchestrator.orchestrate(
             user_input,

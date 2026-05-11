@@ -66,6 +66,17 @@ CLI Runner (Dev / Debug) ┘
   - 不写入文件
   - 不执行命令
 
+## Runtime Artifact Boundary
+- 以下属于 runtime cache，不应入库：
+  - `.forgeflow/state/`
+  - `.forgeflow/generated/`
+  - `.forgeflow/runs/`
+  - 仓库根下非人工整理的运行输出（例如 `runs/*` 中的临时运行文件）
+  - 系统临时目录中的 ` /tmp/forgeflow_* `（仓库外，不纳入版本管理）
+- 以下属于 repository knowledge，应保留：
+  - `runs/manual_reviews/`（人工整理的评审与对比产物）
+- 约束目标：避免 patch preview / generated / run summary 的运行时噪音污染仓库历史。
+
 ## 快速开始
 安装开发依赖（可编辑模式）：
 

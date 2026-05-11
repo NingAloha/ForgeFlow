@@ -401,6 +401,55 @@ class MainDiagnosticViewTests(unittest.TestCase):
         self.assertEqual(first_call.kwargs.get("original_request"), "build todo")
         self.assertEqual(second_call.kwargs.get("original_request"), "build todo")
 
+    @patch("main.print")
+    @patch("main.Orchestrator")
+    def test_main_auto_run_stops_on_no_progress_and_records_summary_metadata(
+        self,
+        mock_orchestrator_cls: MagicMock,
+        mock_print: MagicMock,
+    ) -> None:
+        mock_orchestrator = MagicMock()
+        stay_result = OrchestrationResult(
+            decision=TransitionDecision(
+                computed_stage=Stage.IMPLEMENTATION,
+                final_stage=Stage.IMPLEMENTATION,
+                should_stay=True,
+                reason="Stay on current stage.",
+            ),
+            diagnostic={
+                "decision_type": "STAY",
+                "state_changes": [],
+                "question_state": {"status": "idle"},
+                "transition": {"reason": "Stay on current stage.", "evidence": []},
+                "stages": {
+                    "computed": "IMPLEMENTATION",
+                    "source": "IMPLEMENTATION",
+                    "final": "IMPLEMENTATION",
+                    "executed": "IMPLEMENTATION",
+                },
+            },
+            summary="stay",
+        )
+        mock_orchestrator.orchestrate.side_effect = [stay_result, stay_result, stay_result]
+        mock_orchestrator_cls.return_value = mock_orchestrator
+
+        with patch(
+            "sys.argv",
+            ["main.py", "--auto-run", "--max-steps", "20", "build", "todo"],
+        ):
+            exit_code = main()
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(mock_orchestrator.orchestrate.call_count, 2)
+        mock_orchestrator.record_auto_run_stop.assert_called_once_with(
+            stop_reason="no_progress",
+            repeated_stage=Stage.IMPLEMENTATION,
+            repeated_decision="STAY",
+            step_index=2,
+        )
+        printed = "\n".join(str(call.args[0]) for call in mock_print.call_args_list if call.args)
+        self.assertIn("NO_PROGRESS", printed)
+
     def test_load_run_summary_reads_expected_path(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             state_dir = Path(temp_dir) / "state"

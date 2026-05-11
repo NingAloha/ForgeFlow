@@ -24,8 +24,16 @@ ENV/
 .coverage.*
 htmlcov/
 
-# ForgeFlow runtime state
+# ForgeFlow runtime artifacts (runtime cache; never commit)
+.forgeflow/state/
+.forgeflow/generated/
+.forgeflow/runs/
 .forgeflow/
+
+# Runtime run outputs under repository root
+runs/*
+!runs/manual_reviews/
+!runs/manual_reviews/**
 
 # Sensitive local config
 .env

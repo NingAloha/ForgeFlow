@@ -59,6 +59,31 @@ class OrchestratorCoreTests(unittest.TestCase):
         )
         self.assertEqual(target, Stage.IMPLEMENTATION)
 
+        handoff_states = make_testing_states()
+        handoff_states["implementation_status"]["workspace_path"] = ""
+        handoff_states["implementation_status"]["suggested_test_command"] = []
+        target, _ = self.orchestrator.evaluate_forward_transition(
+            handoff_states,
+            Stage.IMPLEMENTATION,
+        )
+        self.assertEqual(target, Stage.TESTING)
+
+        blocked_states = make_testing_states()
+        blocked_states["implementation_status"].update(
+            {
+                "implementation_status": "blocked",
+                "contract_compliance": False,
+                "blockers": [
+                    "code execution mode is not enabled; missing execution safety boundary"
+                ],
+            }
+        )
+        target, _ = self.orchestrator.evaluate_forward_transition(
+            blocked_states,
+            Stage.IMPLEMENTATION,
+        )
+        self.assertIsNone(target)
+
         target, _ = self.orchestrator.evaluate_forward_transition(
             make_testing_states(),
             Stage.TESTING,
@@ -328,6 +353,67 @@ class OrchestratorCoreTests(unittest.TestCase):
             )
             with self.assertRaises(ValidationError):
                 writer.append_step(result, step_input="", original_request="")
+
+    def test_record_auto_run_stop_writes_no_progress_metadata_into_run_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_dir = Path(temp_dir) / "state"
+            orchestrator = Orchestrator()
+            orchestrator.state_manager.state_dir = state_dir
+            orchestrator.runs_dir = state_dir.parent / "runs" / orchestrator.run_id
+            orchestrator.generated_project_dir = (
+                state_dir.parent / "generated" / orchestrator.run_id
+            )
+            orchestrator.runs_dir.mkdir(parents=True, exist_ok=True)
+            orchestrator.generated_project_dir.mkdir(parents=True, exist_ok=True)
+            orchestrator.run_manifest = RunManifestWriter(
+                runs_dir=orchestrator.runs_dir,
+                run_id=orchestrator.run_id,
+                generated_project_dir=orchestrator.generated_project_dir,
+                state_dir=str(state_dir),
+            )
+
+            result = OrchestrationResult(
+                decision=TransitionDecision(
+                    computed_stage=Stage.IMPLEMENTATION,
+                    final_stage=Stage.IMPLEMENTATION,
+                    should_stay=True,
+                    reason="Stay on current stage.",
+                ),
+                diagnostic={
+                    "decision_type": "STAY",
+                    "stages": {
+                        "computed": "IMPLEMENTATION",
+                        "final": "IMPLEMENTATION",
+                        "executed": "IMPLEMENTATION",
+                    },
+                    "execution_trace": {},
+                    "state_changes": [],
+                    "question_state": {"status": "idle"},
+                },
+                summary="stay",
+            )
+            summary_model = orchestrator.run_manifest.append_step(
+                result,
+                step_input="build todo",
+                original_request="build todo",
+            )
+            orchestrator.run_manifest.write(summary_model)
+
+            orchestrator.record_auto_run_stop(
+                stop_reason="no_progress",
+                repeated_stage=Stage.IMPLEMENTATION,
+                repeated_decision="STAY",
+                step_index=2,
+            )
+
+            payload = json.loads(
+                (orchestrator.runs_dir / "summary.json").read_text(encoding="utf-8")
+            )
+            stop_meta = payload["steps"][-1]["execution_trace"]["auto_run_stop"]
+            self.assertEqual(stop_meta["stop_reason"], "no_progress")
+            self.assertEqual(stop_meta["repeated_stage"], "IMPLEMENTATION")
+            self.assertEqual(stop_meta["repeated_decision"], "STAY")
+            self.assertEqual(stop_meta["step_index"], 2)
 
 
 if __name__ == "__main__":

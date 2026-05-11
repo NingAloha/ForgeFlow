@@ -135,18 +135,25 @@ class StageEvaluator:
         if not self.has_active_implementation(states):
             return False
 
-        implementation_status = states.get("implementation_status", {})
         test_report = states.get("test_report", {})
+
+        return bool(
+            self.is_implementation_handoff_ready(states)
+            and test_report.get("test_scope")
+        )
+
+    def is_implementation_handoff_ready(
+        self,
+        states: dict[str, dict[str, Any]],
+    ) -> bool:
+        implementation_status = states.get("implementation_status", {})
 
         return bool(
             implementation_status.get("implementation_status") == "done"
             and not implementation_status.get("blockers")
-            and test_report.get("test_scope")
             and implementation_status.get("files_touched")
             and implementation_status.get("tests_added_or_updated")
             and implementation_status.get("contract_compliance") is True
-            and implementation_status.get("workspace_path")
-            and implementation_status.get("suggested_test_command")
         )
 
     def is_done(self, states: dict[str, dict[str, Any]]) -> bool:

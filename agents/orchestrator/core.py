@@ -17,6 +17,7 @@ from .models import OrchestrationResult, Stage, TransitionDecision
 from .question_flow import QuestionFlow
 from .run_manifest import RunManifestWriter
 from .stage_evaluator import StageEvaluator
+from schemas.run_summary import RunSummaryModel
 
 
 class Orchestrator:
@@ -154,11 +155,12 @@ class Orchestrator:
             return Stage.IMPLEMENTATION, evidence
         if (
             current_stage == Stage.IMPLEMENTATION
-            and self.stage_evaluator.has_validation_context(states)
+            and self.stage_evaluator.is_implementation_handoff_ready(states)
         ):
-            evidence.append("implementation_status.implementation_status is done.")
+            evidence.append("implementation_status.implementation_status is done (handoff-ready).")
             evidence.append("implementation_status.blockers is empty.")
-            evidence.append("A test scope is available for validation.")
+            evidence.append("implementation_status.contract_compliance indicates handoff/design alignment.")
+            evidence.append("Implementation handoff artifacts are ready for validation.")
             return Stage.TESTING, evidence
         if current_stage == Stage.TESTING and self.stage_evaluator.is_done(states):
             evidence.append("test_report.result is pass.")
@@ -504,3 +506,35 @@ class Orchestrator:
                 self.question_flow.default_question_state_payload(),
             )
         return result
+
+    def record_auto_run_stop(
+        self,
+        *,
+        stop_reason: str,
+        repeated_stage: Stage | str,
+        repeated_decision: str,
+        step_index: int,
+    ) -> None:
+        if not self.run_manifest._run_steps:
+            return
+        last_step = self.run_manifest._run_steps[-1]
+        trace = dict(last_step.execution_trace)
+        trace["auto_run_stop"] = {
+            "stop_reason": stop_reason,
+            "repeated_stage": str(repeated_stage),
+            "repeated_decision": repeated_decision,
+            "step_index": step_index,
+        }
+        last_step.execution_trace = trace
+        summary = RunSummaryModel(
+            schema_version="1",
+            run_id=self.run_id,
+            original_request=str(self.run_manifest._run_steps[0].input),
+            generated_project_dir=str(self.generated_project_dir),
+            state_dir=str(getattr(self.state_manager, "state_dir", "")),
+            latest_summary=last_step.summary,
+            latest_final_stage=last_step.final_stage,
+            latest_decision_type=last_step.decision_type,
+            steps=self.run_manifest._run_steps,
+        )
+        self.run_manifest.write(summary)

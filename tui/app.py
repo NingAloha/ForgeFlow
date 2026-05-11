@@ -16,7 +16,6 @@ class ForgeShellApp:
             if state_dir is not None
             else None
         )
-        self.state_manager = self.orchestrator.state_manager
         self.events = EventStream()
         self.final_stage: Stage | str = Stage.INIT
         self.decision_type = "STAY"
@@ -38,21 +37,16 @@ class ForgeShellApp:
             self.events.append("wait", "流程正在等待用户输入")
 
     def _open_state(self, key: str) -> None:
-        mapping = {
-            "spec": "spec",
-            "solution": "solution",
-            "design": "system_design",
-        }
-        target = mapping.get(key)
-        if target is None:
+        payload = self.read_artifact_for_display(key)
+        if not payload:
             self.events.append("error", f"不支持的状态视图: {key}")
             return
-        payload = self.state_manager.load_state(target)
+        target = "system_design" if key == "design" else key
         summary = ", ".join(sorted(payload.keys()))
         self.events.append("open", f"{target} 字段: {summary}")
 
     def _show_status(self) -> None:
-        states = self.state_manager.load_all_states()
+        states = self.orchestrator.get_status_snapshot()
         question = states.get("question_state", {})
         self.events.append(
             "status",
@@ -61,6 +55,13 @@ class ForgeShellApp:
                 f"提问状态={question.get('status', 'idle')}"
             ),
         )
+
+    def read_artifact_for_display(self, name: str) -> dict:
+        # Read-only display access only.
+        # All mutations, orchestration decisions, agent dispatch, and execution actions
+        # must go through Orchestrator.
+        target = "system_design" if name == "design" else name
+        return self.orchestrator.get_artifact_for_display(target)
 
     def handle_line(self, line: str) -> bool:
         parsed = parse_command(line)

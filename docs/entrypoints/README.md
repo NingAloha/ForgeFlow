@@ -1,16 +1,41 @@
 # Entrypoint Docs
 
-这里收项目入口层的职责划分说明。
+本页描述入口层边界，目标是避免出现第二控制面。
 
-当前约定：
+## 当前入口
+- ForgeShell（TUI）：Primary UI 目标。
+- CLI Runner（`main.py` / `forgeflow`）：当前开发与调试入口。
 
-* ForgeShell / TUI 是目标主交互入口
-* 当前仓库可运行的主入口仍是 `main.py`（开发、调试 runner）
-* `main.py` 支持 `--state-dir` 用于隔离演示/调试状态目录
-* `main.py` 支持 `--auto-run` 连续推进，直到 `DONE` 或 `WAIT`
-* LLM 密钥解析优先级固定：`api_key`（或 `FORGEFLOW_LLM_API_KEY`）优先，其次才是 `api_key_env` 指向的环境变量值（默认 `DEEPSEEK_API_KEY`）
+## 边界约束
+- 两个入口都通过 Project Orchestrator 执行。
+- Orchestrator 是唯一控制面。
+- StateManager 是单一状态源。
+- ForgeShell 允许只读展示状态与产物。
+- ForgeShell 不允许直接写状态、不允许直接调 agent、不允许直接推进 stage、不允许直接执行 patch 或命令。
 
-相关入口说明：
+## 当前 TUI 命令
+- `/status`
+- `/open spec`
+- `/open solution`
+- `/open design`
+- `/run`
+- `/help`
+- `/quit`
 
-* [../../README.md](../../README.md)
-* [../README.en.md](../README.en.md)
+以下命令当前不支持：
+- `/rollback`
+- `/retry`
+- `/switch`
+- `/lock`
+- `/execute`
+- `/apply`
+
+## 当前运行命令
+
+```bash
+python3.11 main.py --auto-run "<requirement>"
+python3.11 main.py --tui
+forgeflow --tui
+```
+
+说明：当前不支持 `--input` 参数。

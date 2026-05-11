@@ -20,6 +20,16 @@ from .stage_evaluator import StageEvaluator
 
 
 class Orchestrator:
+    DISPLAY_ARTIFACT_KEYS = {
+        "spec": "spec",
+        "solution": "solution",
+        "design": "system_design",
+        "system_design": "system_design",
+        "implementation_status": "implementation_status",
+        "test_report": "test_report",
+        "question_state": "question_state",
+    }
+
     @staticmethod
     def changed_state_keys(
         states_before: dict[str, dict[str, Any]],
@@ -87,6 +97,19 @@ class Orchestrator:
                 states.get("question_state", {})
             ),
         )
+
+    def get_status_snapshot(self) -> dict[str, dict[str, Any]]:
+        # Read-only display API for entrypoints.
+        return self.state_manager.load_all_states()
+
+    def get_artifact_names(self) -> list[str]:
+        return sorted(set(self.DISPLAY_ARTIFACT_KEYS.keys()))
+
+    def get_artifact_for_display(self, artifact_name: str) -> dict[str, Any]:
+        target = self.DISPLAY_ARTIFACT_KEYS.get(str(artifact_name).strip())
+        if target is None:
+            return {}
+        return self.state_manager.load_state(target)
 
     def evaluate_forward_transition(
         self, states: dict[str, dict[str, Any]], current_stage: Stage

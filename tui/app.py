@@ -35,7 +35,7 @@ class ForgeShellApp:
         self.decision_type = str(result.diagnostic.get("decision_type", ""))
         self.events.append("run", result.summary)
         if result.decision.wait_for_user_input:
-            self.events.append("wait", "workflow is waiting for user input")
+            self.events.append("wait", "流程正在等待用户输入")
 
     def _open_state(self, key: str) -> None:
         mapping = {
@@ -45,24 +45,27 @@ class ForgeShellApp:
         }
         target = mapping.get(key)
         if target is None:
-            self.events.append("error", f"unsupported state view: {key}")
+            self.events.append("error", f"不支持的状态视图: {key}")
             return
         payload = self.state_manager.load_state(target)
         summary = ", ".join(sorted(payload.keys()))
-        self.events.append("open", f"{target} keys: {summary}")
+        self.events.append("open", f"{target} 字段: {summary}")
 
     def _show_status(self) -> None:
         states = self.state_manager.load_all_states()
         question = states.get("question_state", {})
         self.events.append(
             "status",
-            f"stage={self.final_stage}, decision={self.decision_type}, question_status={question.get('status', 'idle')}",
+            (
+                f"阶段={self.final_stage}, 决策={self.decision_type}, "
+                f"提问状态={question.get('status', 'idle')}"
+            ),
         )
 
     def handle_line(self, line: str) -> bool:
         parsed = parse_command(line)
         if parsed.command in {"/quit", "/exit"}:
-            self.events.append("system", "bye")
+            self.events.append("system", "已退出")
             return False
         if parsed.command == "/help":
             self.events.append("help", render_input_hint())
@@ -78,9 +81,9 @@ class ForgeShellApp:
             return True
         if parsed.command == "text":
             self.last_prompt = parsed.argument
-            self.events.append("input", f"prompt set: {parsed.argument}")
+            self.events.append("input", f"已设置输入: {parsed.argument}")
             return True
-        self.events.append("error", f"unsupported command: {line.strip()}")
+        self.events.append("error", f"不支持的命令: {line.strip()}")
         return True
 
     def run(self) -> int:

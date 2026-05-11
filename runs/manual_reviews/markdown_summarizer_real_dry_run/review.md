@@ -77,3 +77,27 @@
   - 未改 orchestrator/state contract/TUI/implementation，`ruff` 与 `pytest` 继续全绿。
 - 下一轮最低分阶段（人工评分）：**Implementation**
 
+
+## Phase 9: Implementation Handoff Review
+### Implementation score before
+- **2**
+
+### Implementation score after
+- **4**
+
+### Improvements
+- 是：逐模块承接 `system_design.project_structure.modules`，输出覆盖 `markdown_parser` 与 `md_workflow_module`。
+- 是：生成 implementation checklist（通过 `files_touched/tests_added_or_updated/notes` 映射承载）。
+- 是：每模块包含可验证 done criteria（`notes` 采用结构化分段：`module=<name>; steps=[...]; done=[...]`）。
+- 是：每模块包含 suggested tests（行为级 happy path + failure path）。
+- 是：避免重新设计（未改模块划分/contract/data flow/技术栈；Implementation 仅做 handoff 映射）。
+- 是：`contract_compliance` 语义已限定为 handoff package 与 design contract 对齐，不表示代码已实现。
+
+### Side effects
+- 是否影响 Testing：**否**（未改 Testing 阶段逻辑）。
+- 是否引入 schema 变更：**否**（`implementation_status` 字段未扩展）。
+- 是否越界生成代码/文件名/函数名：**否**（无真实文件写入；输出不含 `.py`、函数名、类名）。
+- 观察到的运行时现象：在 `strict_llm` 且网络不可用时，Implementation 会进入 `awaiting_user`（`llm_generation_failed`）；这属于既有 LLM 失败门控语义，不改变 handoff-only 输出边界。
+
+### Next weakest stage
+- **Implementation（LLM gate compatibility under network failure）**：当前 handoff 内容可用，但 strict_llm 网络失败会阻断自动链路；下一轮可评估是否在不越界前提下进一步降低此门控对 dry run 的影响。

@@ -1,19 +1,15 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 from ..base import AgentContext, AgentResult, BaseAgent
 from ..common import (
     LLMGateway,
     LLMRuntimeConfig,
     PromptContract,
-    WorkspaceExecutor,
     load_llm_runtime_config,
     resolve_gateway_failure,
     should_use_llm,
 )
-from schemas.llm_trace import EMPTY_LLM_TRACE, LLMTraceModel
+from schemas.llm_trace import EMPTY_LLM_TRACE
 from schemas.implementation import ImplementationStatusState
 from .planning import ImplementationPlanningMixin
 
@@ -32,67 +28,86 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
     def run(self, context: AgentContext) -> AgentResult:
         current_state = dict(context.states.get(self.state_key, {}))
         design = dict(context.states.get("system_design", {}))
-        solution = dict(context.states.get("solution", {}))
         user_input = context.user_input.strip()
-        module_name = self.select_module_name(current_state, design, solution)
-        blockers: list[str] = []
 
-        if not module_name:
-            blockers.append("No module selected from design or solution states.")
-        if not design.get("contracts"):
-            blockers.append("system_design.contracts is empty.")
-        if not design.get("data_flow"):
-            blockers.append("system_design.data_flow is empty.")
-
-        contract_compliance = self.evaluate_contract_compliance(module_name, design)
-        if not contract_compliance:
-            blockers.append("No matching design contract found for the active module.")
-
-        llm_config = self.get_llm_runtime_config()
-        llm_trace: LLMTraceModel = EMPTY_LLM_TRACE
-        fallback_source = ""
-
-        workspace_path = str(context.metadata.get("generated_project_dir", "")).strip()
-        if not workspace_path:
-            workspace_path = str(Path(".forgeflow") / "generated" / "manual")
+        design_modules = self.get_design_modules(design)
+        module_name = self.select_primary_module_name(current_state, design_modules)
 
         files_touched: list[str] = []
         tests_added_or_updated: list[str] = []
-        artifacts_generated: list[str] = []
-        commands_executed: list[str] = []
-        suggested_test_command = [
-            "python3",
-            "-m",
-            "unittest",
-            "discover",
-            "-s",
-            "tests",
-            "-p",
-            "test_*.py",
-            "-v",
-        ]
+        known_limitations: list[str] = []
+        blockers: list[str] = []
+        notes: list[str] = []
 
-        executor = WorkspaceExecutor(workspace_root=workspace_path or ".")
-        llm_stage_enabled = should_use_llm(llm_config, self.stage_name)
-        llm_files: list[dict[str, str]] = []
+        if not design_modules:
+            blockers.append("missing design modules in system_design.project_structure.modules")
 
-        if llm_stage_enabled and user_input:
-            contract = PromptContract(
-                stage_name=self.stage_name,
-                system_prompt=(
-                    "Return strict JSON only with keys: files, tests, suggested_test_command. "
-                    "files/tests are arrays of objects with path and content. "
-                    "Generate a minimal runnable Python project with unittest tests."
-                ),
-                required_fields=["files", "tests", "suggested_test_command"],
-                output_model=None,
+        has_any_contract = bool(design.get("contracts"))
+        has_any_data_flow = bool(design.get("data_flow"))
+
+        module_contract_alignment: dict[str, bool] = {}
+        for module in design_modules:
+            contract = self.match_module_contract(module, design)
+            has_data_flow = self.has_module_data_flow(module, design)
+
+            if not has_any_contract or contract is None:
+                blockers.append(f"missing design contract for {module}")
+                known_limitations.append(f"contract unresolved for {module}")
+
+            if not has_any_data_flow or not has_data_flow:
+                blockers.append(f"missing data flow step for {module}")
+                known_limitations.append(f"data flow unresolved for {module}")
+
+            planned_directory = self.find_module_directory(module, design)
+            expected_artifact_types = self.build_expected_artifact_types()
+            module_steps = self.build_module_steps(module, contract)
+            done_criteria = self.build_module_done_criteria()
+            suggested_tests = self.build_module_suggested_tests(module)
+
+            files_touched.append(
+                f"module={module}; planned_directory={planned_directory}; expected_artifact_types=[{' | '.join(expected_artifact_types)}]"
             )
+            tests_added_or_updated.append(
+                f"module={module}; suggested_tests=[{' | '.join(suggested_tests)}]"
+            )
+            notes.append(self.build_module_note(module, module_steps, done_criteria))
+
+            module_contract_alignment[module] = contract is not None and has_data_flow
+
+        contract_compliance = bool(design_modules) and all(module_contract_alignment.values())
+        implementation_status = "blocked" if blockers else "done"
+
+        updated_state = {
+            **current_state,
+            "module_name": module_name,
+            "implementation_status": implementation_status,
+            "files_touched": files_touched,
+            "tests_added_or_updated": tests_added_or_updated,
+            "contract_compliance": contract_compliance,
+            "known_limitations": sorted(set(known_limitations)),
+            "blockers": sorted(set(blockers)),
+            "workspace_path": str(current_state.get("workspace_path", "")),
+            "commands_executed": [],
+            "artifacts_generated": ["handoff_package_generated"],
+            "suggested_test_command": [],
+        }
+        updated_state = ImplementationStatusState.model_validate(updated_state).model_dump(mode="python")
+
+        llm_trace = EMPTY_LLM_TRACE
+        llm_config = self.get_llm_runtime_config()
+        if should_use_llm(llm_config, self.stage_name) and user_input:
             llm_result = self.get_llm_gateway().generate(
-                contract=contract,
+                contract=PromptContract(
+                    stage_name=self.stage_name,
+                    system_prompt=(
+                        "Return strict JSON only with key handoff_ready and boolean value."
+                    ),
+                    required_fields=["handoff_ready"],
+                    allowed_fields=["handoff_ready"],
+                    output_model=None,
+                ),
                 user_prompt=(
-                    f"User request: {user_input}\n"
-                    f"Design JSON: {json.dumps(design, ensure_ascii=False)}\n"
-                    f"Solution JSON: {json.dumps(solution, ensure_ascii=False)}"
+                    "Validate implementation handoff package alignment without generating code."
                 ),
                 config=llm_config,
             )
@@ -103,181 +118,48 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
                 stage_name=self.stage_name,
                 state_key=self.state_key,
                 agent_name=self.agent_name,
-                updated_state={
-                    **current_state,
-                    "module_name": module_name,
-                    "implementation_status": "blocked",
-                    "files_touched": [],
-                    "tests_added_or_updated": [],
-                    "contract_compliance": contract_compliance,
-                    "known_limitations": ["strict_llm mode requires successful LLM generation."],
-                    "blockers": ["llm_generation_failed"],
-                    "workspace_path": workspace_path,
-                    "commands_executed": [],
-                    "artifacts_generated": [],
-                    "suggested_test_command": suggested_test_command,
-                },
+                updated_state=updated_state,
                 fallback_factory=None,
-                strict_summary="Implementation blocked: strict_llm mode requires successful LLM output.",
-                fatal_summary="Implementation blocked: LLM output is unavailable.",
+                strict_summary=(
+                    "Implementation handoff blocked: strict_llm mode requires successful LLM output."
+                ),
+                fatal_summary=(
+                    "Implementation handoff blocked: LLM output is unavailable."
+                ),
             )
             if failure_result is not None:
-                failure_result.diagnostics["execution_trace"] = {}
+                failure_result.diagnostics["execution_trace"] = {
+                    "workspace_path": updated_state["workspace_path"],
+                    "file_writes": [],
+                    "command_results": [],
+                }
                 return failure_result
-            if llm_result.status == "success" and isinstance(llm_result.parsed_output, dict):
-                payload = llm_result.parsed_output
-                raw_files = payload.get("files", [])
-                raw_tests = payload.get("tests", [])
-                if isinstance(raw_files, list) and isinstance(raw_tests, list):
-                    llm_files = [
-                        {
-                            "path": str(item.get("path", "")).strip(),
-                            "content": str(item.get("content", "")),
-                        }
-                        for item in (raw_files + raw_tests)
-                        if isinstance(item, dict)
-                        and str(item.get("path", "")).strip()
-                    ]
-                    suggested = payload.get("suggested_test_command")
-                    if isinstance(suggested, list) and suggested:
-                        suggested_test_command = [str(x) for x in suggested if str(x).strip()]
 
-        if llm_files:
-            try:
-                for file_item in llm_files:
-                    written = executor.write_file(file_item["path"], file_item["content"])
-                    artifacts_generated.append(written)
-                    if "/tests/" in f"/{written}" or written.startswith("tests/"):
-                        tests_added_or_updated.append(written)
-                    else:
-                        files_touched.append(written)
-            except Exception as exc:
-                blockers.append(f"File generation failed: {exc}")
-        else:
-            # compat mode fallback template
-            fallback_source = "implementation_compat"
-            fallback_files = self._build_fallback_template_files(user_input)
-            for path, content in fallback_files:
-                written = executor.write_file(path, content)
-                artifacts_generated.append(written)
-                if "/tests/" in f"/{written}" or written.startswith("tests/"):
-                    tests_added_or_updated.append(written)
-                else:
-                    files_touched.append(written)
+        summary = (
+            "Implementation produced module-level handoff checklist aligned to design contracts."
+            if not blockers
+            else "Implementation handoff is blocked by missing design contract or data flow inputs."
+        )
+        result_notes = [
+            "contract_compliance means handoff package alignment with design contract, not code implementation completeness.",
+            *notes,
+        ]
 
-        implementation_status = "blocked" if blockers else "done"
-        updated_state = {
-            **current_state,
-            "module_name": module_name,
-            "implementation_status": implementation_status,
-            "files_touched": files_touched,
-            "tests_added_or_updated": tests_added_or_updated,
-            "contract_compliance": contract_compliance,
-            "known_limitations": [],
-            "blockers": blockers,
-            "workspace_path": workspace_path,
-            "commands_executed": commands_executed,
-            "artifacts_generated": artifacts_generated,
-            "suggested_test_command": suggested_test_command,
-        }
-        updated_state = ImplementationStatusState.model_validate(updated_state).model_dump(mode="python")
-
-        if blockers:
-            diagnostics = {
-                "llm_trace": llm_trace,
-                "execution_trace": self._trace_to_dict(executor.trace),
-            }
-            if fallback_source:
-                diagnostics["fallback_source"] = fallback_source
-            return AgentResult(
-                agent_name=self.agent_name,
-                stage_name=self.stage_name,
-                state_key=self.state_key,
-                updated_state=updated_state,
-                summary="Implementation planning is blocked by generation or design issues.",
-                notes=[
-                    "Recorded blockers to trigger explicit backflow attribution in orchestrator."
-                ],
-                blockers=blockers,
-                handoff_ready=False,
-                diagnostics=diagnostics,
-            )
-
-        diagnostics = {
-            "llm_trace": llm_trace,
-            "execution_trace": self._trace_to_dict(executor.trace),
-        }
-        if fallback_source:
-            diagnostics["fallback_source"] = fallback_source
         return AgentResult(
             agent_name=self.agent_name,
             stage_name=self.stage_name,
             state_key=self.state_key,
             updated_state=updated_state,
-            summary="Implementation generated real project files and test artifacts.",
-            notes=[
-                "Generated project files in isolated workspace and prepared test command for validation."
-            ],
-            handoff_ready=True,
-            diagnostics=diagnostics,
+            summary=summary,
+            notes=result_notes,
+            blockers=updated_state["blockers"],
+            handoff_ready=not blockers,
+            diagnostics={
+                "llm_trace": llm_trace,
+                "execution_trace": {
+                    "workspace_path": updated_state["workspace_path"],
+                    "file_writes": [],
+                    "command_results": [],
+                },
+            },
         )
-
-    def _trace_to_dict(self, trace) -> dict[str, object]:
-        return {
-            "workspace_path": trace.workspace_path,
-            "file_writes": list(trace.file_writes),
-            "command_results": [
-                {
-                    "command": list(item.command),
-                    "exit_code": item.exit_code,
-                    "stdout": item.stdout[-4000:],
-                    "stderr": item.stderr[-4000:],
-                }
-                for item in trace.command_results
-            ],
-        }
-
-    def _build_fallback_template_files(self, user_input: str) -> list[tuple[str, str]]:
-        title = user_input.strip() or "demo project"
-        package_name = "app"
-        return [
-            (
-                f"{package_name}/__init__.py",
-                '"""Generated demo package."""\n',
-            ),
-            (
-                f"{package_name}/main.py",
-                """
-from __future__ import annotations
-
-
-def build_message() -> str:
-    return "demo project ready"
-
-
-if __name__ == "__main__":
-    print(build_message())
-""".lstrip(),
-            ),
-            (
-                "README.md",
-                f"# Generated Project\n\nRequest: {title}\n",
-            ),
-            (
-                "tests/test_main.py",
-                """
-import unittest
-
-from app.main import build_message
-
-
-class MainTests(unittest.TestCase):
-    def test_build_message(self) -> None:
-        self.assertEqual(build_message(), "demo project ready")
-
-
-if __name__ == "__main__":
-    unittest.main()
-""".lstrip(),
-            ),
-        ]

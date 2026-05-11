@@ -28,3 +28,9 @@
 - Next lowest stage by manual score: **Implementation**.
 - Next single-stage goal: improve implementation_status actionability (without codegen expansion).
 
+
+# Next Iteration Update (Phase 9)
+
+- Completed in this round: Implementation handoff-only refactor (design-to-checklist mapping).
+- Next lowest stage by manual score: **Implementation** (LLM gate robustness under strict_llm network failure).
+- Next single-stage goal: keep handoff-only boundary while reducing WAIT sensitivity for dry-run continuity when LLM is unavailable.

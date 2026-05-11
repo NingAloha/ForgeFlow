@@ -145,6 +145,40 @@ The implementation stage currently runs in `handoff` mode by default.
 - `execute`: reserved for future Code Agent integration. It is currently disabled and returns a structured blocker instead of modifying files.
 The current stable flow does not write code or mutate the workspace.
 
+### Execution safety boundary
+
+ForgeFlow is intended to evolve toward a software engineering agent, but code execution is currently disabled.
+Future code execution requires:
+- sandboxed workspace
+- allowed path policy
+- denied path policy
+- allowed command policy
+- patch preview
+- rollback policy
+- retry limit
+- execution report
+Until these are implemented, `execute` mode returns a structured blocker and performs no file mutation.
+
+### Patch preview contract
+`execute` mode is still disabled for real mutation.
+When explicitly requested, it may produce a dry-run patch preview describing:
+- module-level directories that would be created
+- rationale
+- risks
+- suggested test commands
+- rollback notes
+The preview does not create files, modify files, delete files, or run commands.
+
+### Patch draft contract
+`execute` mode may generate a single-module dry-run patch draft.
+The draft is a unified diff preview only:
+- it is not applied
+- it creates documentation placeholders only
+- it does not write files
+- it does not run commands
+- it does not generate Python implementation code
+- it is limited to the first design module
+
 ### Console Script Note
 
 After editable install:

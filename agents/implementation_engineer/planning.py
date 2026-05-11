@@ -6,18 +6,21 @@ from ..common.text import TextHelper
 class ImplementationPlanningMixin(TextHelper):
     RESERVED_GENERIC_MODULES = {"core", "utils", "app"}
     EXECUTE_MODE_BLOCKER = (
-        "code execution mode is not enabled; implementation currently supports handoff-only output"
+        "code execution mode is not enabled; missing execution safety boundary"
     )
     EXECUTE_MODE_LIMITATIONS = [
-        "execute mode requires sandbox workspace, allowed paths, allowed commands, patch review, and rollback strategy",
-        "requires workspace sandbox",
-        "requires allowlisted paths",
-        "requires allowlisted commands",
-        "requires patch preview",
-        "requires rollback strategy",
-        "requires test execution policy",
-        "requires retry limit",
+        "workspace sandbox: workspace_root must be explicit and execution must stay inside sandbox",
+        "allowed paths (write): src/<module>/ and tests/<module>/",
+        "allowed paths (read): spec, solution, system_design, implementation_status, test_report",
+        "denied paths (write): .git/, .env, secrets/*, ~/*, /, pyproject.toml, .github/",
+        "allowed commands: python -m pytest tests/<module>; python -m unittest discover -s tests -p 'test_*.py'; ruff check .",
+        "denied command examples: rm -rf, curl | bash, pip install, sudo, chmod -R, git push",
+        "retry limit: max_retries=1",
+        "patch preview required: files_to_create, files_to_modify, files_to_delete, rationale, risk, test_plan",
+        "rollback policy required: pre_patch_snapshot, patch_id, rollback_available=true",
+        "execution report required: module, patch_id, files_modified, commands_run, test_results, blockers, next_action",
     ]
+    EXECUTE_MODE_NO_MODULE_BLOCKER = "no design module available for patch draft"
 
     def resolve_implementation_mode(
         self,
@@ -35,21 +38,85 @@ class ImplementationPlanningMixin(TextHelper):
     def build_execution_disabled_status(
         self,
         current_state: dict[str, object],
+        design: dict[str, object],
     ) -> dict[str, object]:
+        modules = self.get_design_modules(design)
+        primary_module = self.select_primary_module_name(current_state, modules)
+        files_touched: list[str] = []
+        tests_added_or_updated: list[str] = []
+        preview_notes: list[str] = []
+        blockers = [
+            self.EXECUTE_MODE_BLOCKER,
+            "patch preview generated; no mutation performed",
+            "single-module patch draft generated; no mutation performed",
+        ]
+
+        if not primary_module:
+            blockers.append(self.EXECUTE_MODE_NO_MODULE_BLOCKER)
+        else:
+            files_touched.append(
+                f"module={primary_module}; files_to_create=[src/{primary_module}/ | tests/{primary_module}/]; files_to_modify=[]; files_to_delete=[]"
+            )
+            tests_added_or_updated.append(
+                f"module={primary_module}; test_plan=[pytest tests/{primary_module}]"
+            )
+            preview_notes.append(
+                " ".join(
+                    [
+                        f"module={primary_module};",
+                        "rationale=prepare minimal module scaffold aligned with design handoff;",
+                        "risk=module boundary mismatch or contract interpretation drift;",
+                        "rollback_note=use pre_patch_snapshot and patch_id to revert if future execution is enabled;",
+                    ]
+                )
+            )
         return {
             **current_state,
-            "module_name": self.slugify_text(str(current_state.get("module_name", ""))),
+            "module_name": primary_module,
             "implementation_status": "blocked",
-            "files_touched": [],
-            "tests_added_or_updated": [],
+            "files_touched": files_touched,
+            "tests_added_or_updated": tests_added_or_updated,
             "contract_compliance": False,
-            "known_limitations": list(self.EXECUTE_MODE_LIMITATIONS),
-            "blockers": [self.EXECUTE_MODE_BLOCKER],
+            "known_limitations": list(self.EXECUTE_MODE_LIMITATIONS) + preview_notes,
+            "blockers": blockers,
             "workspace_path": str(current_state.get("workspace_path", "")),
             "commands_executed": [],
             "artifacts_generated": [],
             "suggested_test_command": [],
         }
+
+    def build_single_module_patch_draft(self, module_name: str) -> str:
+        if not module_name:
+            return ""
+        return "\n".join(
+            [
+                f"diff --git a/src/{module_name}/README.md b/src/{module_name}/README.md",
+                "new file mode 100644",
+                "--- /dev/null",
+                f"+++ b/src/{module_name}/README.md",
+                "@@",
+                f"+# {module_name}",
+                "+",
+                "+## Contract Source",
+                "+- system_design.contracts",
+                "+",
+                "+## Implementation Checklist",
+                "+- Follow design handoff checklist for this module",
+                "+",
+                "+## Done Criteria",
+                "+- Handoff alignment validated",
+                "",
+                f"diff --git a/tests/{module_name}/README.md b/tests/{module_name}/README.md",
+                "new file mode 100644",
+                "--- /dev/null",
+                f"+++ b/tests/{module_name}/README.md",
+                "@@",
+                f"+# {module_name} test plan",
+                "+",
+                "+## Suggested Tests",
+                f"+- pytest tests/{module_name}",
+            ]
+        )
 
     def get_design_modules(self, design: dict[str, object]) -> list[str]:
         modules: list[str] = []

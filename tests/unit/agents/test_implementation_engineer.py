@@ -186,19 +186,101 @@ class ImplementationEngineerHandoffTests(unittest.TestCase):
         self.assertEqual(result.updated_state["implementation_status"], "blocked")
         self.assertFalse(result.updated_state["contract_compliance"])
         self.assertIn(
-            "code execution mode is not enabled; implementation currently supports handoff-only output",
+            "code execution mode is not enabled; missing execution safety boundary",
+            result.updated_state["blockers"],
+        )
+        self.assertIn(
+            "patch preview generated; no mutation performed",
+            result.updated_state["blockers"],
+        )
+        self.assertIn(
+            "single-module patch draft generated; no mutation performed",
             result.updated_state["blockers"],
         )
         known_limitations_text = "\n".join(result.updated_state["known_limitations"])
-        self.assertIn("requires workspace sandbox", known_limitations_text)
-        self.assertIn("requires allowlisted paths", known_limitations_text)
-        self.assertIn("requires allowlisted commands", known_limitations_text)
-        self.assertIn("requires rollback strategy", known_limitations_text)
-        self.assertEqual(result.updated_state["files_touched"], [])
-        self.assertEqual(result.updated_state["tests_added_or_updated"], [])
+        self.assertIn("workspace sandbox", known_limitations_text)
+        self.assertIn("allowed paths (write)", known_limitations_text)
+        self.assertIn("denied paths (write)", known_limitations_text)
+        self.assertIn("allowed commands", known_limitations_text)
+        self.assertIn("retry limit: max_retries=1", known_limitations_text)
+        self.assertIn("patch preview required", known_limitations_text)
+        self.assertIn("rollback policy required", known_limitations_text)
+        self.assertIn("execution report required", known_limitations_text)
+        preview_text = "\n".join(
+            result.updated_state["files_touched"] + result.updated_state["tests_added_or_updated"]
+        )
+        payload_text = "\n".join(
+            result.updated_state["files_touched"]
+            + result.updated_state["tests_added_or_updated"]
+            + result.updated_state["known_limitations"]
+            + result.notes
+        )
+        for module in ["markdown_parser", "summary_extractor", "cli_interface"]:
+            if module == "markdown_parser":
+                self.assertIn(
+                    f"module={module}; files_to_create=[src/{module}/ | tests/{module}/]; files_to_modify=[]; files_to_delete=[]",
+                    preview_text,
+                )
+                self.assertIn(f"module={module}; test_plan=[pytest tests/{module}]", preview_text)
+            else:
+                self.assertNotIn(f"module={module}; files_to_create=", preview_text)
+                self.assertNotIn(f"module={module}; test_plan=", preview_text)
+        self.assertNotIn(".py", preview_text)
+        self.assertNotIn("class ", preview_text)
+        self.assertNotIn("def ", preview_text)
+        self.assertNotIn(".git/", preview_text)
+        self.assertNotIn(".env", preview_text)
+        self.assertNotIn(".github/", preview_text)
+        self.assertNotIn("pyproject.toml", preview_text)
+        self.assertNotIn("~/*", preview_text)
+        self.assertNotIn("files_to_delete=[src/", payload_text)
+        self.assertTrue(result.updated_state["files_touched"])
+        self.assertTrue(result.updated_state["tests_added_or_updated"])
         self.assertEqual(result.updated_state["artifacts_generated"], [])
         self.assertEqual(result.updated_state["commands_executed"], [])
         self.assertFalse(result.handoff_ready)
+
+        notes_text = "\n".join(result.notes)
+        self.assertIn("single-module patch draft (unified diff, create-only, dry-run):", notes_text)
+        self.assertIn(
+            "diff --git a/src/markdown_parser/README.md b/src/markdown_parser/README.md",
+            notes_text,
+        )
+        self.assertIn(
+            "diff --git a/tests/markdown_parser/README.md b/tests/markdown_parser/README.md",
+            notes_text,
+        )
+        self.assertIn("new file mode 100644", notes_text)
+        self.assertNotIn("deleted file mode", notes_text)
+        self.assertNotIn("rename from", notes_text)
+        self.assertNotIn("rename to", notes_text)
+        self.assertNotIn("--- a/", notes_text)
+        self.assertNotIn("+++ b/src/summary_extractor/", notes_text)
+        self.assertNotIn("+++ b/src/cli_interface/", notes_text)
+        self.assertNotIn(".py", notes_text)
+        self.assertNotIn("import ", notes_text)
+        self.assertNotIn("class ", notes_text)
+        self.assertNotIn("def ", notes_text)
+
+    def test_execute_mode_blocks_when_no_design_module_for_patch_draft(self) -> None:
+        states = self._make_markdown_design_states()
+        states["system_design"]["project_structure"]["modules"] = []
+
+        result = self.agent.run(
+            AgentContext(
+                user_input="",
+                states=states,
+                metadata={"implementation_mode": "execute"},
+            )
+        )
+
+        self.assertEqual(result.updated_state["implementation_status"], "blocked")
+        self.assertIn(
+            "no design module available for patch draft",
+            result.updated_state["blockers"],
+        )
+        notes_text = "\n".join(result.notes)
+        self.assertNotIn("diff --git", notes_text)
 
 
 if __name__ == "__main__":

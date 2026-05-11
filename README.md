@@ -138,6 +138,13 @@ forgeflow/
 * `examples/` 已补离线黄金回归场景，基于 fixture/mock/fake 输出验证主链路状态流动（不使用真实 LLM 输出作为 expected）
 * 实现仍处于早期阶段
 
+### Implementation mode
+
+The implementation stage currently runs in `handoff` mode by default.
+- `handoff`: converts `system_design` into implementation checklists, suggested tests, done criteria, and blockers.
+- `execute`: reserved for future Code Agent integration. It is currently disabled and returns a structured blocker instead of modifying files.
+The current stable flow does not write code or mutate the workspace.
+
 ### Console Script Note
 
 After editable install:

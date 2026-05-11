@@ -104,6 +104,7 @@ class ImplementationEngineerHandoffTests(unittest.TestCase):
         self.assertNotIn("module=core", joined)
         self.assertNotIn("module=utils", joined)
         self.assertNotIn("module=app", joined)
+        self.assertIn("implementation_mode=handoff", result.notes)
 
     def test_each_module_links_to_contract_and_has_tests_and_done_criteria(self) -> None:
         states = self._make_markdown_design_states()
@@ -162,6 +163,42 @@ class ImplementationEngineerHandoffTests(unittest.TestCase):
             "contract_compliance means handoff package alignment with design contract, not code implementation completeness.",
             result.notes,
         )
+
+    def test_default_mode_is_handoff(self) -> None:
+        states = self._make_markdown_design_states()
+        result = self.agent.run(AgentContext(user_input="", states=states, metadata={}))
+
+        self.assertEqual(result.updated_state["implementation_status"], "done")
+        self.assertIn("implementation_mode=handoff", result.notes)
+        self.assertTrue(result.updated_state["files_touched"])
+        self.assertTrue(result.updated_state["tests_added_or_updated"])
+
+    def test_execute_mode_returns_structured_blocker_without_execution_side_effects(self) -> None:
+        states = self._make_markdown_design_states()
+        result = self.agent.run(
+            AgentContext(
+                user_input="",
+                states=states,
+                metadata={"implementation_mode": "execute"},
+            )
+        )
+
+        self.assertEqual(result.updated_state["implementation_status"], "blocked")
+        self.assertFalse(result.updated_state["contract_compliance"])
+        self.assertIn(
+            "code execution mode is not enabled; implementation currently supports handoff-only output",
+            result.updated_state["blockers"],
+        )
+        known_limitations_text = "\n".join(result.updated_state["known_limitations"])
+        self.assertIn("requires workspace sandbox", known_limitations_text)
+        self.assertIn("requires allowlisted paths", known_limitations_text)
+        self.assertIn("requires allowlisted commands", known_limitations_text)
+        self.assertIn("requires rollback strategy", known_limitations_text)
+        self.assertEqual(result.updated_state["files_touched"], [])
+        self.assertEqual(result.updated_state["tests_added_or_updated"], [])
+        self.assertEqual(result.updated_state["artifacts_generated"], [])
+        self.assertEqual(result.updated_state["commands_executed"], [])
+        self.assertFalse(result.handoff_ready)
 
 
 if __name__ == "__main__":

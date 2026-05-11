@@ -29,6 +29,34 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
         current_state = dict(context.states.get(self.state_key, {}))
         design = dict(context.states.get("system_design", {}))
         user_input = context.user_input.strip()
+        mode = self.resolve_implementation_mode(current_state, context.metadata)
+
+        if mode == "execute":
+            updated_state = self.build_execution_disabled_status(current_state)
+            updated_state = ImplementationStatusState.model_validate(updated_state).model_dump(mode="python")
+            return AgentResult(
+                agent_name=self.agent_name,
+                stage_name=self.stage_name,
+                state_key=self.state_key,
+                updated_state=updated_state,
+                summary=(
+                    "Implementation execute mode is reserved for future integration and is currently disabled."
+                ),
+                notes=[
+                    "implementation_mode=execute; execution is disabled in current stable flow.",
+                    "contract_compliance is false because no execution handoff can be validated in execute mode.",
+                ],
+                blockers=updated_state["blockers"],
+                handoff_ready=False,
+                diagnostics={
+                    "llm_trace": EMPTY_LLM_TRACE,
+                    "execution_trace": {
+                        "workspace_path": updated_state["workspace_path"],
+                        "file_writes": [],
+                        "command_results": [],
+                    },
+                },
+            )
 
         design_modules = self.get_design_modules(design)
         module_name = self.select_primary_module_name(current_state, design_modules)
@@ -141,6 +169,7 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
             else "Implementation handoff is blocked by missing design contract or data flow inputs."
         )
         result_notes = [
+            "implementation_mode=handoff",
             "contract_compliance means handoff package alignment with design contract, not code implementation completeness.",
             *notes,
         ]

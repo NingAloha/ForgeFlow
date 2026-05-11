@@ -5,6 +5,51 @@ from ..common.text import TextHelper
 
 class ImplementationPlanningMixin(TextHelper):
     RESERVED_GENERIC_MODULES = {"core", "utils", "app"}
+    EXECUTE_MODE_BLOCKER = (
+        "code execution mode is not enabled; implementation currently supports handoff-only output"
+    )
+    EXECUTE_MODE_LIMITATIONS = [
+        "execute mode requires sandbox workspace, allowed paths, allowed commands, patch review, and rollback strategy",
+        "requires workspace sandbox",
+        "requires allowlisted paths",
+        "requires allowlisted commands",
+        "requires patch preview",
+        "requires rollback strategy",
+        "requires test execution policy",
+        "requires retry limit",
+    ]
+
+    def resolve_implementation_mode(
+        self,
+        current_state: dict[str, object],
+        metadata: dict[str, object],
+    ) -> str:
+        raw_mode = (
+            str(metadata.get("implementation_mode", "")).strip().lower()
+            or str(current_state.get("implementation_mode", "")).strip().lower()
+        )
+        if raw_mode == "execute":
+            return "execute"
+        return "handoff"
+
+    def build_execution_disabled_status(
+        self,
+        current_state: dict[str, object],
+    ) -> dict[str, object]:
+        return {
+            **current_state,
+            "module_name": self.slugify_text(str(current_state.get("module_name", ""))),
+            "implementation_status": "blocked",
+            "files_touched": [],
+            "tests_added_or_updated": [],
+            "contract_compliance": False,
+            "known_limitations": list(self.EXECUTE_MODE_LIMITATIONS),
+            "blockers": [self.EXECUTE_MODE_BLOCKER],
+            "workspace_path": str(current_state.get("workspace_path", "")),
+            "commands_executed": [],
+            "artifacts_generated": [],
+            "suggested_test_command": [],
+        }
 
     def get_design_modules(self, design: dict[str, object]) -> list[str]:
         modules: list[str] = []

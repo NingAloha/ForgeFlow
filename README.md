@@ -69,6 +69,7 @@ forgeflow/
 * [state/](./state/README.md)：状态契约示例与字段参考
 * [schemas/](./schemas/README.md)：状态契约的运行时 schema 与校验注册表
 * [main.py](./main.py)：开发与诊断用的最小 CLI runner，支持单次运行与 `--auto-run` 连续推进
+  * `user_input` 通过位置参数传入（例如 `python3.11 main.py --auto-run "..."`），当前不支持 `--input` 参数
 * [tui/](./tui/README.md)：ForgeShell 主交互入口与终端 UI 层
 * [llm_config.example.json](./llm_config.example.json)：本地大模型接入配置样例（请复制为 `llm_config.local.json` 并本地填写，兼容 `api_key` 直填与 `api_key_env` 环境变量两种模式）
 * LLM 密钥解析优先级（明确规则，无回退歧义）：`api_key`（或 `FORGEFLOW_LLM_API_KEY`）优先，其次才是 `api_key_env` 指向的环境变量值（默认 `DEEPSEEK_API_KEY`）

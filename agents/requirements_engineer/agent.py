@@ -35,6 +35,7 @@ class RequirementsEngineerAgent(
         llm_project_goal = ""
         llm_functional_requirements: list[str] = []
         llm_acceptance_criteria: list[str] = []
+        llm_failure_result: AgentResult | None = None
 
         llm_stage_enabled = should_use_llm(llm_config, self.stage_name)
         if llm_stage_enabled and user_input:
@@ -57,7 +58,7 @@ class RequirementsEngineerAgent(
                 config=llm_config,
             )
             llm_trace = llm_result.to_trace()
-            failure_result = resolve_gateway_failure(
+            llm_failure_result = resolve_gateway_failure(
                 llm_result=llm_result,
                 llm_config=llm_config,
                 stage_name=self.stage_name,
@@ -68,8 +69,13 @@ class RequirementsEngineerAgent(
                 strict_summary="Requirements blocked: strict_llm mode requires successful LLM output.",
                 fatal_summary="Requirements blocked: LLM output is unavailable.",
             )
-            if failure_result is not None:
-                return failure_result
+            # Requirements can still move forward in strict_llm mode when deterministic
+            # extraction provides a complete spec from user input.
+            if (
+                llm_failure_result is not None
+                and llm_result.status in {"fatal_error", "needs_user_input"}
+            ):
+                return llm_failure_result
             if llm_result.status == "success" and isinstance(llm_result.parsed_output, dict):
                 payload = llm_result.parsed_output
                 llm_project_goal = self.normalize_text(
@@ -147,6 +153,8 @@ class RequirementsEngineerAgent(
             if not acceptance_criteria:
                 missing_fields.append("acceptance_criteria")
             updated_state["open_questions"] = missing_fields
+            if llm_failure_result is not None:
+                return llm_failure_result
             return AgentResult(
                 agent_name=self.agent_name,
                 stage_name=self.stage_name,

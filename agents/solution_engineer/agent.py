@@ -53,7 +53,7 @@ class SolutionEngineerAgent(SolutionPlanningMixin, SolutionQuestionMixin, BaseAg
             )
 
         selected_stack = self.pick_stack(spec, answers, current_state)
-        module_mapping = self.build_module_mapping(spec)
+        module_mapping = self.build_module_mapping(spec, selected_stack)
         risks = self.build_risks(spec, selected_stack)
         alternatives = self.build_alternatives(selected_stack)
         llm_config = self.get_llm_runtime_config()

@@ -235,7 +235,7 @@ class RequirementsEngineerHelperTests(unittest.TestCase):
         self.assertTrue(result.updated_state["functional_requirements"])
         self.assertEqual(result.diagnostics["llm_trace"].status, "retryable_error")
 
-    def test_agent_blocks_in_strict_llm_mode_when_llm_fails(self) -> None:
+    def test_agent_uses_rule_based_extraction_in_strict_llm_on_retryable_failure(self) -> None:
         class GatewayStub:
             def generate(self, contract, user_prompt, config):  # noqa: ANN001
                 return LLMStructuredResult(
@@ -266,9 +266,10 @@ class RequirementsEngineerHelperTests(unittest.TestCase):
             states=make_empty_states(),
         )
         result = agent.run(context)
-        self.assertFalse(result.handoff_ready)
-        self.assertTrue(result.requires_user_input)
-        self.assertEqual(result.blockers, ["llm_generation_failed"])
+        self.assertTrue(result.handoff_ready)
+        self.assertFalse(result.requires_user_input)
+        self.assertTrue(result.updated_state["project_goal"])
+        self.assertTrue(result.updated_state["functional_requirements"])
 
 
 if __name__ == "__main__":

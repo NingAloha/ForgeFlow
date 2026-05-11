@@ -43,7 +43,7 @@ class SolutionEngineerHelperTests(unittest.TestCase):
             self.agent.infer_module_name("Collect user input from chat"),
             "interaction_layer",
         )
-        self.assertEqual(self.agent.infer_module_name(""), "workflow_core")
+        self.assertEqual(self.agent.infer_module_name(""), "workflow_engine")
 
     def test_extract_answers_only_consumes_answered_solution_question_state(self) -> None:
         answered_context = AgentContext(
@@ -149,8 +149,15 @@ class SolutionEngineerHelperTests(unittest.TestCase):
             "Generate design plan",
             "Track implementation progress",
         ]
+        selected_stack = {
+            "frontend": "CLI",
+            "backend": "Python",
+            "database": "JSON files",
+            "agent_framework": "Custom orchestrator",
+            "deployment": "Local CLI",
+        }
 
-        module_mapping = self.agent.build_module_mapping(spec)
+        module_mapping = self.agent.build_module_mapping(spec, selected_stack)
         module_names = [item["module"] for item in module_mapping]
 
         self.assertEqual(
@@ -173,19 +180,24 @@ class SolutionEngineerHelperTests(unittest.TestCase):
         self.assertEqual(module_mapping[1]["depends_on"], ["Execution_tracker"])
         self.assertEqual(module_mapping[2]["depends_on"], ["Execution_tracker"])
         self.assertEqual(module_mapping[3]["depends_on"], ["Execution_tracker"])
+        for module in module_mapping:
+            self.assertTrue(module["tech_note"])
+            self.assertIn("tech=", module["tech_note"])
+            self.assertIn("reason=", module["tech_note"])
+            self.assertNotIn(module["module"], {"md", "core", "utils"})
 
     def test_build_risks_and_alternatives_emit_only_relevant_first_pass_items(
         self,
     ) -> None:
         spec = make_requirements_ready_states()["spec"]
+        spec["project_goal"] = "Build local markdown summarizer CLI"
         spec["functional_requirements"] = [
-            "Collect requirements",
-            "Generate solution outline",
-            "Generate design plan",
-            "Track implementation progress",
+            "Read markdown file from local path",
+            "Extract title, key points, and action items",
         ]
+        spec["constraints"] = ["local only, no remote service"]
         selected_stack = {
-            "frontend": "Textual",
+            "frontend": "CLI",
             "backend": "Python",
             "database": "JSON files",
             "agent_framework": "Custom orchestrator",
@@ -195,19 +207,20 @@ class SolutionEngineerHelperTests(unittest.TestCase):
         risks = self.agent.build_risks(spec, selected_stack)
         alternatives = self.agent.build_alternatives(selected_stack)
 
+        self.assertIn("Markdown input may contain irregular heading structure", risks[0])
+        self.assertTrue(any("action items" in item for item in risks))
+        self.assertTrue(any("do not build Web UI" in item for item in alternatives))
+        self.assertTrue(any("do not add database service" in item for item in alternatives))
+        self.assertTrue(any("do not add background service" in item for item in alternatives))
+
+    def test_infer_module_name_avoids_short_or_non_semantic_names(self) -> None:
         self.assertEqual(
-            risks,
-            [
-                "Requirement scope may still be broad for a first deliverable",
-                "Terminal UX decisions may affect how quickly the first interaction loop stabilizes",
-            ],
+            self.agent.infer_module_name("Parse markdown (.md) input file"),
+            "markdown_parser",
         )
         self.assertEqual(
-            alternatives,
-            [
-                "Move to SQLite if local state management becomes too complex for flat files",
-                "Use a simpler plain CLI interface if terminal UI complexity slows delivery",
-            ],
+            self.agent.infer_module_name("Generate summary and action items"),
+            "summary_extractor",
         )
 
     def test_build_clarifying_questions_returns_blocking_solution_prompt(self) -> None:

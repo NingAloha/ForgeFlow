@@ -116,7 +116,8 @@ class AgentGatewayStatusTests(unittest.TestCase):
         req = _ReqAgent("retryable_error", "strict_llm").run(
             AgentContext(user_input="x", states=make_empty_states())
         )
-        self.assertTrue(req.requires_user_input)
+        self.assertTrue(req.handoff_ready)
+        self.assertFalse(req.requires_user_input)
 
         sol = _SolAgent("retryable_error", "strict_llm").run(
             AgentContext(user_input="x", states=make_requirements_ready_states())

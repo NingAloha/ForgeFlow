@@ -4,6 +4,35 @@ from ..common.text import TextHelper
 
 
 class SolutionPlanningMixin(TextHelper):
+    def _semantic_module_name(self, slug: str) -> str:
+        if not slug:
+            return "workflow_engine"
+        banned = {"md", "core", "utils", "util", "misc", "module"}
+        if slug in banned or len(slug) < 4:
+            return f"{slug}_workflow_module" if slug else "workflow_engine"
+        return slug
+
+    def _module_tech_note(
+        self, requirement: str, selected_stack: dict[str, str], module_name: str
+    ) -> str:
+        req = requirement.lower()
+        backend = selected_stack.get("backend", "Python") or "Python"
+        notes: list[str] = [f"tech={backend}"]
+        if any(k in req for k in {"markdown", ".md"}):
+            notes.append("library=markdown-it-py")
+            notes.append("reason=need robust markdown parsing for heading and section extraction")
+        elif any(k in req for k in {"summary", "summarize", "要点", "行动项"}):
+            notes.append("library=regex+rule-based text splitter")
+            notes.append("reason=need deterministic extraction of key points and action items")
+        elif any(k in req for k in {"cli", "command", "terminal", "命令行"}):
+            notes.append("library=argparse")
+            notes.append("reason=need local command interface and argument validation")
+        else:
+            notes.append("library=python-standard-library")
+            notes.append("reason=map requirement to implementation module with minimal deps")
+        notes.append(f"module={module_name}")
+        return "; ".join(notes)
+
     def pick_stack(
         self,
         spec: dict[str, object],
@@ -76,6 +105,12 @@ class SolutionPlanningMixin(TextHelper):
 
     def infer_module_name(self, requirement: str) -> str:
         slug = self.slugify_text(requirement)
+        if any(keyword in slug for keyword in {"markdown", "md_file", "markdown_file"}):
+            return "markdown_parser"
+        if any(keyword in slug for keyword in {"summary", "summarize", "key_point", "action_item"}):
+            return "summary_extractor"
+        if any(keyword in slug for keyword in {"cli", "command", "terminal", "input_file"}):
+            return "cli_interface"
         if any(keyword in slug for keyword in {"requirement", "spec"}):
             return "requirements_engine"
         if any(keyword in slug for keyword in {"solution", "plan", "design"}):
@@ -86,10 +121,10 @@ class SolutionPlanningMixin(TextHelper):
             return "validation_engine"
         if any(keyword in slug for keyword in {"chat", "user", "input"}):
             return "interaction_layer"
-        return slug[:40] or "workflow_core"
+        return self._semantic_module_name(slug[:40])
 
     def build_module_mapping(
-        self, spec: dict[str, object]
+        self, spec: dict[str, object], selected_stack: dict[str, str]
     ) -> list[dict[str, object]]:
         requirements = [
             self.sentence_case(item)
@@ -98,7 +133,7 @@ class SolutionPlanningMixin(TextHelper):
         ]
         modules: dict[str, dict[str, object]] = {}
         for requirement in requirements:
-            module_name = self.infer_module_name(requirement)
+            module_name = self._semantic_module_name(self.infer_module_name(requirement))
             module = modules.setdefault(
                 module_name,
                 {
@@ -106,7 +141,11 @@ class SolutionPlanningMixin(TextHelper):
                     "responsibilities": [],
                     "covers_requirements": [],
                     "depends_on": [],
-                    "tech_note": "",
+                    "tech_note": self._module_tech_note(
+                        requirement=requirement,
+                        selected_stack=selected_stack,
+                        module_name=module_name,
+                    ),
                 },
             )
             module["responsibilities"] = self.dedupe_items(
@@ -134,24 +173,41 @@ class SolutionPlanningMixin(TextHelper):
         self, spec: dict[str, object], selected_stack: dict[str, str]
     ) -> list[str]:
         risks: list[str] = []
-        if len(spec.get("functional_requirements", [])) > 3:
+        requirements = " ".join(
+            str(item).lower() for item in spec.get("functional_requirements", [])
+        )
+        constraints = " ".join(
+            str(item).lower() for item in spec.get("constraints", [])
+        )
+        goal = str(spec.get("project_goal", "")).lower()
+        context = " ".join([requirements, constraints, goal])
+
+        if "markdown" in context or ".md" in context:
             risks.append(
-                "Requirement scope may still be broad for a first deliverable."
+                "Markdown input may contain irregular heading structure; parser fallback rules are needed."
             )
-        if selected_stack.get("frontend") == "Textual":
+        if any(k in context for k in {"summary", "要点", "action", "行动项"}):
             risks.append(
-                "Terminal UX decisions may affect how quickly the first interaction loop stabilizes."
+                "Rule-based summarization may miss implicit action items in narrative paragraphs."
+            )
+        if "local" in context and selected_stack.get("deployment") == "Local CLI":
+            risks.append(
+                "Local file path handling may fail on invalid encodings or missing files."
             )
         return self.dedupe_items(risks)
 
     def build_alternatives(self, selected_stack: dict[str, str]) -> list[str]:
         alternatives: list[str] = []
-        if selected_stack.get("database") == "JSON files":
+        if selected_stack.get("frontend") == "CLI":
             alternatives.append(
-                "Move to SQLite if local state management becomes too complex for flat files."
+                "Non-goal: do not build Web UI in this iteration; focus on local CLI interaction only."
             )
-        if selected_stack.get("frontend") == "Textual":
+        if selected_stack.get("database") in {"SQLite", "JSON files"}:
             alternatives.append(
-                "Use a simpler plain CLI interface if terminal UI complexity slows delivery."
+                "Non-goal: do not add database service; keep processing stateless per input markdown file."
+            )
+        if selected_stack.get("deployment") == "Local CLI":
+            alternatives.append(
+                "Non-goal: do not add background service or API server; single-process command execution only."
             )
         return self.dedupe_items(alternatives)

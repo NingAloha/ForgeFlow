@@ -22,6 +22,8 @@
 - `/help`
 - `/quit`
 
+`/status` 当前仅做只读观测，输出阶段与决策，并补充 execution governance 可见性（implementation mode、approval artifact presence、apply plan presence、mutation enabled）。
+
 以下命令当前不支持：
 - `/rollback`
 - `/retry`

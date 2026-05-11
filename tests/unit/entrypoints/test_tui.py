@@ -51,7 +51,15 @@ class TUIAppFlowTests(unittest.TestCase):
 
         def get_status_snapshot(self) -> dict:
             self.calls.append(("get_status_snapshot", ""))
-            return {"question_state": {"status": "idle"}}
+            return {
+                "question_state": {"status": "idle"},
+                "implementation_status": {
+                    "implementation_status": "blocked",
+                    "notes": "BEGIN_EXECUTION_CONTRACT\n...\nEND_EXECUTION_CONTRACT",
+                    "approval_artifact": {"approval_status": "pending"},
+                    "apply_plan": {"apply_plan_status": "blocked"},
+                },
+            }
 
         def get_artifact_for_display(self, name: str) -> dict:
             self.calls.append(("get_artifact_for_display", name))
@@ -99,6 +107,21 @@ class TUIAppFlowTests(unittest.TestCase):
             self.assertTrue(app.handle_line("summarize markdown"))
             self.assertTrue(app.handle_line("/run"))
             self.assertIn(("orchestrate", "summarize markdown"), stub.calls)
+
+    def test_status_displays_execution_governance_presence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app = ForgeShellApp(state_dir=tmp_dir)
+            stub = self._OrchestratorStub()
+            app.orchestrator = stub
+
+            self.assertTrue(app.handle_line("/status"))
+            status_events = [event for event in app.events.tail(20) if event.kind == "status"]
+            self.assertTrue(status_events)
+            status_message = status_events[-1].message
+            self.assertIn("implementation_mode=execute", status_message)
+            self.assertIn("approval_artifact=yes", status_message)
+            self.assertIn("apply_plan=yes", status_message)
+            self.assertIn("mutation_enabled=no", status_message)
 
     def test_unsupported_control_commands_stay_unsupported(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

@@ -50,13 +50,40 @@ class ForgeShellApp:
     def _show_status(self) -> None:
         states = self.orchestrator.get_status_snapshot()
         question = states.get("question_state", {})
+        implementation = states.get("implementation_status", {})
+        governance = self._execution_governance_view(implementation)
         self.events.append(
             "status",
             (
                 f"阶段={self.final_stage}, 决策={self.decision_type}, "
-                f"提问状态={question.get('status', 'idle')}"
+                f"提问状态={question.get('status', 'idle')}, "
+                f"implementation_mode={governance['implementation_mode']}, "
+                f"approval_artifact={governance['approval_artifact']}, "
+                f"apply_plan={governance['apply_plan']}, "
+                f"mutation_enabled={governance['mutation_enabled']}"
             ),
         )
+
+    def _execution_governance_view(self, implementation: dict) -> dict[str, str]:
+        notes = str(implementation.get("notes", ""))
+        status = str(implementation.get("implementation_status", ""))
+        has_contract_markers = (
+            "BEGIN_EXECUTION_CONTRACT" in notes and "END_EXECUTION_CONTRACT" in notes
+        )
+        has_patch_draft_markers = (
+            "BEGIN_PATCH_DRAFT" in notes and "END_PATCH_DRAFT" in notes
+        )
+        mode = "handoff"
+        if status == "blocked" and (has_contract_markers or has_patch_draft_markers):
+            mode = "execute"
+        approval_present = "yes" if bool(implementation.get("approval_artifact")) else "no"
+        apply_plan_present = "yes" if bool(implementation.get("apply_plan")) else "no"
+        return {
+            "implementation_mode": mode,
+            "approval_artifact": approval_present,
+            "apply_plan": apply_plan_present,
+            "mutation_enabled": "no",
+        }
 
     def read_artifact_for_display(self, name: str) -> dict:
         # Read-only display access only.

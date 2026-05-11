@@ -138,6 +138,9 @@ class Orchestrator:
             evidence.append("spec.project_goal is non-empty.")
             evidence.append("spec.functional_requirements is non-empty.")
             evidence.append("spec.acceptance_criteria is non-empty.")
+            evidence.append(
+                "Requirements artifact is consumable and can seed REQUIREMENTS stage execution."
+            )
             return Stage.REQUIREMENTS, evidence
         if (
             current_stage == Stage.REQUIREMENTS
@@ -146,17 +149,23 @@ class Orchestrator:
             evidence.append("spec.project_goal is non-empty.")
             evidence.append("spec.functional_requirements is non-empty.")
             evidence.append("spec.acceptance_criteria is non-empty.")
-            evidence.append("Requirements are ready for solution generation.")
+            evidence.append(
+                "Requirements artifact is consumable by SOLUTION via functional requirement mapping."
+            )
             return Stage.SOLUTION, evidence
         if current_stage == Stage.SOLUTION and self.stage_evaluator.is_solution_ready(
             states
         ):
             evidence.append("solution.selected_stack.backend is defined.")
-            evidence.append("solution.module_mapping contains stable core modules.")
+            evidence.append(
+                "solution.module_mapping is non-empty and ties modules to requirements."
+            )
             evidence.append(
                 "solution.module_mapping covers core spec.functional_requirements."
             )
-            evidence.append("Solution is ready for design generation.")
+            evidence.append(
+                "Solution artifact is consumable by DESIGN for project_structure/contracts/data_flow."
+            )
             return Stage.DESIGN, evidence
         if current_stage == Stage.DESIGN and self.stage_evaluator.is_design_ready(
             states
@@ -167,7 +176,9 @@ class Orchestrator:
                 "design.data_flow references existing contracts and forms a main path."
             )
             evidence.append("design.mvp_plan.first_deliverable is defined.")
-            evidence.append("Design is ready for implementation planning.")
+            evidence.append(
+                "Design artifact is consumable by IMPLEMENTATION as handoff checklist input."
+            )
             return Stage.IMPLEMENTATION, evidence
         if (
             current_stage == Stage.IMPLEMENTATION
@@ -181,7 +192,7 @@ class Orchestrator:
                 "implementation_status.contract_compliance indicates handoff/design alignment."
             )
             evidence.append(
-                "Implementation handoff artifacts are ready for validation."
+                "Implementation handoff artifact is consumable by TESTING without code mutation."
             )
             return Stage.TESTING, evidence
         if current_stage == Stage.TESTING and self.stage_evaluator.is_done(states):
@@ -199,20 +210,40 @@ class Orchestrator:
                 evidence.append(
                     "Stay on SOLUTION because module_mapping is still empty."
                 )
+            elif not self.stage_evaluator.is_solution_ready(states):
+                evidence.append(
+                    "Stay on SOLUTION because module mapping does not yet satisfy requirements coverage invariants."
+                )
         elif current_stage == Stage.DESIGN:
             if not design.get("contracts") or not design.get("data_flow"):
                 evidence.append(
                     "Stay on DESIGN because contracts or data_flow are incomplete."
+                )
+            elif not self.stage_evaluator.is_design_ready(states):
+                evidence.append(
+                    "Stay on DESIGN because downstream implementation handoff invariants are not yet satisfied."
                 )
         elif current_stage == Stage.IMPLEMENTATION:
             if implementation_status.get("implementation_status") != "done":
                 evidence.append(
                     "Stay on IMPLEMENTATION because implementation is not done yet."
                 )
+            if implementation_status.get("blockers"):
+                evidence.append(
+                    "Stay on IMPLEMENTATION because blockers remain in implementation_status.blockers."
+                )
+            if not implementation_status.get("contract_compliance"):
+                evidence.append(
+                    "Stay on IMPLEMENTATION because handoff/design alignment is not yet established."
+                )
         elif current_stage == Stage.TESTING:
             if test_report.get("result") != "pass":
                 evidence.append(
                     "Stay on TESTING because validation has not reached a pass result."
+                )
+            if test_report.get("issues"):
+                evidence.append(
+                    "Stay on TESTING because open or confirmed issues still require upstream fixes."
                 )
 
         return None, evidence
@@ -252,7 +283,10 @@ class Orchestrator:
                 wait_for_user_input=True,
                 should_stay=True,
                 reason="Waiting for user input.",
-                evidence=["question_state is blocking and awaiting user response."],
+                evidence=[
+                    "question_state is blocking and awaiting user response.",
+                    "Progress is paused until the blocking question is resolved.",
+                ],
             )
 
         backflow_target, backflow_evidence = self.evaluate_backflow(
@@ -286,13 +320,18 @@ class Orchestrator:
                 evidence=forward_evidence,
             )
 
+        stay_evidence = list(forward_evidence) if forward_evidence else []
+        if not stay_evidence:
+            stay_evidence.append(
+                f"Stay on {computed_stage} because no forward or backflow invariant is satisfied."
+            )
         return TransitionDecision(
             computed_stage=computed_stage,
             final_stage=computed_stage,
             source_stage=source_stage,
             should_stay=True,
             reason="Stay on current stage.",
-            evidence=[],
+            evidence=stay_evidence,
         )
 
     def build_diagnostic_payload(

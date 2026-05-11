@@ -44,6 +44,18 @@ Unsupported control commands (not implemented):
 - `--tui` launches the minimal ForgeShell terminal shell.
 - Implementation currently produces handoff artifacts and execution previews, not real code mutation.
 
+### Capability Boundary Matrix
+| Capability | Status |
+| --- | --- |
+| Planning (Requirements/Solution/Design) | ✅ |
+| Implementation Handoff | ✅ |
+| Reviewable Execution Contract | ✅ |
+| Approval Semantics | ✅ |
+| Dry-run Apply Plan | ✅ |
+| Real Mutation Runtime | ❌ |
+| Patch Apply | ❌ |
+| Command Execution | ❌ |
+
 ## Implementation Modes
 - `handoff` (default, stable): design-to-implementation checklist output.
 - `execute` (disabled preview path): returns blocked status with preview artifacts only.

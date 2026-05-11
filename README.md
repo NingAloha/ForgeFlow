@@ -42,6 +42,18 @@ CLI Runner (Dev / Debug) ┘
 - requirements/solution/design/implementation/testing 均已接入主链路。
 - implementation 当前产出是交接信息与预览信息，不是实际代码落盘。
 
+### 当前能力边界矩阵
+| 能力 | 当前状态 |
+| --- | --- |
+| Planning（Requirements/Solution/Design） | ✅ |
+| Implementation Handoff | ✅ |
+| Reviewable Execution Contract | ✅ |
+| Approval Semantics | ✅ |
+| Dry-run Apply Plan | ✅ |
+| Real Mutation Runtime | ❌ |
+| Patch Apply | ❌ |
+| Command Execution | ❌ |
+
 ## Implementation 模式
 - `handoff`（默认稳定路径）：
   - 承接 `system_design`
@@ -121,6 +133,19 @@ The plan includes:
 - post-apply test plan
 - gate result
 The plan does not apply patches, write files, or run commands.
+
+### Apply plan validation
+ForgeFlow can validate a dry-run apply plan before any mutation runtime exists.
+Validation checks:
+- required fields
+- patch id consistency
+- target module consistency
+- file path allowlist
+- blocked gate result
+- mutation_performed=false
+- safe post-apply test plan
+Validation does not apply patches, write files, or run commands.
+Execution governance 当前只表达可审阅执行意图，不触发真实 mutation。
 
 ## Runtime Artifact Boundary
 - 以下属于 runtime cache，不应入库：

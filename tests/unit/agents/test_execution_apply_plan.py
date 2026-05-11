@@ -4,7 +4,10 @@ import copy
 import unittest
 
 from agents.implementation_engineer.execution_approval import build_pending_approval
-from agents.implementation_engineer.execution_apply_plan import build_dry_run_apply_plan
+from agents.implementation_engineer.execution_apply_plan import (
+    build_dry_run_apply_plan,
+    validate_apply_plan,
+)
 
 
 class ExecutionApplyPlanTests(unittest.TestCase):
@@ -113,6 +116,101 @@ class ExecutionApplyPlanTests(unittest.TestCase):
         self.assertNotIn("commands_executed", plan)
         self.assertNotIn("artifacts_generated", plan)
         self.assertNotIn("file_writes", plan)
+
+    def test_validate_apply_plan_accepts_current_valid_dry_run_plan(self) -> None:
+        approval = self._approved()
+        plan = build_dry_run_apply_plan(self.contract, self.patch_draft, approval)
+        self.assertEqual(validate_apply_plan(plan, self.contract, self.patch_draft), [])
+
+    def test_validate_apply_plan_reports_missing_required_key(self) -> None:
+        plan = build_dry_run_apply_plan(self.contract, self.patch_draft, self._approved())
+        plan.pop("patch_id")
+        issues = validate_apply_plan(plan, self.contract, self.patch_draft)
+        self.assertIn("missing required apply plan key: patch_id", issues)
+
+    def test_validate_apply_plan_reports_patch_id_mismatch(self) -> None:
+        plan = build_dry_run_apply_plan(self.contract, self.patch_draft, self._approved())
+        plan["patch_id"] = "badhash"
+        issues = validate_apply_plan(plan, self.contract, self.patch_draft)
+        self.assertIn("patch_id does not match execution contract fingerprint", issues)
+
+    def test_validate_apply_plan_reports_target_module_mismatch(self) -> None:
+        plan = build_dry_run_apply_plan(self.contract, self.patch_draft, self._approved())
+        plan["target_module"] = "summary_extractor"
+        issues = validate_apply_plan(plan, self.contract, self.patch_draft)
+        self.assertIn("target_module does not match execution contract", issues)
+
+    def test_validate_apply_plan_reports_files_to_create_mismatch(self) -> None:
+        plan = build_dry_run_apply_plan(self.contract, self.patch_draft, self._approved())
+        plan["files_to_create"] = ["src/markdown_parser/OTHER.md"]
+        issues = validate_apply_plan(plan, self.contract, self.patch_draft)
+        self.assertIn(
+            "files_to_create does not match execution contract create list",
+            issues,
+        )
+
+    def test_validate_apply_plan_reports_non_empty_modify_or_delete(self) -> None:
+        plan = build_dry_run_apply_plan(self.contract, self.patch_draft, self._approved())
+        plan["files_to_modify"] = ["src/markdown_parser/README.md"]
+        issues = validate_apply_plan(plan, self.contract, self.patch_draft)
+        self.assertIn(
+            "files_to_modify/delete must be empty for dry-run apply plan",
+            issues,
+        )
+
+    def test_validate_apply_plan_reports_gate_result_allowed_true(self) -> None:
+        plan = build_dry_run_apply_plan(self.contract, self.patch_draft, self._approved())
+        plan["gate_result"] = {"allowed": True, "reason": "mutation runtime is not enabled"}
+        issues = validate_apply_plan(plan, self.contract, self.patch_draft)
+        self.assertIn(
+            "apply plan gate result must remain blocked while mutation runtime is disabled",
+            issues,
+        )
+
+    def test_validate_apply_plan_reports_mutation_performed_true(self) -> None:
+        plan = build_dry_run_apply_plan(self.contract, self.patch_draft, self._approved())
+        plan["mutation_performed"] = True
+        issues = validate_apply_plan(plan, self.contract, self.patch_draft)
+        self.assertIn("apply plan must not perform mutation", issues)
+
+    def test_validate_apply_plan_reports_non_blocked_status(self) -> None:
+        plan = build_dry_run_apply_plan(self.contract, self.patch_draft, self._approved())
+        plan["apply_plan_status"] = "ready"
+        issues = validate_apply_plan(plan, self.contract, self.patch_draft)
+        self.assertIn(
+            "apply plan status must be blocked before mutation runtime exists",
+            issues,
+        )
+
+    def test_validate_apply_plan_reports_disallowed_post_apply_command(self) -> None:
+        plan = build_dry_run_apply_plan(self.contract, self.patch_draft, self._approved())
+        plan["post_apply_test_plan"] = ["pytest tests/markdown_parser", "sudo rm -rf /tmp/x"]
+        issues = validate_apply_plan(plan, self.contract, self.patch_draft)
+        self.assertIn("post-apply test plan contains disallowed command: rm -rf", issues)
+
+    def test_validate_apply_plan_reports_denied_path(self) -> None:
+        plan = build_dry_run_apply_plan(self.contract, self.patch_draft, self._approved())
+        plan["files_to_create"] = ["src/markdown_parser/README.md", ".git/config"]
+        issues = validate_apply_plan(plan, self.contract, self.patch_draft)
+        self.assertIn(
+            "files_to_create does not match execution contract create list",
+            issues,
+        )
+        self.assertIn("apply plan path is outside allowed scope: .git/config", issues)
+
+    def test_validate_apply_plan_has_no_side_effects_and_does_not_mutate_inputs(self) -> None:
+        approval = self._approved()
+        plan = build_dry_run_apply_plan(self.contract, self.patch_draft, approval)
+        plan_before = copy.deepcopy(plan)
+        contract_before = copy.deepcopy(self.contract)
+        draft_before = str(self.patch_draft)
+
+        issues = validate_apply_plan(plan, self.contract, self.patch_draft)
+
+        self.assertEqual(issues, [])
+        self.assertEqual(plan, plan_before)
+        self.assertEqual(self.contract, contract_before)
+        self.assertEqual(self.patch_draft, draft_before)
 
 
 if __name__ == "__main__":

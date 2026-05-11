@@ -35,16 +35,21 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
             updated_state = self.build_execution_disabled_status(current_state, design)
             updated_state = ImplementationStatusState.model_validate(updated_state).model_dump(mode="python")
             patch_draft = self.build_single_module_patch_draft(updated_state["module_name"])
+            contract_lines = self.build_execution_contract_lines(updated_state["module_name"])
             execute_notes = [
                 "implementation_mode=execute; execution is disabled in current stable flow.",
                 "contract_compliance is false because no execution handoff can be validated in execute mode.",
                 "dry-run patch preview generated for module directories only; no file mutation and no command execution performed.",
+                "BEGIN_EXECUTION_CONTRACT",
+                *contract_lines,
+                "END_EXECUTION_CONTRACT",
             ]
             if patch_draft:
                 execute_notes.extend(
                     [
-                        "single-module patch draft (unified diff, create-only, dry-run):",
+                        "BEGIN_PATCH_DRAFT",
                         patch_draft,
+                        "END_PATCH_DRAFT",
                     ]
                 )
             return AgentResult(

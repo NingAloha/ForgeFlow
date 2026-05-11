@@ -66,6 +66,14 @@ CLI Runner (Dev / Debug) ┘
   - 不写入文件
   - 不执行命令
 
+## Reviewable Execution Contract
+- `execute` 路径会输出可审阅的 execution contract，但当前仍是 `blocked`。
+- contract 是 review object，不是 apply object。
+- patch preview 与 patch draft 是同一 contract 的两种视图：
+  - contract 块描述执行意图、边界与回滚预期（key-value）。
+  - patch draft 块描述 unified diff 草案（仅预览，不落盘）。
+- 未来 apply/rollback/testing 会复用这套 contract 语义，避免 preview/apply/rollback 语义分裂。
+
 ## Runtime Artifact Boundary
 - 以下属于 runtime cache，不应入库：
   - `.forgeflow/state/`

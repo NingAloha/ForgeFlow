@@ -218,7 +218,7 @@ class ImplementationEngineerHandoffTests(unittest.TestCase):
         for module in ["markdown_parser", "summary_extractor", "cli_interface"]:
             if module == "markdown_parser":
                 self.assertIn(
-                    f"module={module}; files_to_create=[src/{module}/ | tests/{module}/]; files_to_modify=[]; files_to_delete=[]",
+                    f"module={module}; operation=create_only; files_to_create=[src/{module}/README.md | tests/{module}/README.md]; files_to_modify=[]; files_to_delete=[]",
                     preview_text,
                 )
                 self.assertIn(f"module={module}; test_plan=[pytest tests/{module}]", preview_text)
@@ -241,7 +241,22 @@ class ImplementationEngineerHandoffTests(unittest.TestCase):
         self.assertFalse(result.handoff_ready)
 
         notes_text = "\n".join(result.notes)
-        self.assertIn("single-module patch draft (unified diff, create-only, dry-run):", notes_text)
+        self.assertIn("BEGIN_EXECUTION_CONTRACT", notes_text)
+        self.assertIn("END_EXECUTION_CONTRACT", notes_text)
+        self.assertIn("BEGIN_PATCH_DRAFT", notes_text)
+        self.assertIn("END_PATCH_DRAFT", notes_text)
+        self.assertIn("execution_contract_version=v1", notes_text)
+        self.assertIn("execution_intent=review_only", notes_text)
+        self.assertIn("mutation_performed=false", notes_text)
+        self.assertIn("target_module=markdown_parser", notes_text)
+        self.assertIn("plan_type=patch_preview+patch_draft", notes_text)
+        self.assertIn("create=[src/markdown_parser/README.md, tests/markdown_parser/README.md]", notes_text)
+        self.assertIn("modify=[]", notes_text)
+        self.assertIn("delete=[]", notes_text)
+        self.assertIn("rationale=", notes_text)
+        self.assertIn("risk=", notes_text)
+        self.assertIn("test_plan=[pytest tests/markdown_parser]", notes_text)
+        self.assertIn("rollback_expectation=pre_patch_snapshot+patch_id+rollback_available", notes_text)
         self.assertIn(
             "diff --git a/src/markdown_parser/README.md b/src/markdown_parser/README.md",
             notes_text,

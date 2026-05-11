@@ -28,7 +28,13 @@ htmlcov/
 .forgeflow/state/
 .forgeflow/generated/
 .forgeflow/runs/
+.forgeflow/tmp/
 .forgeflow/
+
+# Local temp dirs
+tmp/
+.tmp/
+__tmp__/
 
 # Runtime run outputs under repository root
 runs/*

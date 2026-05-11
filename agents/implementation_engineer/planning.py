@@ -21,6 +21,7 @@ class ImplementationPlanningMixin(TextHelper):
         "execution report required: module, patch_id, files_modified, commands_run, test_results, blockers, next_action",
     ]
     EXECUTE_MODE_NO_MODULE_BLOCKER = "no design module available for patch draft"
+    EXECUTION_CONTRACT_VERSION = "v1"
 
     def resolve_implementation_mode(
         self,
@@ -55,7 +56,7 @@ class ImplementationPlanningMixin(TextHelper):
             blockers.append(self.EXECUTE_MODE_NO_MODULE_BLOCKER)
         else:
             files_touched.append(
-                f"module={primary_module}; files_to_create=[src/{primary_module}/ | tests/{primary_module}/]; files_to_modify=[]; files_to_delete=[]"
+                f"module={primary_module}; operation=create_only; files_to_create=[src/{primary_module}/README.md | tests/{primary_module}/README.md]; files_to_modify=[]; files_to_delete=[]"
             )
             tests_added_or_updated.append(
                 f"module={primary_module}; test_plan=[pytest tests/{primary_module}]"
@@ -84,6 +85,29 @@ class ImplementationPlanningMixin(TextHelper):
             "artifacts_generated": [],
             "suggested_test_command": [],
         }
+
+    def build_execution_contract_lines(self, module_name: str) -> list[str]:
+        lines = [
+            f"execution_contract_version={self.EXECUTION_CONTRACT_VERSION}",
+            "execution_intent=review_only",
+            "mutation_performed=false",
+        ]
+        if not module_name:
+            return lines
+        lines.extend(
+            [
+                f"target_module={module_name}",
+                "plan_type=patch_preview+patch_draft",
+                f"create=[src/{module_name}/README.md, tests/{module_name}/README.md]",
+                "modify=[]",
+                "delete=[]",
+                "rationale=prepare reviewable implementation intent from design without mutation",
+                "risk=contract drift or module-boundary mismatch before real execution",
+                f"test_plan=[pytest tests/{module_name}]",
+                "rollback_expectation=pre_patch_snapshot+patch_id+rollback_available",
+            ]
+        )
+        return lines
 
     def build_single_module_patch_draft(self, module_name: str) -> str:
         if not module_name:

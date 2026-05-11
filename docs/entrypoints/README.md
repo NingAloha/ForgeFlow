@@ -39,3 +39,8 @@ forgeflow --tui
 ```
 
 说明：当前不支持 `--input` 参数。
+
+## Runtime Artifact Boundary
+- 运行缓存默认不入库：`.forgeflow/state/`、`.forgeflow/generated/`、`.forgeflow/runs/`、`.forgeflow/tmp/`。
+- 仓库根下运行输出默认不入库：`runs/*`、`tmp/`、`.tmp/`、`__tmp__/`。
+- 人工整理评审产物可入库：`runs/manual_reviews/`。

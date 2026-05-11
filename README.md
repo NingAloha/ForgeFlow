@@ -74,6 +74,32 @@ CLI Runner (Dev / Debug) ┘
   - patch draft 块描述 unified diff 草案（仅预览，不落盘）。
 - 未来 apply/rollback/testing 会复用这套 contract 语义，避免 preview/apply/rollback 语义分裂。
 
+### Execution contract validation
+ForgeFlow can parse and validate the reviewable execution contract produced by execute mode.
+Validation checks that:
+- the contract and patch draft boundaries are present
+- required keys are present
+- mutation is disabled
+- modify/delete are empty
+- paths stay within the allowed module scope
+- the patch draft is create-only and README-only
+Validation does not apply the patch or run commands.
+
+### Execution approval layer
+ForgeFlow can build a review approval object for a validated execution contract.
+The approval layer records:
+- contract fingerprint
+- approval status
+- target module
+- review decision
+- stale detection
+Approval currently does not execute patches. It only prepares the control semantics required before future mutation runtime.
+
+### Execution approval artifact
+Approval objects can be saved as run-local artifacts under `.forgeflow/runs/<run_id>/approvals/`.
+Approval artifacts are ignored by default and are not committed.
+They record approval state and contract fingerprint only; they do not store or apply patch content.
+
 ## Runtime Artifact Boundary
 - 以下属于 runtime cache，不应入库：
   - `.forgeflow/state/`

@@ -27,49 +27,55 @@ class LLMTraceModelTests(unittest.TestCase):
 
     def test_model_rejects_unknown_field(self) -> None:
         with self.assertRaises(ValidationError):
-            LLMTraceModel.model_validate({
-                "status": "success",
-                "failure_type": "none",
-                "repair_attempts": 0,
-                "validation_errors": [],
-                "raw_excerpt": "",
-                "model": "",
-                "provider": "",
-                "protocol": "",
-                "latency_ms": 0,
-                "error": None,
-                "extra": True,
-            })
+            LLMTraceModel.model_validate(
+                {
+                    "status": "success",
+                    "failure_type": "none",
+                    "repair_attempts": 0,
+                    "validation_errors": [],
+                    "raw_excerpt": "",
+                    "model": "",
+                    "provider": "",
+                    "protocol": "",
+                    "latency_ms": 0,
+                    "error": None,
+                    "extra": True,
+                }
+            )
 
     def test_model_rejects_invalid_status(self) -> None:
         with self.assertRaises(ValidationError):
-            LLMTraceModel.model_validate({
-                "status": "invalid",
-                "failure_type": "none",
-                "repair_attempts": 0,
-                "validation_errors": [],
-                "raw_excerpt": "",
-                "model": "",
-                "provider": "",
-                "protocol": "",
-                "latency_ms": 0,
-                "error": None,
-            })
+            LLMTraceModel.model_validate(
+                {
+                    "status": "invalid",
+                    "failure_type": "none",
+                    "repair_attempts": 0,
+                    "validation_errors": [],
+                    "raw_excerpt": "",
+                    "model": "",
+                    "provider": "",
+                    "protocol": "",
+                    "latency_ms": 0,
+                    "error": None,
+                }
+            )
 
     def test_model_rejects_invalid_type(self) -> None:
         with self.assertRaises(ValidationError):
-            LLMTraceModel.model_validate({
-                "status": "success",
-                "failure_type": "none",
-                "repair_attempts": "0",
-                "validation_errors": [],
-                "raw_excerpt": "",
-                "model": "",
-                "provider": "",
-                "protocol": "",
-                "latency_ms": 0,
-                "error": None,
-            })
+            LLMTraceModel.model_validate(
+                {
+                    "status": "success",
+                    "failure_type": "none",
+                    "repair_attempts": "0",
+                    "validation_errors": [],
+                    "raw_excerpt": "",
+                    "model": "",
+                    "provider": "",
+                    "protocol": "",
+                    "latency_ms": 0,
+                    "error": None,
+                }
+            )
 
     def test_empty_trace_constant_is_stable_via_dump(self) -> None:
         self.assertEqual(

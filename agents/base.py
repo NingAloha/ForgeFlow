@@ -44,9 +44,7 @@ class QuestionState:
 
     @property
     def has_active_questions(self) -> bool:
-        return self.status in {"awaiting_user", "answered"} and bool(
-            self.questions
-        )
+        return self.status in {"awaiting_user", "answered"} and bool(self.questions)
 
 
 @dataclass(slots=True)
@@ -85,10 +83,7 @@ class BaseAgent(ABC):
     state_key: str
 
     def build_placeholder_summary(self) -> str:
-        return (
-            f"{self.agent_name} placeholder executed for stage "
-            f"{self.stage_name}."
-        )
+        return f"{self.agent_name} placeholder executed for stage {self.stage_name}."
 
     @abstractmethod
     def run(self, context: AgentContext) -> AgentResult:

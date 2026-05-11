@@ -23,6 +23,7 @@ REQUIRED_KEYS = [
     "rollback_expectation",
 ]
 
+
 def _extract_block(text: str, begin: str, end: str) -> tuple[str, bool]:
     pattern = rf"{re.escape(begin)}\n(.*?)\n{re.escape(end)}"
     match = re.search(pattern, text, flags=re.DOTALL)
@@ -66,7 +67,9 @@ def parse_patch_draft(notes: str) -> str:
     return block
 
 
-def validate_execution_contract(contract: dict[str, Any], patch_draft: str) -> list[str]:
+def validate_execution_contract(
+    contract: dict[str, Any], patch_draft: str
+) -> list[str]:
     issues: list[str] = []
 
     if not contract.get("_contract_boundary_present"):
@@ -104,7 +107,10 @@ def validate_execution_contract(contract: dict[str, Any], patch_draft: str) -> l
         if path_str not in allowed_paths:
             issues.append(f"create path is outside allowlist: {path_str}")
 
-        denied_hit = any(token in path_str for token in [".git", ".github", ".env", "pyproject.toml", "~"])
+        denied_hit = any(
+            token in path_str
+            for token in [".git", ".github", ".env", "pyproject.toml", "~"]
+        )
         if denied_hit or path_str.startswith("/"):
             issues.append(f"create path uses denied scope: {path_str}")
 
@@ -127,6 +133,8 @@ def validate_execution_contract(contract: dict[str, Any], patch_draft: str) -> l
             path_str = str(path).strip()
             expected_marker = f"+++ b/{path_str}"
             if path_str and expected_marker not in draft:
-                issues.append(f"patch draft does not cover declared create path: {path_str}")
+                issues.append(
+                    f"patch draft does not cover declared create path: {path_str}"
+                )
 
     return issues

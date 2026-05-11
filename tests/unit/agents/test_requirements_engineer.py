@@ -43,7 +43,9 @@ class RequirementsEngineerHelperTests(unittest.TestCase):
         )
         self.assertEqual(self.agent.extract_goal_from_input(""), "")
 
-    def test_extract_requirements_from_input_prefers_bullets_and_then_clauses(self) -> None:
+    def test_extract_requirements_from_input_prefers_bullets_and_then_clauses(
+        self,
+    ) -> None:
         self.assertEqual(
             self.agent.extract_requirements_from_input(
                 "- collect requirements\n- generate solution outline\n- track progress"
@@ -65,7 +67,9 @@ class RequirementsEngineerHelperTests(unittest.TestCase):
             ],
         )
 
-    def test_extract_requirements_from_input_returns_empty_for_too_thin_input(self) -> None:
+    def test_extract_requirements_from_input_returns_empty_for_too_thin_input(
+        self,
+    ) -> None:
         self.assertEqual(self.agent.extract_requirements_from_input("ship"), [])
         self.assertEqual(self.agent.extract_requirements_from_input(""), [])
 
@@ -90,9 +94,7 @@ class RequirementsEngineerHelperTests(unittest.TestCase):
         )
         self.assertEqual(
             self.agent.derive_acceptance_criteria("A workflow assistant", []),
-            [
-                "The delivered workflow satisfies the core goal: a workflow assistant"
-            ],
+            ["The delivered workflow satisfies the core goal: a workflow assistant"],
         )
 
     def test_extract_answers_only_consumes_answered_requirements_question_state(
@@ -148,7 +150,9 @@ class RequirementsEngineerHelperTests(unittest.TestCase):
         self.assertEqual(self.agent.extract_answers(wrong_state_context), {})
 
     def test_build_clarifying_questions_returns_blocking_spec_prompt(self) -> None:
-        question_state = self.agent.build_clarifying_questions(make_empty_states()["spec"])
+        question_state = self.agent.build_clarifying_questions(
+            make_empty_states()["spec"]
+        )
 
         self.assertEqual(question_state.status, "awaiting_user")
         self.assertEqual(question_state.stage_name, "REQUIREMENTS")
@@ -235,7 +239,9 @@ class RequirementsEngineerHelperTests(unittest.TestCase):
         self.assertTrue(result.updated_state["functional_requirements"])
         self.assertEqual(result.diagnostics["llm_trace"].status, "retryable_error")
 
-    def test_agent_uses_rule_based_extraction_in_strict_llm_on_retryable_failure(self) -> None:
+    def test_agent_uses_rule_based_extraction_in_strict_llm_on_retryable_failure(
+        self,
+    ) -> None:
         class GatewayStub:
             def generate(self, contract, user_prompt, config):  # noqa: ANN001
                 return LLMStructuredResult(

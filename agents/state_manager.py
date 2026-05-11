@@ -166,10 +166,7 @@ class StateManager:
 
     def load_all_states(self) -> dict[str, dict[str, Any]]:
         self.validation_errors = {}
-        return {
-            state_key: self.load_state(state_key)
-            for state_key in self.STATE_FILES
-        }
+        return {state_key: self.load_state(state_key) for state_key in self.STATE_FILES}
 
     def validate_state_payload(
         self,

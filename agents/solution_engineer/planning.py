@@ -20,16 +20,22 @@ class SolutionPlanningMixin(TextHelper):
         notes: list[str] = [f"tech={backend}"]
         if any(k in req for k in {"markdown", ".md"}):
             notes.append("library=markdown-it-py")
-            notes.append("reason=need robust markdown parsing for heading and section extraction")
+            notes.append(
+                "reason=need robust markdown parsing for heading and section extraction"
+            )
         elif any(k in req for k in {"summary", "summarize", "要点", "行动项"}):
             notes.append("library=regex+rule-based text splitter")
-            notes.append("reason=need deterministic extraction of key points and action items")
+            notes.append(
+                "reason=need deterministic extraction of key points and action items"
+            )
         elif any(k in req for k in {"cli", "command", "terminal", "命令行"}):
             notes.append("library=argparse")
             notes.append("reason=need local command interface and argument validation")
         else:
             notes.append("library=python-standard-library")
-            notes.append("reason=map requirement to implementation module with minimal deps")
+            notes.append(
+                "reason=map requirement to implementation module with minimal deps"
+            )
         notes.append(f"module={module_name}")
         return "; ".join(notes)
 
@@ -57,8 +63,7 @@ class SolutionPlanningMixin(TextHelper):
 
         if not selected_stack.get("backend"):
             selected_stack["backend"] = (
-                self.sentence_case(answers.get("backend_preference", ""))
-                or "Python"
+                self.sentence_case(answers.get("backend_preference", "")) or "Python"
             )
 
         if not selected_stack.get("frontend"):
@@ -107,9 +112,14 @@ class SolutionPlanningMixin(TextHelper):
         slug = self.slugify_text(requirement)
         if any(keyword in slug for keyword in {"markdown", "md_file", "markdown_file"}):
             return "markdown_parser"
-        if any(keyword in slug for keyword in {"summary", "summarize", "key_point", "action_item"}):
+        if any(
+            keyword in slug
+            for keyword in {"summary", "summarize", "key_point", "action_item"}
+        ):
             return "summary_extractor"
-        if any(keyword in slug for keyword in {"cli", "command", "terminal", "input_file"}):
+        if any(
+            keyword in slug for keyword in {"cli", "command", "terminal", "input_file"}
+        ):
             return "cli_interface"
         if any(keyword in slug for keyword in {"requirement", "spec"}):
             return "requirements_engine"
@@ -133,7 +143,9 @@ class SolutionPlanningMixin(TextHelper):
         ]
         modules: dict[str, dict[str, object]] = {}
         for requirement in requirements:
-            module_name = self._semantic_module_name(self.infer_module_name(requirement))
+            module_name = self._semantic_module_name(
+                self.infer_module_name(requirement)
+            )
             module = modules.setdefault(
                 module_name,
                 {

@@ -237,7 +237,9 @@ class OrchestratorCoreTests(unittest.TestCase):
             orchestrator.run_manifest.write(summary_model)
             self.assertIsInstance(orchestrator.run_manifest._run_steps[0], RunStepModel)
             self.assertEqual(
-                orchestrator.run_manifest._run_steps[0].llm_trace.model_dump(mode="python"),
+                orchestrator.run_manifest._run_steps[0].llm_trace.model_dump(
+                    mode="python"
+                ),
                 EMPTY_LLM_TRACE.model_dump(mode="python"),
             )
 
@@ -354,7 +356,9 @@ class OrchestratorCoreTests(unittest.TestCase):
             with self.assertRaises(ValidationError):
                 writer.append_step(result, step_input="", original_request="")
 
-    def test_record_auto_run_stop_writes_no_progress_metadata_into_run_summary(self) -> None:
+    def test_record_auto_run_stop_writes_no_progress_metadata_into_run_summary(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             state_dir = Path(temp_dir) / "state"
             orchestrator = Orchestrator()

@@ -33,9 +33,15 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
 
         if mode == "execute":
             updated_state = self.build_execution_disabled_status(current_state, design)
-            updated_state = ImplementationStatusState.model_validate(updated_state).model_dump(mode="python")
-            patch_draft = self.build_single_module_patch_draft(updated_state["module_name"])
-            contract_lines = self.build_execution_contract_lines(updated_state["module_name"])
+            updated_state = ImplementationStatusState.model_validate(
+                updated_state
+            ).model_dump(mode="python")
+            patch_draft = self.build_single_module_patch_draft(
+                updated_state["module_name"]
+            )
+            contract_lines = self.build_execution_contract_lines(
+                updated_state["module_name"]
+            )
             execute_notes = [
                 "implementation_mode=execute; execution is disabled in current stable flow.",
                 "contract_compliance is false because no execution handoff can be validated in execute mode.",
@@ -83,7 +89,9 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
         notes: list[str] = []
 
         if not design_modules:
-            blockers.append("missing design modules in system_design.project_structure.modules")
+            blockers.append(
+                "missing design modules in system_design.project_structure.modules"
+            )
 
         has_any_contract = bool(design.get("contracts"))
         has_any_data_flow = bool(design.get("data_flow"))
@@ -117,7 +125,9 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
 
             module_contract_alignment[module] = contract is not None and has_data_flow
 
-        contract_compliance = bool(design_modules) and all(module_contract_alignment.values())
+        contract_compliance = bool(design_modules) and all(
+            module_contract_alignment.values()
+        )
         implementation_status = "blocked" if blockers else "done"
 
         updated_state = {
@@ -134,7 +144,9 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
             "artifacts_generated": ["handoff_package_generated"],
             "suggested_test_command": [],
         }
-        updated_state = ImplementationStatusState.model_validate(updated_state).model_dump(mode="python")
+        updated_state = ImplementationStatusState.model_validate(
+            updated_state
+        ).model_dump(mode="python")
 
         llm_trace = EMPTY_LLM_TRACE
         llm_config = self.get_llm_runtime_config()

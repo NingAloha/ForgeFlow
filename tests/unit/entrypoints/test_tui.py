@@ -39,7 +39,9 @@ class TUIAppFlowTests(unittest.TestCase):
         def __init__(self) -> None:
             self.calls: list[tuple[str, str]] = []
 
-        def orchestrate(self, prompt: str, original_request: str = "") -> "TUIAppFlowTests._Result":
+        def orchestrate(
+            self, prompt: str, original_request: str = ""
+        ) -> "TUIAppFlowTests._Result":
             self.calls.append(("orchestrate", prompt))
             return TUIAppFlowTests._Result(
                 decision=TUIAppFlowTests._Decision(),

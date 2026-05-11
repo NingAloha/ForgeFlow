@@ -114,6 +114,8 @@ def create_app(service: HabitService):
         except (ValueError, LookupError) as exc:
             return _json(start_response, "400 Bad Request", {"error": str(exc)})
         except Exception as exc:  # pragma: no cover
-            return _json(start_response, "500 Internal Server Error", {"error": str(exc)})
+            return _json(
+                start_response, "500 Internal Server Error", {"error": str(exc)}
+            )
 
     return app

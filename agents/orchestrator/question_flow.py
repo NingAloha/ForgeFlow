@@ -30,9 +30,7 @@ class QuestionFlow:
             answer = None
             if isinstance(answer_payload, dict):
                 answer = QuestionAnswer(
-                    selected_values=list(
-                        answer_payload.get("selected_values", [])
-                    ),
+                    selected_values=list(answer_payload.get("selected_values", [])),
                     free_text=answer_payload.get("free_text", ""),
                 )
             questions.append(
@@ -113,9 +111,7 @@ class QuestionFlow:
         except ValueError:
             return None
 
-    def is_waiting_for_user_input(
-        self, states: dict[str, dict[str, Any]]
-    ) -> bool:
+    def is_waiting_for_user_input(self, states: dict[str, dict[str, Any]]) -> bool:
         question_state = states.get("question_state", {})
         return bool(
             question_state.get("blocking")

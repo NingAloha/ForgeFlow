@@ -94,7 +94,9 @@ def format_diagnostic_report(result: OrchestrationResult) -> str:
     decision = result.decision
     diagnostic = result.diagnostic
     changed_states = changed_state_keys(result)
-    question_view = diagnostic.get("question_state", result.states_after.get("question_state", {}))
+    question_view = diagnostic.get(
+        "question_state", result.states_after.get("question_state", {})
+    )
     execution_view = diagnostic.get("execution", {})
     transition_view = diagnostic.get("transition", {})
     stage_view = diagnostic.get("stages", {})
@@ -139,10 +141,7 @@ def format_diagnostic_report(result: OrchestrationResult) -> str:
         [
             "State Changes:",
             f"- changed states: {', '.join(changed_states) if changed_states else 'None'}",
-            (
-                "- question state: "
-                + format_question_state(question_view)
-            ),
+            ("- question state: " + format_question_state(question_view)),
         ]
     )
 
@@ -206,7 +205,9 @@ def format_diagnostic_report(result: OrchestrationResult) -> str:
         if run_meta.get("run_id"):
             lines.append(f"- run id: {run_meta.get('run_id')}")
         if run_meta.get("generated_project_dir"):
-            lines.append(f"- generated project dir: {run_meta.get('generated_project_dir')}")
+            lines.append(
+                f"- generated project dir: {run_meta.get('generated_project_dir')}"
+            )
         if run_meta.get("runs_dir"):
             lines.append(f"- run summary dir: {run_meta.get('runs_dir')}")
 
@@ -273,7 +274,9 @@ def format_replay_report(summary: dict[str, Any]) -> str:
             )
         state_changes = step.get("state_changes", [])
         if isinstance(state_changes, list):
-            lines.append(f"state_changes: {', '.join(state_changes) if state_changes else 'None'}")
+            lines.append(
+                f"state_changes: {', '.join(state_changes) if state_changes else 'None'}"
+            )
         question_state = step.get("question_state", {})
         if isinstance(question_state, dict):
             lines.append(

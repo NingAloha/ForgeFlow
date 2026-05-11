@@ -154,7 +154,9 @@ class BackflowEvaluatorTests(unittest.TestCase):
         self.assertIsNone(target)
         self.assertTrue(evidence)
 
-    def test_implementation_requirements_blocker_backflows_to_requirements(self) -> None:
+    def test_implementation_requirements_blocker_backflows_to_requirements(
+        self,
+    ) -> None:
         states = make_design_ready_states()
         states["implementation_status"].update(
             {

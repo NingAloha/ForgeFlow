@@ -56,7 +56,9 @@ class ExecutionApprovalTests(unittest.TestCase):
 
     def test_fingerprint_changes_when_patch_draft_changes(self) -> None:
         base = build_contract_fingerprint(self.contract, self.patch_draft)
-        updated = build_contract_fingerprint(self.contract, self.patch_draft + "\n+# extra")
+        updated = build_contract_fingerprint(
+            self.contract, self.patch_draft + "\n+# extra"
+        )
         self.assertNotEqual(base, updated)
 
     def test_build_pending_approval_sets_pending_state(self) -> None:
@@ -68,7 +70,9 @@ class ExecutionApprovalTests(unittest.TestCase):
 
     def test_matching_contract_can_be_approved(self) -> None:
         pending = build_pending_approval(self.contract, self.patch_draft)
-        approved = approve_execution_contract(pending, self.contract, self.patch_draft, approved_by="user")
+        approved = approve_execution_contract(
+            pending, self.contract, self.patch_draft, approved_by="user"
+        )
         self.assertEqual(approved["approval_status"], "approved")
         self.assertEqual(approved["review_decision"], "approved")
         self.assertEqual(approved["approved_by"], "user")
@@ -93,7 +97,9 @@ class ExecutionApprovalTests(unittest.TestCase):
 
     def test_invalidate_sets_stale_true(self) -> None:
         pending = build_pending_approval(self.contract, self.patch_draft)
-        invalidated = invalidate_execution_approval(pending, reason="contract refreshed")
+        invalidated = invalidate_execution_approval(
+            pending, reason="contract refreshed"
+        )
         self.assertEqual(invalidated["approval_status"], "invalidated")
         self.assertTrue(invalidated["stale"])
         self.assertEqual(invalidated["review_reason"], "contract refreshed")

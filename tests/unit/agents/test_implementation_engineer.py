@@ -36,7 +36,11 @@ class ImplementationEngineerHandoffTests(unittest.TestCase):
                     "output": [{"name": "parsed sections", "required": True}],
                     "constraints": [],
                     "acceptance_criteria": [],
-                    "failure_handling": ["input_errors", "processing_errors", "output_errors"],
+                    "failure_handling": [
+                        "input_errors",
+                        "processing_errors",
+                        "output_errors",
+                    ],
                 },
                 {
                     "name": "solution_to_summary_extractor_implementation",
@@ -44,7 +48,11 @@ class ImplementationEngineerHandoffTests(unittest.TestCase):
                     "output": [{"name": "summary items", "required": True}],
                     "constraints": [],
                     "acceptance_criteria": [],
-                    "failure_handling": ["input_errors", "processing_errors", "output_errors"],
+                    "failure_handling": [
+                        "input_errors",
+                        "processing_errors",
+                        "output_errors",
+                    ],
                 },
                 {
                     "name": "solution_to_cli_interface_implementation",
@@ -52,7 +60,11 @@ class ImplementationEngineerHandoffTests(unittest.TestCase):
                     "output": [{"name": "cli output", "required": True}],
                     "constraints": [],
                     "acceptance_criteria": [],
-                    "failure_handling": ["input_errors", "processing_errors", "output_errors"],
+                    "failure_handling": [
+                        "input_errors",
+                        "processing_errors",
+                        "output_errors",
+                    ],
                 },
             ],
             "data_flow": [
@@ -90,13 +102,17 @@ class ImplementationEngineerHandoffTests(unittest.TestCase):
         }
         return states
 
-    def test_output_modules_come_from_design_modules_and_no_generic_modules(self) -> None:
+    def test_output_modules_come_from_design_modules_and_no_generic_modules(
+        self,
+    ) -> None:
         states = self._make_markdown_design_states()
         result = self.agent.run(AgentContext(user_input="", states=states))
         status = result.updated_state
 
         self.assertEqual(status["module_name"], "markdown_parser")
-        joined = "\n".join(status["files_touched"] + status["tests_added_or_updated"] + result.notes)
+        joined = "\n".join(
+            status["files_touched"] + status["tests_added_or_updated"] + result.notes
+        )
 
         self.assertIn("module=markdown_parser", joined)
         self.assertIn("module=summary_extractor", joined)
@@ -106,7 +122,9 @@ class ImplementationEngineerHandoffTests(unittest.TestCase):
         self.assertNotIn("module=app", joined)
         self.assertIn("implementation_mode=handoff", result.notes)
 
-    def test_each_module_links_to_contract_and_has_tests_and_done_criteria(self) -> None:
+    def test_each_module_links_to_contract_and_has_tests_and_done_criteria(
+        self,
+    ) -> None:
         states = self._make_markdown_design_states()
         result = self.agent.run(AgentContext(user_input="", states=states))
 
@@ -118,7 +136,9 @@ class ImplementationEngineerHandoffTests(unittest.TestCase):
             self.assertIn("done=[", notes_text)
             self.assertIn(f"module={module}; suggested_tests=[", tests_text)
 
-    def test_output_must_not_include_file_names_or_function_or_class_names(self) -> None:
+    def test_output_must_not_include_file_names_or_function_or_class_names(
+        self,
+    ) -> None:
         states = self._make_markdown_design_states()
         result = self.agent.run(AgentContext(user_input="", states=states))
 
@@ -141,7 +161,10 @@ class ImplementationEngineerHandoffTests(unittest.TestCase):
 
         result = self.agent.run(AgentContext(user_input="", states=states))
 
-        self.assertIn("missing design contract for cli_interface", result.updated_state["blockers"])
+        self.assertIn(
+            "missing design contract for cli_interface",
+            result.updated_state["blockers"],
+        )
         self.assertEqual(result.updated_state["implementation_status"], "blocked")
 
     def test_missing_data_flow_generates_module_level_blocker(self) -> None:
@@ -150,10 +173,17 @@ class ImplementationEngineerHandoffTests(unittest.TestCase):
 
         result = self.agent.run(AgentContext(user_input="", states=states))
 
-        self.assertIn("missing data flow step for summary_extractor", result.updated_state["blockers"])
-        self.assertIn("missing data flow step for cli_interface", result.updated_state["blockers"])
+        self.assertIn(
+            "missing data flow step for summary_extractor",
+            result.updated_state["blockers"],
+        )
+        self.assertIn(
+            "missing data flow step for cli_interface", result.updated_state["blockers"]
+        )
 
-    def test_contract_compliance_means_handoff_alignment_not_code_implemented(self) -> None:
+    def test_contract_compliance_means_handoff_alignment_not_code_implemented(
+        self,
+    ) -> None:
         states = self._make_markdown_design_states()
         result = self.agent.run(AgentContext(user_input="", states=states))
 
@@ -173,7 +203,9 @@ class ImplementationEngineerHandoffTests(unittest.TestCase):
         self.assertTrue(result.updated_state["files_touched"])
         self.assertTrue(result.updated_state["tests_added_or_updated"])
 
-    def test_execute_mode_returns_structured_blocker_without_execution_side_effects(self) -> None:
+    def test_execute_mode_returns_structured_blocker_without_execution_side_effects(
+        self,
+    ) -> None:
         states = self._make_markdown_design_states()
         result = self.agent.run(
             AgentContext(
@@ -207,7 +239,8 @@ class ImplementationEngineerHandoffTests(unittest.TestCase):
         self.assertIn("rollback policy required", known_limitations_text)
         self.assertIn("execution report required", known_limitations_text)
         preview_text = "\n".join(
-            result.updated_state["files_touched"] + result.updated_state["tests_added_or_updated"]
+            result.updated_state["files_touched"]
+            + result.updated_state["tests_added_or_updated"]
         )
         payload_text = "\n".join(
             result.updated_state["files_touched"]
@@ -221,7 +254,9 @@ class ImplementationEngineerHandoffTests(unittest.TestCase):
                     f"module={module}; operation=create_only; files_to_create=[src/{module}/README.md | tests/{module}/README.md]; files_to_modify=[]; files_to_delete=[]",
                     preview_text,
                 )
-                self.assertIn(f"module={module}; test_plan=[pytest tests/{module}]", preview_text)
+                self.assertIn(
+                    f"module={module}; test_plan=[pytest tests/{module}]", preview_text
+                )
             else:
                 self.assertNotIn(f"module={module}; files_to_create=", preview_text)
                 self.assertNotIn(f"module={module}; test_plan=", preview_text)
@@ -250,13 +285,19 @@ class ImplementationEngineerHandoffTests(unittest.TestCase):
         self.assertIn("mutation_performed=false", notes_text)
         self.assertIn("target_module=markdown_parser", notes_text)
         self.assertIn("plan_type=patch_preview+patch_draft", notes_text)
-        self.assertIn("create=[src/markdown_parser/README.md, tests/markdown_parser/README.md]", notes_text)
+        self.assertIn(
+            "create=[src/markdown_parser/README.md, tests/markdown_parser/README.md]",
+            notes_text,
+        )
         self.assertIn("modify=[]", notes_text)
         self.assertIn("delete=[]", notes_text)
         self.assertIn("rationale=", notes_text)
         self.assertIn("risk=", notes_text)
         self.assertIn("test_plan=[pytest tests/markdown_parser]", notes_text)
-        self.assertIn("rollback_expectation=pre_patch_snapshot+patch_id+rollback_available", notes_text)
+        self.assertIn(
+            "rollback_expectation=pre_patch_snapshot+patch_id+rollback_available",
+            notes_text,
+        )
         self.assertIn(
             "diff --git a/src/markdown_parser/README.md b/src/markdown_parser/README.md",
             notes_text,

@@ -55,8 +55,16 @@ class Orchestrator:
     def __init__(self, state_manager: StateManager | None = None) -> None:
         self.state_manager = state_manager or StateManager()
         state_dir_value = getattr(self.state_manager, "state_dir", None)
-        state_dir = Path(state_dir_value) if state_dir_value is not None else Path.cwd() / ".forgeflow" / "state"
-        self.run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid4().hex[:8]
+        state_dir = (
+            Path(state_dir_value)
+            if state_dir_value is not None
+            else Path.cwd() / ".forgeflow" / "state"
+        )
+        self.run_id = (
+            datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            + "-"
+            + uuid4().hex[:8]
+        )
         self.runs_dir = state_dir.parent / "runs" / self.run_id
         self.generated_project_dir = state_dir.parent / "generated" / self.run_id
         self.runs_dir.mkdir(parents=True, exist_ok=True)
@@ -81,7 +89,9 @@ class Orchestrator:
             Stage.TESTING: TestValidationEngineerAgent(),
         }
 
-    def build_context(self, user_input: str = "", original_request: str = "") -> AgentContext:
+    def build_context(
+        self, user_input: str = "", original_request: str = ""
+    ) -> AgentContext:
         states = self.state_manager.load_all_states()
         state_dir = getattr(self.state_manager, "state_dir", "")
         return AgentContext(
@@ -122,7 +132,9 @@ class Orchestrator:
         implementation_status = states.get("implementation_status", {})
         test_report = states.get("test_report", {})
 
-        if current_stage == Stage.INIT and self.stage_evaluator.is_requirements_ready(states):
+        if current_stage == Stage.INIT and self.stage_evaluator.is_requirements_ready(
+            states
+        ):
             evidence.append("spec.project_goal is non-empty.")
             evidence.append("spec.functional_requirements is non-empty.")
             evidence.append("spec.acceptance_criteria is non-empty.")
@@ -136,7 +148,9 @@ class Orchestrator:
             evidence.append("spec.acceptance_criteria is non-empty.")
             evidence.append("Requirements are ready for solution generation.")
             return Stage.SOLUTION, evidence
-        if current_stage == Stage.SOLUTION and self.stage_evaluator.is_solution_ready(states):
+        if current_stage == Stage.SOLUTION and self.stage_evaluator.is_solution_ready(
+            states
+        ):
             evidence.append("solution.selected_stack.backend is defined.")
             evidence.append("solution.module_mapping contains stable core modules.")
             evidence.append(
@@ -144,7 +158,9 @@ class Orchestrator:
             )
             evidence.append("Solution is ready for design generation.")
             return Stage.DESIGN, evidence
-        if current_stage == Stage.DESIGN and self.stage_evaluator.is_design_ready(states):
+        if current_stage == Stage.DESIGN and self.stage_evaluator.is_design_ready(
+            states
+        ):
             evidence.append("design.project_structure.modules is non-empty.")
             evidence.append("design.contracts contain MVP critical handoff contracts.")
             evidence.append(
@@ -157,10 +173,16 @@ class Orchestrator:
             current_stage == Stage.IMPLEMENTATION
             and self.stage_evaluator.is_implementation_handoff_ready(states)
         ):
-            evidence.append("implementation_status.implementation_status is done (handoff-ready).")
+            evidence.append(
+                "implementation_status.implementation_status is done (handoff-ready)."
+            )
             evidence.append("implementation_status.blockers is empty.")
-            evidence.append("implementation_status.contract_compliance indicates handoff/design alignment.")
-            evidence.append("Implementation handoff artifacts are ready for validation.")
+            evidence.append(
+                "implementation_status.contract_compliance indicates handoff/design alignment."
+            )
+            evidence.append(
+                "Implementation handoff artifacts are ready for validation."
+            )
             return Stage.TESTING, evidence
         if current_stage == Stage.TESTING and self.stage_evaluator.is_done(states):
             evidence.append("test_report.result is pass.")
@@ -230,9 +252,7 @@ class Orchestrator:
                 wait_for_user_input=True,
                 should_stay=True,
                 reason="Waiting for user input.",
-                evidence=[
-                    "question_state is blocking and awaiting user response."
-                ],
+                evidence=["question_state is blocking and awaiting user response."],
             )
 
         backflow_target, backflow_evidence = self.evaluate_backflow(
@@ -350,15 +370,23 @@ class Orchestrator:
         if agent_result:
             raw_llm_trace = agent_result.diagnostics.get("llm_trace")
             if raw_llm_trace:
-                diagnostic_payload["llm_trace"] = self._normalize_llm_trace(raw_llm_trace)
+                diagnostic_payload["llm_trace"] = self._normalize_llm_trace(
+                    raw_llm_trace
+                )
         return diagnostic_payload
 
     def determine_execution_stage(self, decision: TransitionDecision) -> Stage | None:
         if decision.wait_for_user_input:
             return None
-        if decision.backflow_target is not None and decision.backflow_target in self.agents:
+        if (
+            decision.backflow_target is not None
+            and decision.backflow_target in self.agents
+        ):
             return decision.backflow_target
-        if decision.next_stage_to_execute is not None and decision.next_stage_to_execute in self.agents:
+        if (
+            decision.next_stage_to_execute is not None
+            and decision.next_stage_to_execute in self.agents
+        ):
             return decision.next_stage_to_execute
         if decision.final_stage == Stage.INIT:
             return Stage.REQUIREMENTS
@@ -373,10 +401,7 @@ class Orchestrator:
         agent_result: AgentResult | None = None,
     ) -> str:
         if decision.wait_for_user_input:
-            return (
-                f"Resolved stage to {decision.final_stage}; "
-                "waiting for user input."
-            )
+            return f"Resolved stage to {decision.final_stage}; waiting for user input."
         if executed_stage is None:
             return (
                 f"Resolved stage to {decision.final_stage}; "
@@ -389,7 +414,9 @@ class Orchestrator:
             f"executed {executed_stage} via {agent_name}."
         )
 
-    def orchestrate(self, user_input: str = "", original_request: str = "") -> OrchestrationResult:
+    def orchestrate(
+        self, user_input: str = "", original_request: str = ""
+    ) -> OrchestrationResult:
         states_before = self.state_manager.load_all_states()
         decision = self.resolve_transition(states_before)
 

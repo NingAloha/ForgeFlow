@@ -105,9 +105,10 @@ def load_llm_runtime_config(
     config.fallback_on_error = _as_bool(
         payload.get("fallback_on_error"), config.fallback_on_error
     )
-    config.execution_mode = str(
-        payload.get("execution_mode", config.execution_mode)
-    ).strip() or config.execution_mode
+    config.execution_mode = (
+        str(payload.get("execution_mode", config.execution_mode)).strip()
+        or config.execution_mode
+    )
     payload_enabled_stages = payload.get("enabled_stages")
     if isinstance(payload_enabled_stages, list):
         config.enabled_stages = [

@@ -60,7 +60,12 @@ class SystemDesignerAgent(SystemDesignPlanningMixin, BaseAgent):
                     "Return strict JSON only with keys: project_structure, contracts, "
                     "data_flow, mvp_plan. Keep schema-compatible shapes."
                 ),
-                required_fields=["project_structure", "contracts", "data_flow", "mvp_plan"],
+                required_fields=[
+                    "project_structure",
+                    "contracts",
+                    "data_flow",
+                    "mvp_plan",
+                ],
                 output_model=SystemDesignState,
             )
             llm_result = self.get_llm_gateway().generate(
@@ -87,15 +92,21 @@ class SystemDesignerAgent(SystemDesignPlanningMixin, BaseAgent):
             )
             if failure_result is not None:
                 return failure_result
-            if llm_result.status == "success" and isinstance(llm_result.parsed_output, dict):
+            if llm_result.status == "success" and isinstance(
+                llm_result.parsed_output, dict
+            ):
                 payload = llm_result.parsed_output
                 candidate_state = {
-                    "project_structure": payload.get("project_structure", project_structure),
+                    "project_structure": payload.get(
+                        "project_structure", project_structure
+                    ),
                     "contracts": payload.get("contracts", contracts),
                     "data_flow": payload.get("data_flow", data_flow),
                     "mvp_plan": payload.get("mvp_plan", mvp_plan),
                 }
-                normalized = SystemDesignState.model_validate(candidate_state).model_dump(mode="python")
+                normalized = SystemDesignState.model_validate(
+                    candidate_state
+                ).model_dump(mode="python")
                 project_structure = normalized["project_structure"]
                 contracts = normalized["contracts"]
                 data_flow = normalized["data_flow"]

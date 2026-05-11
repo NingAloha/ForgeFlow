@@ -137,10 +137,9 @@ class TestValidationPlanningMixin:
                 )
             )
 
-        if (
-            design.get("mvp_plan", {}).get("first_deliverable")
-            and not implementation_status.get("suggested_test_command")
-        ):
+        if design.get("mvp_plan", {}).get(
+            "first_deliverable"
+        ) and not implementation_status.get("suggested_test_command"):
             issues.append(
                 self._build_issue(
                     title="Missing verification command for MVP deliverable",

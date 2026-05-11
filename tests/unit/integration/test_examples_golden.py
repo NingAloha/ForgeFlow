@@ -64,7 +64,9 @@ class ExampleGoldenRegressionTests(unittest.TestCase):
         }
         return orchestrator
 
-    def _collect_trace(self, orchestrator: Orchestrator, user_input: str) -> list[dict[str, str]]:
+    def _collect_trace(
+        self, orchestrator: Orchestrator, user_input: str
+    ) -> list[dict[str, str]]:
         trace: list[dict[str, str]] = []
         for step in range(1, 12):
             step_input = user_input if step == 1 else ""
@@ -81,7 +83,10 @@ class ExampleGoldenRegressionTests(unittest.TestCase):
                     "reason": str(transition.get("reason", "")),
                 }
             )
-            if result.decision.wait_for_user_input or result.decision.final_stage == Stage.DONE:
+            if (
+                result.decision.wait_for_user_input
+                or result.decision.final_stage == Stage.DONE
+            ):
                 break
         return trace
 
@@ -116,20 +121,28 @@ class ExampleGoldenRegressionTests(unittest.TestCase):
 
                 with tempfile.TemporaryDirectory() as tmp_dir:
                     orchestrator = self._build_fake_orchestrator(tmp_dir)
-                    with patch(
-                        "agents.common.llm_gateway.LLMGateway.generate",
-                        side_effect=AssertionError("real LLM gateway call is forbidden in offline golden regression"),
-                    ) as llm_generate, patch(
-                        "agents.common.llm_adapter.LLMAdapter.generate_text",
-                        side_effect=AssertionError("real LLM adapter call is forbidden in offline golden regression"),
-                    ) as llm_adapter_generate:
+                    with (
+                        patch(
+                            "agents.common.llm_gateway.LLMGateway.generate",
+                            side_effect=AssertionError(
+                                "real LLM gateway call is forbidden in offline golden regression"
+                            ),
+                        ) as llm_generate,
+                        patch(
+                            "agents.common.llm_adapter.LLMAdapter.generate_text",
+                            side_effect=AssertionError(
+                                "real LLM adapter call is forbidden in offline golden regression"
+                            ),
+                        ) as llm_adapter_generate,
+                    ):
                         trace = self._collect_trace(orchestrator, user_input)
                         self.assertEqual(llm_generate.call_count, 0)
                         self.assertEqual(llm_adapter_generate.call_count, 0)
 
                     # Validate the core stage progression, not full diagnostics byte-equality.
                     expected_pairs = [
-                        (item.computed_stage, item.final_stage) for item in expected_trace.trace
+                        (item.computed_stage, item.final_stage)
+                        for item in expected_trace.trace
                     ]
                     observed_pairs = [
                         (item["computed_stage"], item["final_stage"]) for item in trace

@@ -17,7 +17,9 @@ class StateModelsTests(unittest.TestCase):
         self.assertEqual(SpecState().project_goal, "")
         self.assertEqual(SolutionState().selected_stack.backend, "")
         self.assertEqual(SystemDesignState().project_structure.modules, [])
-        self.assertEqual(ImplementationStatusState().implementation_status, "not_started")
+        self.assertEqual(
+            ImplementationStatusState().implementation_status, "not_started"
+        )
         self.assertEqual(TestReportState().result, "not_run")
         self.assertEqual(QuestionStateModel().status, "idle")
 
@@ -46,7 +48,9 @@ class StateModelsTests(unittest.TestCase):
 
     def test_models_reject_unknown_fields(self) -> None:
         with self.assertRaises(ValidationError):
-            SpecState.model_validate({"project_goal": "x", "functional_requirement": []})
+            SpecState.model_validate(
+                {"project_goal": "x", "functional_requirement": []}
+            )
 
     def test_system_design_requires_structured_contract_and_data_flow(self) -> None:
         valid_design = SystemDesignState.model_validate(
@@ -57,7 +61,9 @@ class StateModelsTests(unittest.TestCase):
                         "producer": "A",
                         "consumers": ["B"],
                         "input": [{"name": "i1", "description": "d", "required": True}],
-                        "output": [{"name": "o1", "description": "d", "required": True}],
+                        "output": [
+                            {"name": "o1", "description": "d", "required": True}
+                        ],
                     }
                 ],
                 "data_flow": [
@@ -81,7 +87,9 @@ class StateModelsTests(unittest.TestCase):
                         "producer": "A",
                         "consumers": ["B"],
                         "input": [{"name": "i1", "description": "d", "required": True}],
-                        "output": [{"name": "o1", "description": "d", "required": True}],
+                        "output": [
+                            {"name": "o1", "description": "d", "required": True}
+                        ],
                     }
                 ],
                 "data_flow": [

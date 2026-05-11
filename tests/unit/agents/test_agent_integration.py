@@ -182,7 +182,9 @@ class SolutionEngineerAgentTests(unittest.TestCase):
                         description="Need an interface direction.",
                         response_type="free_text",
                         allow_free_text=True,
-                        answer=QuestionAnswer(selected_values=[], free_text="TUI first"),
+                        answer=QuestionAnswer(
+                            selected_values=[], free_text="TUI first"
+                        ),
                     ),
                 ],
                 created_by="Solution Engineer",
@@ -270,7 +272,9 @@ class TestValidationEngineerAgentTests(unittest.TestCase):
 
     def test_agent_produces_fail_result_with_blocking_issues(self) -> None:
         states = make_testing_states()
-        states["implementation_status"]["workspace_path"] = "/tmp/forgeflow-missing-workspace"
+        states["implementation_status"]["workspace_path"] = (
+            "/tmp/forgeflow-missing-workspace"
+        )
         result = self.agent.run(AgentContext(user_input="", states=states))
         self.assertEqual(result.updated_state["result"], "fail")
         self.assertEqual(result.updated_state["exit_code"], 1)

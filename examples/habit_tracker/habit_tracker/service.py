@@ -91,7 +91,9 @@ class HabitService:
         self.conn.execute("DELETE FROM habits WHERE id = ?", (habit_id,))
         self.conn.commit()
 
-    def add_checkin(self, habit_id: int, checkin_date: str | None = None) -> dict[str, object]:
+    def add_checkin(
+        self, habit_id: int, checkin_date: str | None = None
+    ) -> dict[str, object]:
         self.get_habit(habit_id)
         day = _iso_day(checkin_date)
         now = datetime.utcnow().isoformat(timespec="seconds")

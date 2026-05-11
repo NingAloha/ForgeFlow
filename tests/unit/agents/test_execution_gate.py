@@ -76,10 +76,28 @@ class ExecutionGateTests(unittest.TestCase):
         approved["approval_status"] = "approved"
         approved["review_decision"] = "approved"
         approved["stale"] = True
-        result = can_execute_contract(self.contract, self.patch_draft, approval=approved)
+        result = can_execute_contract(
+            self.contract, self.patch_draft, approval=approved
+        )
+        self.assertFalse(result["allowed"])
+        self.assertEqual(result["reason"], "approval is stale")
+        self.assertEqual(result["issues"], [])
+
+    def test_hash_mismatch_without_stale_flag_returns_approval_invalid(self) -> None:
+        approved = build_pending_approval(self.contract, self.patch_draft)
+        approved["approval_status"] = "approved"
+        approved["review_decision"] = "approved"
+        approved["approved_by"] = "user"
+        approved["approved_at"] = "2026-01-01T00:00:00+00:00"
+        approved["contract_hash"] = "0" * 64
+        approved["stale"] = False
+
+        result = can_execute_contract(
+            self.contract, self.patch_draft, approval=approved
+        )
         self.assertFalse(result["allowed"])
         self.assertEqual(result["reason"], "approval is invalid")
-        self.assertIn("approved artifact must not be marked stale", result["issues"])
+        self.assertIn("approval artifact is stale", result["issues"])
 
     def test_valid_approved_still_blocked_by_mutation_runtime_disabled(self) -> None:
         approved = build_pending_approval(self.contract, self.patch_draft)
@@ -87,7 +105,9 @@ class ExecutionGateTests(unittest.TestCase):
         approved["review_decision"] = "approved"
         approved["approved_by"] = "user"
         approved["approved_at"] = "2026-01-01T00:00:00+00:00"
-        result = can_execute_contract(self.contract, self.patch_draft, approval=approved)
+        result = can_execute_contract(
+            self.contract, self.patch_draft, approval=approved
+        )
         self.assertFalse(result["allowed"])
         self.assertEqual(result["reason"], "mutation runtime is not enabled")
         self.assertEqual(result["issues"], [])
@@ -96,7 +116,9 @@ class ExecutionGateTests(unittest.TestCase):
         approved = build_pending_approval(self.contract, self.patch_draft)
         approved["approval_status"] = "approved"
         approved["review_decision"] = "approved"
-        result = can_execute_contract(self.contract, self.patch_draft, approval=approved)
+        result = can_execute_contract(
+            self.contract, self.patch_draft, approval=approved
+        )
         self.assertNotIn("commands_executed", result)
         self.assertNotIn("artifacts_generated", result)
         self.assertNotIn("file_writes", result)
@@ -127,7 +149,9 @@ class ExecutionGateTests(unittest.TestCase):
         rejected["approval_status"] = "rejected"
         rejected["review_decision"] = "rejected"
         rejected["review_reason"] = "manual reject"
-        result = can_execute_contract(self.contract, self.patch_draft, approval=rejected)
+        result = can_execute_contract(
+            self.contract, self.patch_draft, approval=rejected
+        )
         self.assertFalse(result["allowed"])
         self.assertEqual(result["reason"], "approval status is not approved")
 

@@ -36,9 +36,7 @@ class RequirementsExtractionMixin(TextHelper):
         for line in text.splitlines():
             stripped = line.strip()
             if re.match(r"^([-*]|\d+\.)\s+", stripped):
-                bullet_candidates.append(
-                    re.sub(r"^([-*]|\d+\.)\s+", "", stripped)
-                )
+                bullet_candidates.append(re.sub(r"^([-*]|\d+\.)\s+", "", stripped))
         if bullet_candidates:
             return self.dedupe_items(bullet_candidates)
 

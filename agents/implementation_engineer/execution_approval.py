@@ -17,13 +17,17 @@ def _canonical_patch_draft(patch_draft: str) -> str:
 
 def build_contract_fingerprint(contract: dict[str, Any], patch_draft: str) -> str:
     canonical_contract = _canonical_contract_payload(contract)
-    contract_json = json.dumps(canonical_contract, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    contract_json = json.dumps(
+        canonical_contract, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
     canonical_draft = _canonical_patch_draft(patch_draft)
     payload = f"{contract_json}\n---PATCH_DRAFT---\n{canonical_draft}"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def build_pending_approval(contract: dict[str, Any], patch_draft: str) -> dict[str, Any]:
+def build_pending_approval(
+    contract: dict[str, Any], patch_draft: str
+) -> dict[str, Any]:
     return {
         "approval_status": "pending",
         "contract_hash": build_contract_fingerprint(contract, patch_draft),
@@ -54,7 +58,9 @@ def approve_execution_contract(
         updated["approved_by"] = ""
         updated["stale"] = True
         updated["contract_hash"] = current_hash
-        updated["contract_version"] = str(contract.get("execution_contract_version", ""))
+        updated["contract_version"] = str(
+            contract.get("execution_contract_version", "")
+        )
         updated["target_module"] = str(contract.get("target_module", ""))
         return updated
 
@@ -81,7 +87,9 @@ def reject_execution_contract(approval: dict[str, Any], reason: str) -> dict[str
     return updated
 
 
-def invalidate_execution_approval(approval: dict[str, Any], reason: str) -> dict[str, Any]:
+def invalidate_execution_approval(
+    approval: dict[str, Any], reason: str
+) -> dict[str, Any]:
     updated = dict(approval)
     updated["approval_status"] = "invalidated"
     updated["review_decision"] = ""

@@ -22,8 +22,28 @@ class ExecutionTrace:
 
 class WorkspaceExecutor:
     COMMAND_ALLOWLIST: tuple[tuple[str, ...], ...] = (
-        ("python3", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-v"),
-        ("python", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-v"),
+        (
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_*.py",
+            "-v",
+        ),
+        (
+            "python",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_*.py",
+            "-v",
+        ),
     )
 
     def __init__(self, workspace_root: str | Path) -> None:
@@ -33,7 +53,10 @@ class WorkspaceExecutor:
 
     def _resolve_path(self, relative_path: str) -> Path:
         candidate = (self.workspace_root / relative_path).resolve()
-        if self.workspace_root not in candidate.parents and candidate != self.workspace_root:
+        if (
+            self.workspace_root not in candidate.parents
+            and candidate != self.workspace_root
+        ):
             raise ValueError("Path escapes workspace root.")
         return candidate
 
@@ -45,14 +68,19 @@ class WorkspaceExecutor:
         self.trace.file_writes.append(rel)
         return rel
 
-    def run_command(self, command: list[str], cwd: str | Path | None = None, timeout: int = 30) -> CommandResult:
+    def run_command(
+        self, command: list[str], cwd: str | Path | None = None, timeout: int = 30
+    ) -> CommandResult:
         if not command:
             raise ValueError("Command cannot be empty.")
         if not self._is_allowed(command):
             raise PermissionError(f"Command not allowed: {' '.join(command)}")
 
         run_cwd = self.workspace_root if cwd is None else Path(cwd).resolve()
-        if self.workspace_root not in run_cwd.parents and run_cwd != self.workspace_root:
+        if (
+            self.workspace_root not in run_cwd.parents
+            and run_cwd != self.workspace_root
+        ):
             raise ValueError("Command cwd escapes workspace root.")
 
         completed = subprocess.run(

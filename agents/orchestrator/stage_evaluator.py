@@ -8,11 +8,7 @@ from .models import Stage, StageFlags
 class StageEvaluator:
     @staticmethod
     def _normalize_items(items: list[Any]) -> set[str]:
-        return {
-            str(item).strip().casefold()
-            for item in items
-            if str(item).strip()
-        }
+        return {str(item).strip().casefold() for item in items if str(item).strip()}
 
     def _has_minimal_design_artifacts(self, states: dict[str, dict[str, Any]]) -> bool:
         design = states.get("system_design", {})
@@ -121,9 +117,7 @@ class StageEvaluator:
             and mvp_plan.get("first_deliverable")
         )
 
-    def has_active_implementation(
-        self, states: dict[str, dict[str, Any]]
-    ) -> bool:
+    def has_active_implementation(self, states: dict[str, dict[str, Any]]) -> bool:
         if not self.is_design_ready(states) or not self._has_minimal_design_artifacts(
             states
         ):
@@ -208,9 +202,7 @@ class StageEvaluator:
             return Stage.REQUIREMENTS
         return Stage.INIT
 
-    def compute_current_stage(
-        self, states: dict[str, dict[str, Any]]
-    ) -> Stage:
+    def compute_current_stage(self, states: dict[str, dict[str, Any]]) -> Stage:
         return self.stage_from_flags(self.evaluate_stage_flags(states))
 
     def infer_source_stage(self, states: dict[str, dict[str, Any]]) -> Stage:
@@ -228,20 +220,14 @@ class StageEvaluator:
         design = states.get("system_design", {})
         solution = states.get("solution", {})
 
-        if (
-            implementation_status.get("implementation_status") == "done"
-            and (
-                test_report.get("result") != "not_run"
-                or bool(test_report.get("issues"))
-            )
+        if implementation_status.get("implementation_status") == "done" and (
+            test_report.get("result") != "not_run" or bool(test_report.get("issues"))
         ):
             return Stage.TESTING
 
-        if (
-            implementation_status.get("module_name")
-            and implementation_status.get("implementation_status")
-            in {"in_progress", "blocked", "done"}
-        ):
+        if implementation_status.get("module_name") and implementation_status.get(
+            "implementation_status"
+        ) in {"in_progress", "blocked", "done"}:
             return Stage.IMPLEMENTATION
 
         if (

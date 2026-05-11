@@ -8,6 +8,7 @@ from agents.implementation_engineer.execution_approval import build_pending_appr
 from agents.implementation_engineer.execution_approval_store import (
     build_approval_artifact_path,
     load_approval_artifact,
+    save_approval_artifact_for_run,
     save_approval_artifact,
     validate_approval_artifact,
 )
@@ -18,7 +19,10 @@ class ExecutionApprovalStoreTests(unittest.TestCase):
         self.contract = {
             "execution_contract_version": "v1",
             "target_module": "markdown_parser",
-            "create": ["src/markdown_parser/README.md", "tests/markdown_parser/README.md"],
+            "create": [
+                "src/markdown_parser/README.md",
+                "tests/markdown_parser/README.md",
+            ],
             "modify": [],
             "delete": [],
         }
@@ -40,6 +44,18 @@ class ExecutionApprovalStoreTests(unittest.TestCase):
             self.assertTrue(path.parent.exists())
             self.assertTrue(path.exists())
 
+    def test_save_for_run_writes_to_run_scoped_approvals_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            run_dir = Path(tmp_dir) / "run-1"
+            path = save_approval_artifact_for_run(
+                run_dir,
+                self.pending["contract_hash"],
+                self.pending,
+            )
+            self.assertEqual(path.parent, run_dir.resolve() / "approvals")
+            self.assertEqual(path.name, f"{self.pending['contract_hash']}.json")
+            self.assertTrue(path.exists())
+
     def test_save_load_roundtrip(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             run_dir = Path(tmp_dir) / "run-1"
@@ -54,7 +70,9 @@ class ExecutionApprovalStoreTests(unittest.TestCase):
             self.assertEqual(load_approval_artifact(missing), {})
 
     def test_validate_passes_for_matching_hash(self) -> None:
-        issues = validate_approval_artifact(self.pending, self.contract, self.patch_draft)
+        issues = validate_approval_artifact(
+            self.pending, self.contract, self.patch_draft
+        )
         self.assertEqual(issues, [])
 
     def test_contract_change_returns_stale_issue(self) -> None:
@@ -84,11 +102,36 @@ class ExecutionApprovalStoreTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 build_approval_artifact_path(run_dir, "not-a-sha")
 
+    def test_save_for_run_rejects_non_sha256_hash(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            run_dir = Path(tmp_dir) / "run-1"
+            with self.assertRaises(ValueError):
+                save_approval_artifact_for_run(run_dir, "bad-hash", self.pending)
+
+    def test_save_approval_artifact_rejects_arbitrary_filename_and_path_traversal(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            base = Path(tmp_dir)
+            approvals_dir = base / "approvals"
+            approvals_dir.mkdir(parents=True, exist_ok=True)
+
+            with self.assertRaises(ValueError):
+                save_approval_artifact(approvals_dir / "custom-name.json", self.pending)
+            with self.assertRaises(ValueError):
+                save_approval_artifact(
+                    base / "not_approvals" / f"{self.pending['contract_hash']}.json",
+                    self.pending,
+                )
+
     def test_store_writes_only_under_tmp_run_dir(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             run_dir = Path(tmp_dir) / "runs" / "run-1"
-            path = build_approval_artifact_path(run_dir, self.pending["contract_hash"])
-            save_approval_artifact(path, self.pending)
+            path = save_approval_artifact_for_run(
+                run_dir,
+                self.pending["contract_hash"],
+                self.pending,
+            )
             self.assertTrue(str(path.resolve()).startswith(str(run_dir.resolve())))
 
 

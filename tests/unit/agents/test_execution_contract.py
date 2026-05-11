@@ -62,40 +62,63 @@ class ExecutionContractParserTests(unittest.TestCase):
         self.assertIn("new file mode 100644", draft)
 
     def test_missing_contract_boundary_returns_issue(self) -> None:
-        notes = self._valid_notes().replace("BEGIN_EXECUTION_CONTRACT\n", "").replace(
-            "\nEND_EXECUTION_CONTRACT", ""
+        notes = (
+            self._valid_notes()
+            .replace("BEGIN_EXECUTION_CONTRACT\n", "")
+            .replace("\nEND_EXECUTION_CONTRACT", "")
         )
-        issues = validate_execution_contract(parse_execution_contract(notes), parse_patch_draft(notes))
+        issues = validate_execution_contract(
+            parse_execution_contract(notes), parse_patch_draft(notes)
+        )
         self.assertIn("missing execution contract boundary", issues)
 
     def test_missing_required_key_returns_issue(self) -> None:
         notes = self._valid_notes().replace("execution_intent=review_only\n", "")
-        issues = validate_execution_contract(parse_execution_contract(notes), parse_patch_draft(notes))
+        issues = validate_execution_contract(
+            parse_execution_contract(notes), parse_patch_draft(notes)
+        )
         self.assertIn("missing required contract key: execution_intent", issues)
 
     def test_mutation_true_returns_issue(self) -> None:
-        notes = self._valid_notes().replace("mutation_performed=false", "mutation_performed=true")
-        issues = validate_execution_contract(parse_execution_contract(notes), parse_patch_draft(notes))
+        notes = self._valid_notes().replace(
+            "mutation_performed=false", "mutation_performed=true"
+        )
+        issues = validate_execution_contract(
+            parse_execution_contract(notes), parse_patch_draft(notes)
+        )
         self.assertIn("mutation must be disabled for review-only contract", issues)
 
     def test_modify_delete_non_empty_returns_issue(self) -> None:
-        notes = self._valid_notes().replace("modify=[]", "modify=[src/markdown_parser/README.md]").replace(
-            "delete=[]", "delete=[tests/markdown_parser/README.md]"
+        notes = (
+            self._valid_notes()
+            .replace("modify=[]", "modify=[src/markdown_parser/README.md]")
+            .replace("delete=[]", "delete=[tests/markdown_parser/README.md]")
         )
-        issues = validate_execution_contract(parse_execution_contract(notes), parse_patch_draft(notes))
-        self.assertIn("modify/delete must be empty for current patch draft contract", issues)
+        issues = validate_execution_contract(
+            parse_execution_contract(notes), parse_patch_draft(notes)
+        )
+        self.assertIn(
+            "modify/delete must be empty for current patch draft contract", issues
+        )
 
     def test_create_path_outside_allowlist_returns_issue(self) -> None:
         notes = self._valid_notes().replace(
             "create=[src/markdown_parser/README.md, tests/markdown_parser/README.md]",
             "create=[src/markdown_parser/README.md, .github/workflows/x.md]",
         )
-        issues = validate_execution_contract(parse_execution_contract(notes), parse_patch_draft(notes))
+        issues = validate_execution_contract(
+            parse_execution_contract(notes), parse_patch_draft(notes)
+        )
         self.assertTrue(any("create path" in item for item in issues))
 
     def test_patch_draft_with_python_code_returns_issue(self) -> None:
-        notes = self._valid_notes().replace("+# markdown_parser", "+import os\n+class X:\n+    pass\n+def x():\n+    return 1")
-        issues = validate_execution_contract(parse_execution_contract(notes), parse_patch_draft(notes))
+        notes = self._valid_notes().replace(
+            "+# markdown_parser",
+            "+import os\n+class X:\n+    pass\n+def x():\n+    return 1",
+        )
+        issues = validate_execution_contract(
+            parse_execution_contract(notes), parse_patch_draft(notes)
+        )
         self.assertIn("patch draft must not include python code constructs", issues)
 
     def test_patch_draft_with_delete_or_rename_returns_issue(self) -> None:
@@ -103,13 +126,19 @@ class ExecutionContractParserTests(unittest.TestCase):
             "END_PATCH_DRAFT",
             "deleted file mode 100644\nrename from a\nrename to b\nEND_PATCH_DRAFT",
         )
-        issues = validate_execution_contract(parse_execution_contract(notes), parse_patch_draft(notes))
+        issues = validate_execution_contract(
+            parse_execution_contract(notes), parse_patch_draft(notes)
+        )
         self.assertIn("patch draft must not delete files", issues)
         self.assertIn("patch draft must not rename files", issues)
 
     def test_contract_create_path_missing_in_draft_returns_issue(self) -> None:
-        notes = self._valid_notes().replace("+++ b/tests/markdown_parser/README.md", "+++ b/tests/other/README.md")
-        issues = validate_execution_contract(parse_execution_contract(notes), parse_patch_draft(notes))
+        notes = self._valid_notes().replace(
+            "+++ b/tests/markdown_parser/README.md", "+++ b/tests/other/README.md"
+        )
+        issues = validate_execution_contract(
+            parse_execution_contract(notes), parse_patch_draft(notes)
+        )
         self.assertIn(
             "patch draft does not cover declared create path: tests/markdown_parser/README.md",
             issues,
@@ -132,7 +161,11 @@ class ExecutionContractParserTests(unittest.TestCase):
                     "output": [{"name": "parsed sections", "required": True}],
                     "constraints": [],
                     "acceptance_criteria": [],
-                    "failure_handling": ["input_errors", "processing_errors", "output_errors"],
+                    "failure_handling": [
+                        "input_errors",
+                        "processing_errors",
+                        "output_errors",
+                    ],
                 }
             ],
             "data_flow": [
@@ -155,7 +188,11 @@ class ExecutionContractParserTests(unittest.TestCase):
 
         agent = ImplementationEngineerAgent()
         result = agent.run(
-            AgentContext(user_input="", states=states, metadata={"implementation_mode": "execute"})
+            AgentContext(
+                user_input="",
+                states=states,
+                metadata={"implementation_mode": "execute"},
+            )
         )
         notes_text = "\n".join(result.notes)
         issues = validate_execution_contract(

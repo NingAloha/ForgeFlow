@@ -11,7 +11,9 @@ def should_use_llm(config: LLMRuntimeConfig, stage_name: str) -> bool:
     return config.enabled and stage_name in config.enabled_stages
 
 
-def build_llm_failure_question_state(stage_name: str, state_key: str, error: str) -> QuestionState:
+def build_llm_failure_question_state(
+    stage_name: str, state_key: str, error: str
+) -> QuestionState:
     message = error.strip() or "LLM generation failed."
     return QuestionState(
         status="awaiting_user",

@@ -26,6 +26,13 @@ def can_execute_contract(
             "issues": [],
         }
 
+    if bool(approval.get("stale", False)):
+        return {
+            "allowed": False,
+            "reason": "approval is stale",
+            "issues": [],
+        }
+
     approval_issues = validate_approval_artifact(approval, contract, patch_draft)
     if approval_issues:
         return {
@@ -38,13 +45,6 @@ def can_execute_contract(
         return {
             "allowed": False,
             "reason": "approval status is not approved",
-            "issues": [],
-        }
-
-    if bool(approval.get("stale", False)):
-        return {
-            "allowed": False,
-            "reason": "approval is stale",
             "issues": [],
         }
 

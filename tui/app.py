@@ -29,7 +29,9 @@ class ForgeShellApp:
         )
 
     def _run_once(self, prompt: str) -> None:
-        result = self.orchestrator.orchestrate(prompt, original_request=prompt or self.last_prompt)
+        result = self.orchestrator.orchestrate(
+            prompt, original_request=prompt or self.last_prompt
+        )
         self.final_stage = result.decision.final_stage
         self.decision_type = str(result.diagnostic.get("decision_type", ""))
         self.events.append("run", result.summary)

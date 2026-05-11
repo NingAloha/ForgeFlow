@@ -31,7 +31,9 @@ class TestValidationPlanningTests(unittest.TestCase):
         self.assertIn("attribution=contract", target["notes"])
         self.assertIn("error_category=output_errors", target["notes"])
 
-    def test_build_issues_marks_structure_mismatch_with_processing_category(self) -> None:
+    def test_build_issues_marks_structure_mismatch_with_processing_category(
+        self,
+    ) -> None:
         states = make_testing_states()
         states["implementation_status"]["module_name"] = "unknown_module"
         issues = self.planner.build_issues(
@@ -56,7 +58,9 @@ class TestValidationPlanningTests(unittest.TestCase):
             design=states["system_design"],
         )
         target = next(
-            issue for issue in issues if issue["title"] == "Requirements remain unresolved"
+            issue
+            for issue in issues
+            if issue["title"] == "Requirements remain unresolved"
         )
         self.assertIn("attribution=contract", target["notes"])
         self.assertIn("error_category=input_errors", target["notes"])

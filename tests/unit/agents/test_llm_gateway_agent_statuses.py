@@ -24,7 +24,13 @@ from tests.unit.support.orchestrator_fixtures import (
 def _result(status: str) -> LLMStructuredResult:
     return LLMStructuredResult(
         status=status,
-        parsed_output={"project_goal": "x", "functional_requirements": ["a"], "acceptance_criteria": ["b"]} if status == "success" else None,
+        parsed_output={
+            "project_goal": "x",
+            "functional_requirements": ["a"],
+            "acceptance_criteria": ["b"],
+        }
+        if status == "success"
+        else None,
         validation_errors=[],
         raw_output="{}",
         repair_attempts=0,
@@ -137,7 +143,9 @@ class AgentGatewayStatusTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             tests_dir = Path(temp_dir) / "tests"
             tests_dir.mkdir(parents=True, exist_ok=True)
-            (tests_dir / "test_smoke.py").write_text("import unittest\n", encoding="utf-8")
+            (tests_dir / "test_smoke.py").write_text(
+                "import unittest\n", encoding="utf-8"
+            )
             states = make_testing_states()
             states["implementation_status"]["workspace_path"] = str(temp_dir)
             test_agent = _TestAgent("retryable_error", "strict_llm").run(
@@ -169,7 +177,9 @@ class AgentGatewayStatusTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             tests_dir = Path(temp_dir) / "tests"
             tests_dir.mkdir(parents=True, exist_ok=True)
-            (tests_dir / "test_smoke.py").write_text("import unittest\n", encoding="utf-8")
+            (tests_dir / "test_smoke.py").write_text(
+                "import unittest\n", encoding="utf-8"
+            )
             states = make_testing_states()
             states["implementation_status"]["workspace_path"] = str(temp_dir)
             test_agent = _TestAgent("fatal_error", "strict_llm").run(
@@ -210,7 +220,9 @@ class AgentGatewayStatusTests(unittest.TestCase):
             test_agent = _TestAgent("retryable_error", "compat").run(
                 AgentContext(user_input="x", states=states)
             )
-            self.assertIn(test_agent.updated_state["result"], {"pass", "partial", "fail"})
+            self.assertIn(
+                test_agent.updated_state["result"], {"pass", "partial", "fail"}
+            )
 
 
 if __name__ == "__main__":

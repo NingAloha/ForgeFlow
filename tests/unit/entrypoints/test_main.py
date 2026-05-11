@@ -123,7 +123,12 @@ class MainDiagnosticViewTests(unittest.TestCase):
                 "state_changes": [],
                 "question_state": {"status": "idle"},
                 "transition": {"reason": "Stay on current stage.", "evidence": []},
-                "stages": {"computed": "INIT", "source": "", "final": "INIT", "executed": ""},
+                "stages": {
+                    "computed": "INIT",
+                    "source": "",
+                    "final": "INIT",
+                    "executed": "",
+                },
                 "state_validation_errors": {"spec": "Input should be a valid string"},
             },
             summary="ok",
@@ -209,7 +214,9 @@ class MainDiagnosticViewTests(unittest.TestCase):
         self.assertIn("status: success", report)
         self.assertIn("outcome: success", report)
 
-    def test_format_diagnostic_report_uses_status_failure_without_legacy_flags(self) -> None:
+    def test_format_diagnostic_report_uses_status_failure_without_legacy_flags(
+        self,
+    ) -> None:
         for status, failure, expect_outcome in [
             ("success", "none", "success"),
             ("retryable_error", "schema_error", "retry exhausted"),
@@ -228,7 +235,10 @@ class MainDiagnosticViewTests(unittest.TestCase):
                         "decision_type": "STAY",
                         "state_changes": ["spec"],
                         "question_state": {"status": "idle"},
-                        "transition": {"reason": "Stay on current stage.", "evidence": []},
+                        "transition": {
+                            "reason": "Stay on current stage.",
+                            "evidence": [],
+                        },
                         "stages": {
                             "computed": "REQUIREMENTS",
                             "source": "REQUIREMENTS",
@@ -250,7 +260,9 @@ class MainDiagnosticViewTests(unittest.TestCase):
                 self.assertIn(f"failure type: {failure}", report)
                 self.assertIn(f"outcome: {expect_outcome}", report)
 
-    def test_format_diagnostic_report_ignores_legacy_flags_when_status_exists(self) -> None:
+    def test_format_diagnostic_report_ignores_legacy_flags_when_status_exists(
+        self,
+    ) -> None:
         result = OrchestrationResult(
             decision=TransitionDecision(
                 computed_stage=Stage.REQUIREMENTS,
@@ -323,7 +335,10 @@ class MainDiagnosticViewTests(unittest.TestCase):
         )
         report = format_diagnostic_report(result)
         self.assertIn("suggested command: pytest -q", report)
-        self.assertIn("executed command: python3 -m unittest discover -s tests -p test_*.py -v", report)
+        self.assertIn(
+            "executed command: python3 -m unittest discover -s tests -p test_*.py -v",
+            report,
+        )
 
     @patch("main.print")
     @patch("main.Orchestrator")
@@ -346,7 +361,10 @@ class MainDiagnosticViewTests(unittest.TestCase):
         )
         mock_orchestrator_cls.return_value = mock_orchestrator
 
-        with patch("sys.argv", ["main.py", "--state-dir", "/tmp/forgeflow-demo", "build", "todo"]):
+        with patch(
+            "sys.argv",
+            ["main.py", "--state-dir", "/tmp/forgeflow-demo", "build", "todo"],
+        ):
             exit_code = main()
 
         self.assertEqual(exit_code, 0)
@@ -389,7 +407,9 @@ class MainDiagnosticViewTests(unittest.TestCase):
         ]
         mock_orchestrator_cls.return_value = mock_orchestrator
 
-        with patch("sys.argv", ["main.py", "--auto-run", "--max-steps", "5", "build", "todo"]):
+        with patch(
+            "sys.argv", ["main.py", "--auto-run", "--max-steps", "5", "build", "todo"]
+        ):
             exit_code = main()
 
         self.assertEqual(exit_code, 0)
@@ -430,7 +450,11 @@ class MainDiagnosticViewTests(unittest.TestCase):
             },
             summary="stay",
         )
-        mock_orchestrator.orchestrate.side_effect = [stay_result, stay_result, stay_result]
+        mock_orchestrator.orchestrate.side_effect = [
+            stay_result,
+            stay_result,
+            stay_result,
+        ]
         mock_orchestrator_cls.return_value = mock_orchestrator
 
         with patch(
@@ -447,7 +471,9 @@ class MainDiagnosticViewTests(unittest.TestCase):
             repeated_decision="STAY",
             step_index=2,
         )
-        printed = "\n".join(str(call.args[0]) for call in mock_print.call_args_list if call.args)
+        printed = "\n".join(
+            str(call.args[0]) for call in mock_print.call_args_list if call.args
+        )
         self.assertIn("NO_PROGRESS", printed)
 
     def test_load_run_summary_reads_expected_path(self) -> None:
@@ -485,9 +511,17 @@ class MainDiagnosticViewTests(unittest.TestCase):
                         "final_stage": "DESIGN",
                         "executed_stage": "DESIGN",
                         "llm_trace": {"status": "success", "latency_ms": 10},
-                        "execution_trace": {"workspace_path": "/tmp/w", "file_writes": [], "command_results": []},
+                        "execution_trace": {
+                            "workspace_path": "/tmp/w",
+                            "file_writes": [],
+                            "command_results": [],
+                        },
                         "state_changes": ["system_design"],
-                        "question_state": {"status": "idle", "blocking": False, "stage_name": ""},
+                        "question_state": {
+                            "status": "idle",
+                            "blocking": False,
+                            "stage_name": "",
+                        },
                     }
                 ],
             }
@@ -496,7 +530,9 @@ class MainDiagnosticViewTests(unittest.TestCase):
         self.assertIn("Steps: 1", report)
         self.assertIn("decision: FORWARD", report)
 
-    def test_format_replay_report_uses_status_failure_without_legacy_flags(self) -> None:
+    def test_format_replay_report_uses_status_failure_without_legacy_flags(
+        self,
+    ) -> None:
         for status, failure in [
             ("success", "none"),
             ("retryable_error", "schema_error"),
@@ -721,7 +757,7 @@ class MainDiagnosticViewTests(unittest.TestCase):
             runs_dir = Path(temp_dir) / "runs" / run_id
             runs_dir.mkdir(parents=True, exist_ok=True)
             (runs_dir / "summary.json").write_text(
-                '{\"run_id\":\"invalid-schema-run\",\"steps\":[]}\n',
+                '{"run_id":"invalid-schema-run","steps":[]}\n',
                 encoding="utf-8",
             )
             state_dir = Path(temp_dir) / "state"

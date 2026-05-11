@@ -14,7 +14,9 @@ class _FakeAdapter:
         self.responses = responses
         self.calls = 0
 
-    def generate_text(self, system_prompt: str, user_prompt: str, config: LLMRuntimeConfig) -> LLMCallResult:
+    def generate_text(
+        self, system_prompt: str, user_prompt: str, config: LLMRuntimeConfig
+    ) -> LLMCallResult:
         self.calls += 1
         if self.responses:
             return self.responses.pop(0)
@@ -48,11 +50,21 @@ class LLMGatewayTests(unittest.TestCase):
     def test_fenced_json_extraction(self) -> None:
         gateway = LLMGateway(
             adapter=_FakeAdapter(
-                [LLMCallResult(ok=True, content={}, raw_output='```json\n{"project_goal":"x"}\n```')]
+                [
+                    LLMCallResult(
+                        ok=True,
+                        content={},
+                        raw_output='```json\n{"project_goal":"x"}\n```',
+                    )
+                ]
             )
         )
         result = gateway.generate(
-            PromptContract(stage_name="REQUIREMENTS", system_prompt="x", required_fields=["project_goal"]),
+            PromptContract(
+                stage_name="REQUIREMENTS",
+                system_prompt="x",
+                required_fields=["project_goal"],
+            ),
             "build",
             LLMRuntimeConfig(enabled=True, retry_policy_by_stage={"REQUIREMENTS": 0}),
         )
@@ -60,10 +72,16 @@ class LLMGatewayTests(unittest.TestCase):
 
     def test_invalid_json_classification(self) -> None:
         gateway = LLMGateway(
-            adapter=_FakeAdapter([LLMCallResult(ok=True, content={}, raw_output='{"project_goal": }')])
+            adapter=_FakeAdapter(
+                [LLMCallResult(ok=True, content={}, raw_output='{"project_goal": }')]
+            )
         )
         result = gateway.generate(
-            PromptContract(stage_name="REQUIREMENTS", system_prompt="x", required_fields=["project_goal"]),
+            PromptContract(
+                stage_name="REQUIREMENTS",
+                system_prompt="x",
+                required_fields=["project_goal"],
+            ),
             "build",
             LLMRuntimeConfig(
                 enabled=True,
@@ -76,10 +94,16 @@ class LLMGatewayTests(unittest.TestCase):
 
     def test_schema_error_classification(self) -> None:
         gateway = LLMGateway(
-            adapter=_FakeAdapter([LLMCallResult(ok=True, content={}, raw_output='{"x":"y"}')])
+            adapter=_FakeAdapter(
+                [LLMCallResult(ok=True, content={}, raw_output='{"x":"y"}')]
+            )
         )
         result = gateway.generate(
-            PromptContract(stage_name="REQUIREMENTS", system_prompt="x", required_fields=["project_goal"]),
+            PromptContract(
+                stage_name="REQUIREMENTS",
+                system_prompt="x",
+                required_fields=["project_goal"],
+            ),
             "build",
             LLMRuntimeConfig(enabled=True, retry_policy_by_stage={"REQUIREMENTS": 0}),
         )
@@ -88,7 +112,15 @@ class LLMGatewayTests(unittest.TestCase):
 
     def test_unknown_field_rejection_with_allowed_fields(self) -> None:
         gateway = LLMGateway(
-            adapter=_FakeAdapter([LLMCallResult(ok=True, content={}, raw_output='{"project_goal":"x","extra":"z"}')])
+            adapter=_FakeAdapter(
+                [
+                    LLMCallResult(
+                        ok=True,
+                        content={},
+                        raw_output='{"project_goal":"x","extra":"z"}',
+                    )
+                ]
+            )
         )
         result = gateway.generate(
             PromptContract(
@@ -108,12 +140,27 @@ class LLMGatewayTests(unittest.TestCase):
         self.assertEqual(result.status, "retryable_error")
         self.assertEqual(result.failure_type, "schema_error")
 
-    def test_output_model_none_allows_unknown_fields_when_no_allowed_fields(self) -> None:
+    def test_output_model_none_allows_unknown_fields_when_no_allowed_fields(
+        self,
+    ) -> None:
         gateway = LLMGateway(
-            adapter=_FakeAdapter([LLMCallResult(ok=True, content={}, raw_output='{"project_goal":"x","extra":"z"}')])
+            adapter=_FakeAdapter(
+                [
+                    LLMCallResult(
+                        ok=True,
+                        content={},
+                        raw_output='{"project_goal":"x","extra":"z"}',
+                    )
+                ]
+            )
         )
         result = gateway.generate(
-            PromptContract(stage_name="REQUIREMENTS", system_prompt="x", required_fields=["project_goal"], output_model=None),
+            PromptContract(
+                stage_name="REQUIREMENTS",
+                system_prompt="x",
+                required_fields=["project_goal"],
+                output_model=None,
+            ),
             "build",
             LLMRuntimeConfig(enabled=True, strict_unknown_fields=True),
         )
@@ -128,7 +175,11 @@ class LLMGatewayTests(unittest.TestCase):
         )
         gateway = LLMGateway(adapter=adapter)
         result = gateway.generate(
-            PromptContract(stage_name="REQUIREMENTS", system_prompt="x", required_fields=["project_goal"]),
+            PromptContract(
+                stage_name="REQUIREMENTS",
+                system_prompt="x",
+                required_fields=["project_goal"],
+            ),
             "build",
             LLMRuntimeConfig(enabled=True, retry_policy_by_stage={"REQUIREMENTS": 1}),
         )
@@ -144,7 +195,11 @@ class LLMGatewayTests(unittest.TestCase):
         )
         gateway = LLMGateway(adapter=adapter)
         result = gateway.generate(
-            PromptContract(stage_name="REQUIREMENTS", system_prompt="x", required_fields=["project_goal"]),
+            PromptContract(
+                stage_name="REQUIREMENTS",
+                system_prompt="x",
+                required_fields=["project_goal"],
+            ),
             "build",
             LLMRuntimeConfig(enabled=True, retry_policy_by_stage={"REQUIREMENTS": 1}),
         )
@@ -160,7 +215,11 @@ class LLMGatewayTests(unittest.TestCase):
         )
         gateway = LLMGateway(adapter=adapter)
         result = gateway.generate(
-            PromptContract(stage_name="REQUIREMENTS", system_prompt="x", required_fields=["project_goal"]),
+            PromptContract(
+                stage_name="REQUIREMENTS",
+                system_prompt="x",
+                required_fields=["project_goal"],
+            ),
             "build",
             LLMRuntimeConfig(enabled=True, retry_policy_by_stage={"REQUIREMENTS": 2}),
         )

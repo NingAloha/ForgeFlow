@@ -61,14 +61,18 @@ class SystemDesignPlanningMixin(TextHelper):
     ) -> list[dict[str, object]]:
         contracts: list[dict[str, object]] = []
         for module in module_mapping:
-            module_name, requirement_refs, responsibilities, tech_note = self._module_context(
-                module
+            module_name, requirement_refs, responsibilities, tech_note = (
+                self._module_context(module)
             )
             if not module_name:
                 continue
             contract_name = f"solution_to_{module_name}_implementation"
-            requirement_text = "; ".join(requirement_refs[:2]) or "mapped requirement scope"
-            responsibility_text = "; ".join(responsibilities[:2]) or "mapped module responsibility"
+            requirement_text = (
+                "; ".join(requirement_refs[:2]) or "mapped requirement scope"
+            )
+            responsibility_text = (
+                "; ".join(responsibilities[:2]) or "mapped module responsibility"
+            )
             tech_context = tech_note or "python cli workflow"
             contracts.append(
                 {
@@ -92,7 +96,7 @@ class SystemDesignPlanningMixin(TextHelper):
                                 f"{requirement_text}"
                             ),
                             "required": True,
-                        }
+                        },
                     ],
                     "output": [
                         {
@@ -109,7 +113,7 @@ class SystemDesignPlanningMixin(TextHelper):
                                 "Validation evidence for mapped requirements and module output semantics."
                             ),
                             "required": True,
-                        }
+                        },
                     ],
                     "constraints": [
                         "Local CLI execution only; no Web UI or backend service in this design scope.",
@@ -165,12 +169,14 @@ class SystemDesignPlanningMixin(TextHelper):
     ) -> dict[str, object]:
         in_scope: list[str] = []
         for module in module_mapping:
-            module_name, requirement_refs, responsibilities, _ = self._module_context(module)
-            top_req = requirement_refs[0] if requirement_refs else "mapped requirement"
-            top_resp = responsibilities[0] if responsibilities else "mapped responsibility"
-            in_scope.append(
-                f"{module_name}: {top_req}; execution intent: {top_resp}"
+            module_name, requirement_refs, responsibilities, _ = self._module_context(
+                module
             )
+            top_req = requirement_refs[0] if requirement_refs else "mapped requirement"
+            top_resp = (
+                responsibilities[0] if responsibilities else "mapped responsibility"
+            )
+            in_scope.append(f"{module_name}: {top_req}; execution intent: {top_resp}")
         in_scope = self.dedupe_items(in_scope[:4])
         out_of_scope = self.dedupe_items(
             [
@@ -189,7 +195,9 @@ class SystemDesignPlanningMixin(TextHelper):
         out_of_scope = self.dedupe_items(out_of_scope)
         first_module = ""
         if module_mapping:
-            first_module = self._normalize_module_name(str(module_mapping[0].get("module", "")))
+            first_module = self._normalize_module_name(
+                str(module_mapping[0].get("module", ""))
+            )
         milestones = [
             (
                 f"Implement module {first_module or 'first_module'} with contract-compliant "

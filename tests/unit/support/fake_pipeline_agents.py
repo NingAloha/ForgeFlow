@@ -38,7 +38,9 @@ class FakeSolutionAgent(BaseAgent):
     state_key = "solution"
 
     def run(self, context: AgentContext) -> AgentResult:
-        requirements = list(context.states.get("spec", {}).get("functional_requirements", []))
+        requirements = list(
+            context.states.get("spec", {}).get("functional_requirements", [])
+        )
         updated = {
             **context.states.get("solution", {}),
             "selected_stack": {
@@ -88,8 +90,12 @@ class FakeDesignAgent(BaseAgent):
                     "contract_type": "state_handoff",
                     "producer": "Requirements Engineer",
                     "consumers": ["Solution Engineer"],
-                    "input": [{"name": "spec_state", "description": "", "required": True}],
-                    "output": [{"name": "solution_state", "description": "", "required": True}],
+                    "input": [
+                        {"name": "spec_state", "description": "", "required": True}
+                    ],
+                    "output": [
+                        {"name": "solution_state", "description": "", "required": True}
+                    ],
                     "constraints": [],
                     "acceptance_criteria": [],
                     "failure_handling": [],

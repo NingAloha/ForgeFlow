@@ -38,7 +38,17 @@ class ExecutionToolsTests(unittest.TestCase):
                 encoding="utf-8",
             )
             result = executor.run_command(
-                ["python3", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-v"]
+                [
+                    "python3",
+                    "-m",
+                    "unittest",
+                    "discover",
+                    "-s",
+                    "tests",
+                    "-p",
+                    "test_*.py",
+                    "-v",
+                ]
             )
             self.assertEqual(result.exit_code, 0)
 

@@ -55,7 +55,9 @@ class TestValidationEngineerAgent(TestValidationPlanningMixin, BaseAgent):
             "test_*.py",
             "-v",
         ]
-        llm_suggested_command = list(implementation_status.get("suggested_test_command", []))
+        llm_suggested_command = list(
+            implementation_status.get("suggested_test_command", [])
+        )
         command = list(fixed_command)
 
         if not workspace_path or not Path(workspace_path).exists():
@@ -76,7 +78,9 @@ class TestValidationEngineerAgent(TestValidationPlanningMixin, BaseAgent):
                 state_key=self.state_key,
                 updated_state=updated_state,
                 summary="Validation failed because workspace is unavailable.",
-                notes=["Real test execution skipped because workspace path is missing or invalid."],
+                notes=[
+                    "Real test execution skipped because workspace path is missing or invalid."
+                ],
                 blockers=["workspace_missing"],
                 handoff_ready=False,
                 diagnostics={"llm_trace": llm_trace, "execution_trace": {}},
@@ -124,17 +128,25 @@ class TestValidationEngineerAgent(TestValidationPlanningMixin, BaseAgent):
             if failure_result is not None:
                 failure_result.diagnostics["execution_trace"] = {}
                 return failure_result
-            if llm_result.status == "success" and isinstance(llm_result.parsed_output, dict):
+            if llm_result.status == "success" and isinstance(
+                llm_result.parsed_output, dict
+            ):
                 payload = llm_result.parsed_output
                 test_scope = str(payload.get("test_scope", test_scope))
                 candidate_command = payload.get("command")
                 if isinstance(candidate_command, list) and candidate_command:
-                    llm_suggested_command = [str(x) for x in candidate_command if str(x).strip()]
+                    llm_suggested_command = [
+                        str(x) for x in candidate_command if str(x).strip()
+                    ]
 
         executor = WorkspaceExecutor(workspace_root=Path(workspace_path))
         cmd_result = executor.run_command(command)
-        tests_run = self._extract_tests_run(cmd_result.stdout + "\n" + cmd_result.stderr)
-        failed_tests = self._extract_failed_tests(cmd_result.stdout + "\n" + cmd_result.stderr)
+        tests_run = self._extract_tests_run(
+            cmd_result.stdout + "\n" + cmd_result.stderr
+        )
+        failed_tests = self._extract_failed_tests(
+            cmd_result.stdout + "\n" + cmd_result.stderr
+        )
         log_excerpt = self._tail_excerpt(cmd_result.stdout, cmd_result.stderr)
 
         if cmd_result.exit_code == 0 and tests_run > 0:
@@ -188,7 +200,8 @@ class TestValidationEngineerAgent(TestValidationPlanningMixin, BaseAgent):
                 "Produced test_report from real command execution with exit code and failed tests."
             ],
             blockers=blockers,
-            handoff_ready=updated_state["result"] == "pass" and cmd_result.exit_code == 0,
+            handoff_ready=updated_state["result"] == "pass"
+            and cmd_result.exit_code == 0,
             diagnostics={
                 "llm_trace": llm_trace,
                 "execution_trace": {

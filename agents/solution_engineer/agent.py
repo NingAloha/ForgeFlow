@@ -98,7 +98,9 @@ class SolutionEngineerAgent(SolutionPlanningMixin, SolutionQuestionMixin, BaseAg
             )
             if failure_result is not None:
                 return failure_result
-            if llm_result.status == "success" and isinstance(llm_result.parsed_output, dict):
+            if llm_result.status == "success" and isinstance(
+                llm_result.parsed_output, dict
+            ):
                 payload = llm_result.parsed_output
                 if isinstance(payload, dict):
                     candidate_stack = payload.get("selected_stack")

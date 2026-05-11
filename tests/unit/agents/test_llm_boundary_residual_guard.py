@@ -25,7 +25,9 @@ class LLMBoundaryResidualGuardTests(unittest.TestCase):
         for path in stage_agent_paths:
             content = path.read_text(encoding="utf-8")
             for token in forbidden_tokens:
-                self.assertNotIn(token, content, f"{path} contains forbidden token: {token}")
+                self.assertNotIn(
+                    token, content, f"{path} contains forbidden token: {token}"
+                )
 
 
 if __name__ == "__main__":

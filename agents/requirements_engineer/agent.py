@@ -64,36 +64,33 @@ class RequirementsEngineerAgent(
                 stage_name=self.stage_name,
                 state_key=self.state_key,
                 agent_name=self.agent_name,
-                updated_state={**current_state, "open_questions": ["llm_generation_failed"]},
+                updated_state={
+                    **current_state,
+                    "open_questions": ["llm_generation_failed"],
+                },
                 fallback_factory=None,
                 strict_summary="Requirements blocked: strict_llm mode requires successful LLM output.",
                 fatal_summary="Requirements blocked: LLM output is unavailable.",
             )
             # Requirements can still move forward in strict_llm mode when deterministic
             # extraction provides a complete spec from user input.
-            if (
-                llm_failure_result is not None
-                and llm_result.status in {"fatal_error", "needs_user_input"}
-            ):
+            if llm_failure_result is not None and llm_result.status in {
+                "fatal_error",
+                "needs_user_input",
+            }:
                 return llm_failure_result
-            if llm_result.status == "success" and isinstance(llm_result.parsed_output, dict):
+            if llm_result.status == "success" and isinstance(
+                llm_result.parsed_output, dict
+            ):
                 payload = llm_result.parsed_output
                 llm_project_goal = self.normalize_text(
                     str(payload.get("project_goal", ""))
                 )
                 llm_functional_requirements = self.dedupe_items(
-                    [
-                        str(item)
-                        for item in payload.get(
-                            "functional_requirements", []
-                        )
-                    ]
+                    [str(item) for item in payload.get("functional_requirements", [])]
                 )
                 llm_acceptance_criteria = self.dedupe_items(
-                    [
-                        str(item)
-                        for item in payload.get("acceptance_criteria", [])
-                    ]
+                    [str(item) for item in payload.get("acceptance_criteria", [])]
                 )
 
         project_goal = self.normalize_text(str(current_state.get("project_goal", "")))
@@ -104,9 +101,7 @@ class RequirementsEngineerAgent(
         if not project_goal:
             project_goal = self.extract_goal_from_input(user_input)
 
-        functional_requirements = list(
-            current_state.get("functional_requirements", [])
-        )
+        functional_requirements = list(current_state.get("functional_requirements", []))
         if not functional_requirements:
             functional_requirements = list(llm_functional_requirements)
         if not functional_requirements:
@@ -177,9 +172,7 @@ class RequirementsEngineerAgent(
             state_key=self.state_key,
             updated_state=updated_state,
             summary="Requirements were extracted into spec state.",
-            notes=[
-                "Filled the core spec fields needed for downstream solution work."
-            ],
+            notes=["Filled the core spec fields needed for downstream solution work."],
             handoff_ready=True,
             diagnostics={"llm_trace": llm_trace},
         )

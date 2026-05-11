@@ -11,7 +11,10 @@ from agents.orchestrator import Orchestrator, Stage
 from agents.requirements_engineer import RequirementsEngineerAgent
 from agents.test_validation_engineer import TestValidationEngineerAgent
 from schemas.llm_trace import LLMTraceModel
-from tests.unit.support.orchestrator_fixtures import make_empty_states, make_testing_states
+from tests.unit.support.orchestrator_fixtures import (
+    make_empty_states,
+    make_testing_states,
+)
 from tests.unit.support.orchestrator_stubs import InMemoryStateManager
 
 
@@ -99,7 +102,9 @@ class LLMTraceContractTests(unittest.TestCase):
                     f"{path} matches forbidden llm_trace legacy pattern: {pattern.pattern}",
                 )
 
-    def test_orchestrator_diagnostic_uses_gateway_trace_for_requirements_agent(self) -> None:
+    def test_orchestrator_diagnostic_uses_gateway_trace_for_requirements_agent(
+        self,
+    ) -> None:
         llm_result = LLMStructuredResult(
             status="success",
             parsed_output={

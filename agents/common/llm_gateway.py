@@ -195,7 +195,11 @@ class LLMGateway:
             )
 
         validation_errors: list[str] = []
-        if strict_unknown and contract.reject_unknown_fields and contract.output_model is None:
+        if (
+            strict_unknown
+            and contract.reject_unknown_fields
+            and contract.output_model is None
+        ):
             allowed = set(contract.allowed_fields or [])
             if allowed:
                 extras = sorted([key for key in parsed_obj if key not in allowed])
@@ -209,7 +213,9 @@ class LLMGateway:
         normalized: dict[str, Any] = dict(parsed_obj)
         if contract.output_model is not None:
             try:
-                normalized = contract.output_model.model_validate(parsed_obj).model_dump(mode="python")
+                normalized = contract.output_model.model_validate(
+                    parsed_obj
+                ).model_dump(mode="python")
             except ValidationError as exc:
                 validation_errors.extend(self._format_validation_errors(exc))
 
@@ -238,7 +244,9 @@ class LLMGateway:
         )
 
     def _extract_json_text(self, text: str) -> str:
-        fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, flags=re.DOTALL | re.IGNORECASE)
+        fenced = re.search(
+            r"```(?:json)?\s*(\{.*?\})\s*```", text, flags=re.DOTALL | re.IGNORECASE
+        )
         if fenced:
             return fenced.group(1).strip()
         return text
@@ -256,13 +264,22 @@ class LLMGateway:
         lowered = error.lower()
         if "timed out" in lowered or "timeout" in lowered:
             return "timeout"
-        if "401" in lowered or "403" in lowered or "unauthorized" in lowered or "forbidden" in lowered:
+        if (
+            "401" in lowered
+            or "403" in lowered
+            or "unauthorized" in lowered
+            or "forbidden" in lowered
+        ):
             return "auth_error"
         if "429" in lowered or "rate" in lowered:
             return "rate_limit"
         if "policy" in lowered or "safety" in lowered or "content_filter" in lowered:
             return "policy_block"
-        if "urlopen error" in lowered or "connection" in lowered or "name or service not known" in lowered:
+        if (
+            "urlopen error" in lowered
+            or "connection" in lowered
+            or "name or service not known" in lowered
+        ):
             return "network_error"
         return "unknown"
 

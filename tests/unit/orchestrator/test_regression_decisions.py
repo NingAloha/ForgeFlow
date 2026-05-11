@@ -49,7 +49,9 @@ class OrchestratorRegressionDecisionTests(unittest.TestCase):
         self.assertTrue(decision.should_stay)
         self.assertFalse(decision.wait_for_user_input)
         self.assertEqual(decision.final_stage, Stage.REQUIREMENTS)
-        self.assertEqual(self.orchestrator.determine_execution_stage(decision), Stage.REQUIREMENTS)
+        self.assertEqual(
+            self.orchestrator.determine_execution_stage(decision), Stage.REQUIREMENTS
+        )
 
     def test_solution_complete_forwards_to_design(self) -> None:
         states = make_solution_ready_states()
@@ -113,7 +115,9 @@ class OrchestratorRegressionDecisionTests(unittest.TestCase):
         self.assertEqual(decision.backflow_target, Stage.IMPLEMENTATION)
         self.assertEqual(decision.final_stage, Stage.IMPLEMENTATION)
 
-    def test_diagnostic_payload_contains_decision_and_question_summary_fields(self) -> None:
+    def test_diagnostic_payload_contains_decision_and_question_summary_fields(
+        self,
+    ) -> None:
         states = make_solution_ready_states()
         decision = self.orchestrator.resolve_transition(states)
         payload = self.orchestrator.build_diagnostic_payload(
@@ -123,7 +127,10 @@ class OrchestratorRegressionDecisionTests(unittest.TestCase):
             executed_stage=Stage.DESIGN,
             summary="diagnostic",
         )
-        self.assertIn(payload["decision_type"], {"FORWARD", "BACKFLOW", "WAIT", "STAY", "EXECUTE", "BOOTSTRAP"})
+        self.assertIn(
+            payload["decision_type"],
+            {"FORWARD", "BACKFLOW", "WAIT", "STAY", "EXECUTE", "BOOTSTRAP"},
+        )
         self.assertIn("computed", payload["stages"])
         self.assertIn("final", payload["stages"])
         self.assertIn("executed", payload["stages"])

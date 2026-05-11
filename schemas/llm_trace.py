@@ -6,7 +6,9 @@ from .common import StateModel
 
 
 class LLMTraceModel(StateModel):
-    status: Literal["success", "retryable_error", "fatal_error", "needs_user_input", "none"]
+    status: Literal[
+        "success", "retryable_error", "fatal_error", "needs_user_input", "none"
+    ]
     failure_type: str
     repair_attempts: int
     validation_errors: list[str]

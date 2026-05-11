@@ -35,11 +35,28 @@ def build_approval_artifact_path(run_dir: Path, contract_hash: str) -> Path:
     return approvals_dir / f"{safe_hash}.json"
 
 
+def save_approval_artifact_for_run(
+    run_dir: Path,
+    contract_hash: str,
+    approval: dict[str, Any],
+) -> Path:
+    path = build_approval_artifact_path(run_dir, contract_hash)
+    save_approval_artifact(path, approval)
+    return path
+
+
 def save_approval_artifact(path: Path, approval: dict[str, Any]) -> None:
     resolved = path.resolve()
     approvals_dir = resolved.parent
     if approvals_dir.name != "approvals":
         raise ValueError("approval artifact path must be inside an approvals directory")
+    if resolved.suffix != ".json":
+        raise ValueError("approval artifact file must be a .json file")
+    stem = resolved.stem.lower()
+    if not _is_hex_sha256(stem):
+        raise ValueError("approval artifact filename must be a sha256 hex digest")
+    if any(part == ".." for part in path.parts):
+        raise ValueError("approval artifact path must not contain traversal segments")
 
     approvals_dir.mkdir(parents=True, exist_ok=True)
     resolved.write_text(

@@ -99,6 +99,7 @@ Approval currently does not execute patches. It only prepares the control semant
 Approval objects can be saved as run-local artifacts under `.forgeflow/runs/<run_id>/approvals/`.
 Approval artifacts are ignored by default and are not committed.
 They record approval state and contract fingerprint only; they do not store or apply patch content.
+Approval artifacts should be saved through the run-scoped helper so they remain under `.forgeflow/runs/<run_id>/approvals/`.
 
 ### Approval-aware execution gate
 ForgeFlow can evaluate whether a validated execution contract has a valid approval artifact before entering mutation runtime.
@@ -108,6 +109,18 @@ This separates approval validity from execution capability:
 - missing approval -> blocked
 - stale approval -> blocked
 - approved contract -> still blocked until mutation runtime is enabled
+
+### Dry-run apply plan
+ForgeFlow can build a dry-run apply plan from a validated execution contract and approval artifact.
+The plan includes:
+- patch id
+- target module
+- files to create / modify / delete
+- preconditions
+- rollback plan
+- post-apply test plan
+- gate result
+The plan does not apply patches, write files, or run commands.
 
 ## Runtime Artifact Boundary
 - 以下属于 runtime cache，不应入库：

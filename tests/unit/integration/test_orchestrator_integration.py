@@ -138,7 +138,9 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         states = make_design_ready_states()
         broken_states = deepcopy(states)
         broken_states["system_design"]["data_flow"][0]["contract_name"] = "missing"
-        self.assertFalse(self.orchestrator.stage_evaluator.is_design_ready(broken_states))
+        self.assertFalse(
+            self.orchestrator.stage_evaluator.is_design_ready(broken_states)
+        )
         self.assertEqual(
             self.orchestrator.stage_evaluator.compute_current_stage(broken_states),
             Stage.SOLUTION,
@@ -150,7 +152,9 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         self.assertEqual(decision.final_stage, Stage.INIT)
         self.assertTrue(decision.should_stay)
 
-    def test_resolve_transition_forwards_from_solution_when_solution_is_ready(self) -> None:
+    def test_resolve_transition_forwards_from_solution_when_solution_is_ready(
+        self,
+    ) -> None:
         decision = self.orchestrator.resolve_transition(make_solution_ready_states())
         self.assertEqual(decision.computed_stage, Stage.SOLUTION)
         self.assertEqual(decision.final_stage, Stage.DESIGN)
@@ -184,7 +188,9 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         self.assertEqual(decision.final_stage, Stage.REQUIREMENTS)
         self.assertIsNone(self.orchestrator.determine_execution_stage(decision))
 
-    def test_resolve_transition_does_not_wait_on_answered_blocking_question_state(self) -> None:
+    def test_resolve_transition_does_not_wait_on_answered_blocking_question_state(
+        self,
+    ) -> None:
         states = make_requirements_ready_states()
         states["question_state"] = {
             "status": "answered",
@@ -209,9 +215,13 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         self.assertFalse(decision.wait_for_user_input)
         self.assertTrue(decision.should_stay)
         self.assertEqual(decision.final_stage, Stage.REQUIREMENTS)
-        self.assertEqual(self.orchestrator.determine_execution_stage(decision), Stage.REQUIREMENTS)
+        self.assertEqual(
+            self.orchestrator.determine_execution_stage(decision), Stage.REQUIREMENTS
+        )
 
-    def test_resolve_transition_does_not_wait_when_question_state_is_non_blocking(self) -> None:
+    def test_resolve_transition_does_not_wait_when_question_state_is_non_blocking(
+        self,
+    ) -> None:
         states = make_requirements_ready_states()
         states["question_state"] = {
             "status": "awaiting_user",
@@ -236,7 +246,9 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         self.assertFalse(decision.wait_for_user_input)
         self.assertEqual(decision.final_stage, Stage.SOLUTION)
 
-    def test_resolve_transition_does_not_wait_when_blocking_question_list_is_empty(self) -> None:
+    def test_resolve_transition_does_not_wait_when_blocking_question_list_is_empty(
+        self,
+    ) -> None:
         states = make_requirements_ready_states()
         states["question_state"] = {
             "status": "awaiting_user",
@@ -251,7 +263,9 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         self.assertFalse(decision.wait_for_user_input)
         self.assertEqual(decision.final_stage, Stage.SOLUTION)
 
-    def test_resolve_transition_falls_back_to_source_stage_for_invalid_question_stage(self) -> None:
+    def test_resolve_transition_falls_back_to_source_stage_for_invalid_question_stage(
+        self,
+    ) -> None:
         states = make_testing_states()
         states["question_state"] = {
             "status": "awaiting_user",
@@ -314,7 +328,10 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         self.assertEqual(len(question_state.questions), 1)
         self.assertEqual(question_state.questions[0].options[0].value, "python")
         self.assertEqual(question_state.questions[0].answer.selected_values, ["python"])
-        self.assertEqual(question_state.questions[0].answer.free_text, "Prefer standard library first.")
+        self.assertEqual(
+            question_state.questions[0].answer.free_text,
+            "Prefer standard library first.",
+        )
 
     def test_serialize_question_state_none_returns_idle_payload(self) -> None:
         payload = self.orchestrator.question_flow.serialize_question_state(None)
@@ -355,7 +372,9 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         )
 
         self.assertEqual(payload["questions"][0]["options"][0]["label"], "Python")
-        self.assertEqual(payload["questions"][0]["answer"]["selected_values"], ["python"])
+        self.assertEqual(
+            payload["questions"][0]["answer"]["selected_values"], ["python"]
+        )
         self.assertEqual(payload["resolution_summary"], "User picked Python.")
 
     def test_run_stage_saves_question_state_update(self) -> None:
@@ -372,7 +391,9 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         self.assertEqual(saved_question_state["stage_name"], "REQUIREMENTS")
         self.assertEqual(saved_question_state["questions"][0]["id"], "target-user")
 
-    def test_run_stage_without_question_update_does_not_write_question_state(self) -> None:
+    def test_run_stage_without_question_update_does_not_write_question_state(
+        self,
+    ) -> None:
         state_manager = InMemoryStateManager(make_empty_states())
         orchestrator = Orchestrator(state_manager=state_manager)
 
@@ -387,7 +408,9 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         self.assertNotIn("question_state", state_manager.saved_states)
         self.assertIn("spec", state_manager.saved_states)
 
-    def test_run_stage_clears_answered_question_state_after_same_stage_consumes_it(self) -> None:
+    def test_run_stage_clears_answered_question_state_after_same_stage_consumes_it(
+        self,
+    ) -> None:
         states = make_empty_states()
         states["question_state"] = {
             "status": "answered",
@@ -402,7 +425,10 @@ class OrchestratorStageComputationTests(unittest.TestCase):
                     "response_type": "single_select",
                     "options": [],
                     "allow_free_text": True,
-                    "answer": {"selected_values": ["indie_hacker"], "free_text": "Solo builder first."},
+                    "answer": {
+                        "selected_values": ["indie_hacker"],
+                        "free_text": "Solo builder first.",
+                    },
                 }
             ],
             "created_by": "Requirements Engineer",
@@ -415,9 +441,14 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         orchestrator.run_stage(Stage.REQUIREMENTS)
 
         self.assertIn("question_state", state_manager.saved_states)
-        self.assertEqual(state_manager.saved_states["question_state"], make_empty_states()["question_state"])
+        self.assertEqual(
+            state_manager.saved_states["question_state"],
+            make_empty_states()["question_state"],
+        )
 
-    def test_run_stage_does_not_clear_answered_question_state_for_other_stage(self) -> None:
+    def test_run_stage_does_not_clear_answered_question_state_for_other_stage(
+        self,
+    ) -> None:
         states = make_empty_states()
         states["question_state"] = {
             "status": "answered",
@@ -446,7 +477,9 @@ class OrchestratorStageComputationTests(unittest.TestCase):
 
         self.assertNotIn("question_state", state_manager.saved_states)
 
-    def test_run_stage_does_not_clear_answered_question_state_when_agent_reasks(self) -> None:
+    def test_run_stage_does_not_clear_answered_question_state_when_agent_reasks(
+        self,
+    ) -> None:
         states = make_empty_states()
         states["question_state"] = {
             "status": "answered",
@@ -461,7 +494,10 @@ class OrchestratorStageComputationTests(unittest.TestCase):
                     "response_type": "single_select",
                     "options": [],
                     "allow_free_text": True,
-                    "answer": {"selected_values": [], "free_text": "Need more constraints."},
+                    "answer": {
+                        "selected_values": [],
+                        "free_text": "Need more constraints.",
+                    },
                 }
             ],
             "created_by": "Requirements Engineer",
@@ -474,7 +510,9 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         orchestrator.run_stage(Stage.REQUIREMENTS)
 
         self.assertIn("question_state", state_manager.saved_states)
-        self.assertEqual(state_manager.saved_states["question_state"]["status"], "awaiting_user")
+        self.assertEqual(
+            state_manager.saved_states["question_state"]["status"], "awaiting_user"
+        )
 
     def test_resolve_transition_backflows_testing_failure_to_implementing(self) -> None:
         states = make_testing_states()
@@ -522,7 +560,9 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         self.assertEqual(decision.backflow_target, Stage.DESIGN)
         self.assertFalse(decision.should_stay)
 
-    def test_resolve_transition_keeps_partial_testing_without_issue_attribution(self) -> None:
+    def test_resolve_transition_keeps_partial_testing_without_issue_attribution(
+        self,
+    ) -> None:
         states = make_testing_states()
         states["test_report"].update({"result": "partial", "issues": []})
         decision = self.orchestrator.resolve_transition(states)
@@ -545,7 +585,9 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         self.assertEqual(decision.final_stage, Stage.IMPLEMENTATION)
         self.assertTrue(decision.should_stay)
 
-    def test_resolve_transition_keeps_blocked_implementation_without_blocker_details(self) -> None:
+    def test_resolve_transition_keeps_blocked_implementation_without_blocker_details(
+        self,
+    ) -> None:
         states = make_design_ready_states()
         states["implementation_status"].update(
             {
@@ -566,7 +608,9 @@ class OrchestratorStageComputationTests(unittest.TestCase):
             {
                 "module_name": "orchestrator",
                 "implementation_status": "blocked",
-                "blockers": ["Module responsibility and architecture ownership are unclear."],
+                "blockers": [
+                    "Module responsibility and architecture ownership are unclear."
+                ],
             }
         )
         decision = self.orchestrator.resolve_transition(states)
@@ -591,7 +635,9 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         self.assertEqual(decision.final_stage, Stage.INIT)
         self.assertEqual(decision.backflow_target, Stage.REQUIREMENTS)
 
-    def test_resolve_transition_backflows_testing_to_requirements_when_open_questions_exist(self) -> None:
+    def test_resolve_transition_backflows_testing_to_requirements_when_open_questions_exist(
+        self,
+    ) -> None:
         states = make_testing_states()
         states["spec"]["open_questions"] = ["Need clearer acceptance scope."]
         states["test_report"].update(
@@ -696,7 +742,10 @@ class OrchestratorStageComputationTests(unittest.TestCase):
                     "response_type": "single_select",
                     "options": [],
                     "allow_free_text": True,
-                    "answer": {"selected_values": ["indie_hacker"], "free_text": "Solo builder first."},
+                    "answer": {
+                        "selected_values": ["indie_hacker"],
+                        "free_text": "Solo builder first.",
+                    },
                 }
             ],
             "created_by": "Requirements Engineer",
@@ -712,7 +761,10 @@ class OrchestratorStageComputationTests(unittest.TestCase):
         self.assertEqual(result.decision.final_stage, Stage.REQUIREMENTS)
         self.assertEqual(result.executed_stage, Stage.REQUIREMENTS)
         self.assertIsNotNone(result.agent_result)
-        self.assertEqual(state_manager.states["question_state"], make_empty_states()["question_state"])
+        self.assertEqual(
+            state_manager.states["question_state"],
+            make_empty_states()["question_state"],
+        )
         self.assertEqual(result.diagnostic["decision_type"], "STAY")
         self.assertIn("question_state", result.diagnostic["state_changes"])
 

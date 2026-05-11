@@ -176,9 +176,15 @@ class ImplementationPlanningMixin(TextHelper):
             items = [value]
         else:
             return []
-        return [self.normalize_text(str(item)) for item in items if self.normalize_text(str(item))]
+        return [
+            self.normalize_text(str(item))
+            for item in items
+            if self.normalize_text(str(item))
+        ]
 
-    def match_module_contract(self, module_name: str, design: dict[str, object]) -> dict[str, object] | None:
+    def match_module_contract(
+        self, module_name: str, design: dict[str, object]
+    ) -> dict[str, object] | None:
         contracts = design.get("contracts", [])
         fallback_contract: dict[str, object] | None = None
         for contract in contracts:
@@ -189,10 +195,16 @@ class ImplementationPlanningMixin(TextHelper):
             contract_name = self.normalize_text(str(contract.get("name", ""))).lower()
             if module_name and module_name in self.slugify_text(contract_name):
                 return contract
-            input_blob = " ".join(self._normalize_text_entries(contract.get("input", []))).lower()
-            output_blob = " ".join(self._normalize_text_entries(contract.get("output", []))).lower()
+            input_blob = " ".join(
+                self._normalize_text_entries(contract.get("input", []))
+            ).lower()
+            output_blob = " ".join(
+                self._normalize_text_entries(contract.get("output", []))
+            ).lower()
             module_blob = module_name.replace("_", " ").lower()
-            if module_blob and (module_blob in input_blob or module_blob in output_blob):
+            if module_blob and (
+                module_blob in input_blob or module_blob in output_blob
+            ):
                 return contract
         if len(contracts) == 1:
             return fallback_contract
@@ -231,7 +243,9 @@ class ImplementationPlanningMixin(TextHelper):
                 return directory
         return f"src/{module_name}/"
 
-    def build_module_steps(self, module_name: str, contract: dict[str, object] | None) -> list[str]:
+    def build_module_steps(
+        self, module_name: str, contract: dict[str, object] | None
+    ) -> list[str]:
         step_items = [
             f"Prepare module handoff scope for {module_name} using design project structure",
             "Map contract inputs to implementation intake checklist",
@@ -242,7 +256,9 @@ class ImplementationPlanningMixin(TextHelper):
                 "Map failure_handling categories into implementation execution checkpoints"
             )
         else:
-            step_items.append("Record unresolved failure-handling alignment as blocker context")
+            step_items.append(
+                "Record unresolved failure-handling alignment as blocker context"
+            )
         return step_items
 
     def build_module_done_criteria(self) -> list[str]:

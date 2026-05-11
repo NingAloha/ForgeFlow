@@ -45,7 +45,9 @@ class SolutionEngineerHelperTests(unittest.TestCase):
         )
         self.assertEqual(self.agent.infer_module_name(""), "workflow_engine")
 
-    def test_extract_answers_only_consumes_answered_solution_question_state(self) -> None:
+    def test_extract_answers_only_consumes_answered_solution_question_state(
+        self,
+    ) -> None:
         answered_context = AgentContext(
             states=make_requirements_ready_states(),
             question_state=QuestionState(
@@ -95,7 +97,9 @@ class SolutionEngineerHelperTests(unittest.TestCase):
         )
         self.assertEqual(self.agent.extract_answers(wrong_stage_context), {})
 
-    def test_pick_stack_respects_answers_and_infers_local_workflow_defaults(self) -> None:
+    def test_pick_stack_respects_answers_and_infers_local_workflow_defaults(
+        self,
+    ) -> None:
         spec = make_requirements_ready_states()["spec"]
         spec["preferences"] = ["Local-first workflow"]
         selected_stack = self.agent.pick_stack(
@@ -207,11 +211,17 @@ class SolutionEngineerHelperTests(unittest.TestCase):
         risks = self.agent.build_risks(spec, selected_stack)
         alternatives = self.agent.build_alternatives(selected_stack)
 
-        self.assertIn("Markdown input may contain irregular heading structure", risks[0])
+        self.assertIn(
+            "Markdown input may contain irregular heading structure", risks[0]
+        )
         self.assertTrue(any("action items" in item for item in risks))
         self.assertTrue(any("do not build Web UI" in item for item in alternatives))
-        self.assertTrue(any("do not add database service" in item for item in alternatives))
-        self.assertTrue(any("do not add background service" in item for item in alternatives))
+        self.assertTrue(
+            any("do not add database service" in item for item in alternatives)
+        )
+        self.assertTrue(
+            any("do not add background service" in item for item in alternatives)
+        )
 
     def test_infer_module_name_avoids_short_or_non_semantic_names(self) -> None:
         self.assertEqual(

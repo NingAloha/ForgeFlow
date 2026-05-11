@@ -96,10 +96,16 @@ class StageEvaluatorTests(unittest.TestCase):
             {
                 "module_name": "orchestrator",
                 "implementation_status": "blocked",
-                "files_touched": ["module=orchestrator; files_to_create=[src/orchestrator/]"],
-                "tests_added_or_updated": ["module=orchestrator; test_plan=[pytest tests/orchestrator]"],
+                "files_touched": [
+                    "module=orchestrator; files_to_create=[src/orchestrator/]"
+                ],
+                "tests_added_or_updated": [
+                    "module=orchestrator; test_plan=[pytest tests/orchestrator]"
+                ],
                 "contract_compliance": False,
-                "blockers": ["code execution mode is not enabled; missing execution safety boundary"],
+                "blockers": [
+                    "code execution mode is not enabled; missing execution safety boundary"
+                ],
             }
         )
         self.assertFalse(self.evaluator.is_implementation_handoff_ready(states))

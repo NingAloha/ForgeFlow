@@ -5,7 +5,6 @@ import unittest
 from agents.base import AgentContext, QuestionAnswer, QuestionItem, QuestionState
 from agents.solution_engineer import SolutionEngineerAgent
 from tests.unit.support.orchestrator_fixtures import (
-    make_empty_states,
     make_requirements_ready_states,
 )
 

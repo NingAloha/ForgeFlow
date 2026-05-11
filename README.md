@@ -126,6 +126,7 @@ forgeflow/
 * 已补充一版 agent 设计原则文档，用于约束后续演进方向
 * 各模块目录已补充导航 README
 * `main.py` 已可直接触发一次 orchestrator 调度，并输出诊断视图
+* `main.py --tui` 已可启动最小 ForgeShell 壳：状态栏 + 事件流 + 输入框，并通过 orchestrator API 转发 `/status`、`/open spec`、`/open solution`、`/open design`、`/run`
 * requirements 阶段已能生成首版 `spec` 核心字段，并在缺信息时写入 `question_state`
 * solution 阶段已能基于 `spec` 生成首版 `selected_stack`、`module_mapping`、`risks` 与 `alternatives`
 * `question_state = answered` 时，控制层会重新执行对应阶段来消费回答，而不是继续卡在等待态
@@ -133,7 +134,32 @@ forgeflow/
 * design / implementation / testing 三层已不再是 placeholder，当前会输出最小可执行工件并给出可回流的验证归因
 * implementation 阶段当前是 implementation planning / status，不是自动代码生成器
 * testing 阶段允许 LLM 提供建议命令，但真实执行仅使用固定 allowlisted `python3 -m unittest discover -s tests -p test_*.py -v`
+* `examples/` 已补离线黄金回归场景，基于 fixture/mock/fake 输出验证主链路状态流动（不使用真实 LLM 输出作为 expected）
 * 实现仍处于早期阶段
+
+### Console Script Note
+
+After editable install:
+
+```bash
+python3.11 -m pip install -e ".[dev]"
+```
+
+The `forgeflow` command is installed into the active Python environment's script directory.
+
+If `forgeflow` is not found, run it via the absolute script path shown by your Python environment, or ensure that environment's bin directory is in `PATH`.
+
+For mise-managed Python, this is typically similar to:
+
+```text
+~/.local/share/mise/installs/python/3.11.15/bin
+```
+
+You can also continue using:
+
+```bash
+python3.11 main.py --tui
+```
 
 ## 给第一次阅读的人
 

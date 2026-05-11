@@ -1,0 +1,10 @@
+{
+  "trace": [
+    {"decision_type": "BOOTSTRAP", "computed_stage": "INIT", "final_stage": "INIT", "executed_stage": "REQUIREMENTS", "reason": "Stay on current stage."},
+    {"decision_type": "FORWARD", "computed_stage": "REQUIREMENTS", "final_stage": "SOLUTION", "executed_stage": "SOLUTION", "reason": "Forward transition available."},
+    {"decision_type": "FORWARD", "computed_stage": "SOLUTION", "final_stage": "DESIGN", "executed_stage": "DESIGN", "reason": "Forward transition available."},
+    {"decision_type": "FORWARD", "computed_stage": "DESIGN", "final_stage": "IMPLEMENTATION", "executed_stage": "IMPLEMENTATION", "reason": "Forward transition available."},
+    {"decision_type": "STAY", "computed_stage": "TESTING", "final_stage": "TESTING", "executed_stage": "TESTING", "reason": "Stay on current stage."},
+    {"decision_type": "STAY", "computed_stage": "DONE", "final_stage": "DONE", "executed_stage": "", "reason": "Stay on current stage."}
+  ]
+}

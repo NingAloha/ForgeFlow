@@ -5,7 +5,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from agents.base import AgentContext
 from agents.common.llm_gateway import LLMStructuredResult
 from agents.common.runtime_config import LLMRuntimeConfig
 from agents.orchestrator import Orchestrator, Stage

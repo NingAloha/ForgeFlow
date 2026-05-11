@@ -1,0 +1,15 @@
+{
+  "required": {
+    "spec": ["project_goal", "functional_requirements", "acceptance_criteria"],
+    "solution": ["selected_stack", "module_mapping"],
+    "system_design": ["contracts", "data_flow"],
+    "implementation_status": ["module_name", "implementation_status", "contract_compliance"],
+    "test_report": ["result", "test_scope"],
+    "question_state": ["status"]
+  },
+  "expected_values": {
+    "implementation_status.implementation_status": "done",
+    "test_report.result": "pass",
+    "question_state.status": "idle"
+  }
+}

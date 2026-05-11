@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "forgeflow"
 version = "0.1.0"
@@ -6,6 +10,22 @@ dependencies = [
   "pydantic>=2.0,<3.0",
 ]
 
+[project.scripts]
+forgeflow = "main:main"
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "ruff",
+  "mypy",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.setuptools.packages.find]
+include = ["agents*", "schemas*", "tui*"]
+
+[tool.setuptools]
+py-modules = ["main"]

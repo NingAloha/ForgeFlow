@@ -318,7 +318,18 @@ def main() -> int:
         default=None,
         help="Replay diagnostics from runs/<run_id>/summary.json in read-only mode.",
     )
+    parser.add_argument(
+        "--tui",
+        action="store_true",
+        help="Start the minimal ForgeShell TUI wrapper.",
+    )
     args = parser.parse_args()
+
+    if args.tui:
+        from tui.app import ForgeShellApp
+
+        app = ForgeShellApp(state_dir=args.state_dir)
+        return app.run()
 
     if args.replay_run:
         try:

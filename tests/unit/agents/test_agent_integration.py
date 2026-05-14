@@ -270,14 +270,28 @@ class TestValidationEngineerAgentTests(unittest.TestCase):
             self.assertEqual(result.updated_state["issues"], [])
             self.assertTrue(result.handoff_ready)
 
-    def test_agent_produces_fail_result_with_blocking_issues(self) -> None:
+    def test_agent_treats_handoff_only_missing_workspace_as_expected(self) -> None:
         states = make_testing_states()
-        states["implementation_status"]["workspace_path"] = (
-            "/tmp/forgeflow-missing-workspace"
+        states["implementation_status"]["workspace_path"] = ""
+        states["implementation_status"]["commands_executed"] = []
+        states["implementation_status"]["artifacts_generated"] = []
+        result = self.agent.run(AgentContext(user_input="", states=states))
+        self.assertEqual(result.updated_state["result"], "pass")
+        self.assertEqual(result.updated_state["exit_code"], 0)
+        self.assertEqual(result.updated_state["failed_tests"], [])
+        self.assertIn(
+            "handoff-only validation passed",
+            result.updated_state["log_excerpt"],
         )
+        self.assertTrue(result.handoff_ready)
+
+    def test_agent_keeps_workspace_missing_for_non_handoff_status(self) -> None:
+        states = make_testing_states()
+        states["implementation_status"]["implementation_status"] = "blocked"
+        states["implementation_status"]["contract_compliance"] = False
+        states["implementation_status"]["workspace_path"] = ""
         result = self.agent.run(AgentContext(user_input="", states=states))
         self.assertEqual(result.updated_state["result"], "fail")
-        self.assertEqual(result.updated_state["exit_code"], 1)
         self.assertIn("workspace_missing", result.updated_state["failed_tests"])
         self.assertFalse(result.handoff_ready)
 

@@ -42,6 +42,7 @@ class TestValidationEngineerAgent(TestValidationPlanningMixin, BaseAgent):
 
         test_scope = current_state.get("test_scope") or "integration"
         result = self.pick_result(issues, implementation_status)
+        handoff_only_mode = self.is_handoff_only_mode(implementation_status)
 
         workspace_path = str(implementation_status.get("workspace_path", "")).strip()
         fixed_command = [
@@ -59,6 +60,44 @@ class TestValidationEngineerAgent(TestValidationPlanningMixin, BaseAgent):
             implementation_status.get("suggested_test_command", [])
         )
         command = list(fixed_command)
+
+        if handoff_only_mode:
+            updated_state = {
+                **current_state,
+                "test_scope": test_scope,
+                "result": result,
+                "issues": issues,
+                "command": command,
+                "exit_code": 0 if result == "pass" else 1,
+                "tests_run": 0,
+                "failed_tests": [],
+                "log_excerpt": (
+                    "handoff-only validation passed; no workspace mutation expected."
+                    if result == "pass"
+                    else "handoff-only validation found unresolved planning issues."
+                ),
+            }
+            blockers = [
+                str(issue.get("title", ""))
+                for issue in issues
+                if issue.get("severity") in {"critical", "high"}
+                and issue.get("status") in {"open", "confirmed"}
+            ]
+            return AgentResult(
+                agent_name=self.agent_name,
+                stage_name=self.stage_name,
+                state_key=self.state_key,
+                updated_state=updated_state,
+                summary=(
+                    "Handoff-only validation completed without workspace execution."
+                ),
+                notes=[
+                    "Validated implementation handoff artifacts against design alignment and suggested tests."
+                ],
+                blockers=blockers,
+                handoff_ready=updated_state["result"] == "pass",
+                diagnostics={"llm_trace": llm_trace, "execution_trace": {}},
+            )
 
         if not workspace_path or not Path(workspace_path).exists():
             updated_state = {

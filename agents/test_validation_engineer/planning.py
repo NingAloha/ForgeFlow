@@ -4,6 +4,57 @@ from typing import Any
 
 
 class TestValidationPlanningMixin:
+    def _handoff_files_evidence(
+        self,
+        implementation_status: dict[str, Any],
+    ) -> list[str]:
+        primary = implementation_status.get("files_touched", [])
+        fallback = implementation_status.get("files_created", [])
+        source = primary if primary else fallback
+        return [str(item).strip() for item in source if str(item).strip()]
+
+    def _handoff_tests_evidence(
+        self,
+        implementation_status: dict[str, Any],
+    ) -> list[str]:
+        primary = implementation_status.get("tests_added_or_updated", [])
+        fallback = implementation_status.get("unit_tests", [])
+        source = primary if primary else fallback
+        return [str(item).strip() for item in source if str(item).strip()]
+
+    def is_handoff_only_mode(
+        self,
+        implementation_status: dict[str, Any],
+    ) -> bool:
+        tests_added = self._handoff_tests_evidence(implementation_status)
+        files_touched = self._handoff_files_evidence(implementation_status)
+        commands_executed = [
+            str(item).strip()
+            for item in implementation_status.get("commands_executed", [])
+            if str(item).strip()
+        ]
+        artifacts_generated = [
+            str(item).strip()
+            for item in implementation_status.get("artifacts_generated", [])
+            if str(item).strip()
+        ]
+        workspace_path = str(implementation_status.get("workspace_path", "")).strip()
+        blockers = implementation_status.get("blockers", [])
+        allowed_handoff_artifacts = {"handoff_package_generated"}
+        artifacts_are_handoff_markers = all(
+            item in allowed_handoff_artifacts for item in artifacts_generated
+        )
+        return (
+            implementation_status.get("implementation_status") == "done"
+            and implementation_status.get("contract_compliance") is True
+            and not blockers
+            and bool(files_touched)
+            and bool(tests_added)
+            and not workspace_path
+            and not commands_executed
+            and artifacts_are_handoff_markers
+        )
+
     def _build_issue(
         self,
         *,
@@ -46,11 +97,8 @@ class TestValidationPlanningMixin:
             for name in design.get("project_structure", {}).get("modules", [])
             if str(name).strip()
         ]
-        tests_added = [
-            str(item).strip()
-            for item in implementation_status.get("tests_added_or_updated", [])
-            if str(item).strip()
-        ]
+        tests_added = self._handoff_tests_evidence(implementation_status)
+        handoff_only_mode = self.is_handoff_only_mode(implementation_status)
 
         if spec.get("open_questions"):
             issues.append(
@@ -137,9 +185,11 @@ class TestValidationPlanningMixin:
                 )
             )
 
-        if design.get("mvp_plan", {}).get(
-            "first_deliverable"
-        ) and not implementation_status.get("suggested_test_command"):
+        if (
+            design.get("mvp_plan", {}).get("first_deliverable")
+            and not implementation_status.get("suggested_test_command")
+            and not handoff_only_mode
+        ):
             issues.append(
                 self._build_issue(
                     title="Missing verification command for MVP deliverable",

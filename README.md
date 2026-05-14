@@ -6,12 +6,12 @@
 ForgeFlow 是一个以结构化状态驱动的软件工程流水线。当前目标是把用户输入沿着固定阶段推进：
 `Requirements -> Solution -> Design -> Implementation -> Testing`。
 
-ForgeShell 是 Primary UI 目标；CLI Runner 是当前可运行的开发/调试入口。
+ForgeShell 是主界面（Primary UI）目标；CLI Runner 是当前可运行的开发/调试入口。
 
 ## 当前架构
 
 ```text
-ForgeShell (Primary UI) ─┐
+ForgeShell (主界面 / Primary UI) ─┐
                          ├── Project Orchestrator
 CLI Runner (Dev / Debug) ┘
                              ├── State Manager
@@ -54,20 +54,20 @@ CLI Runner (Dev / Debug) ┘
 | Patch Apply | ❌ |
 | Command Execution | ❌ |
 
-## Implementation 模式
+## 实现模式（Implementation）
 - `handoff`（默认稳定路径）：
   - 承接 `system_design`
   - 输出 implementation checklist、done criteria、suggested tests、blockers
-- `execute`（当前 disabled 的预览路径）：
+- `execute`（当前禁用的预览路径）：
   - 返回 `blocked`
   - 返回 `patch preview generated`
   - 返回 `single-module patch draft generated`
   - `no mutation performed`
 
-## Execution / Patch 边界
+## 执行与补丁边界（Execution / Patch）
 当前不做真实代码写入，不做 patch apply，不运行真实 Code Agent。
 
-`execute` 模式当前只做 dry-run 预览：
+`execute` 模式当前只做 dry-run（演练预览）：
 - patch preview：目录级预览，不落盘，不执行命令。
 - patch draft：
   - 仅首个 design module
@@ -78,53 +78,53 @@ CLI Runner (Dev / Debug) ┘
   - 不写入文件
   - 不执行命令
 
-## Reviewable Execution Contract
+## 可审阅执行契约（Reviewable Execution Contract）
 - `execute` 路径会输出可审阅的 execution contract，但当前仍是 `blocked`。
-- contract 是 review object，不是 apply object。
+- contract 是审阅对象（review object），不是执行对象（apply object）。
 - patch preview 与 patch draft 是同一 contract 的两种视图：
   - contract 块描述执行意图、边界与回滚预期（key-value）。
   - patch draft 块描述 unified diff 草案（仅预览，不落盘）。
 - 未来 apply/rollback/testing 会复用这套 contract 语义，避免 preview/apply/rollback 语义分裂。
 
-### Execution contract validation
-ForgeFlow can parse and validate the reviewable execution contract produced by execute mode.
-Validation checks that:
-- the contract and patch draft boundaries are present
-- required keys are present
-- mutation is disabled
-- modify/delete are empty
-- paths stay within the allowed module scope
-- the patch draft is create-only and README-only
-Validation does not apply the patch or run commands.
+### Execution contract 校验
+ForgeFlow 可以解析并校验 `execute` 模式产出的可审阅 execution contract。
+校验项包括：
+- contract 与 patch draft 边界是否存在
+- 必填 key 是否齐全
+- mutation 是否保持禁用
+- modify/delete 是否为空
+- 路径是否保持在允许的模块范围内
+- patch draft 是否满足 create-only 且 README-only
+校验过程不会 apply patch，也不会执行命令。
 
-### Execution approval layer
-ForgeFlow can build a review approval object for a validated execution contract.
-The approval layer records:
+### Execution approval 层
+ForgeFlow 可以基于已校验的 execution contract 构建 review approval 对象。
+approval 层记录：
 - contract fingerprint
 - approval status
 - target module
 - review decision
 - stale detection
-Approval currently does not execute patches. It only prepares the control semantics required before future mutation runtime.
+approval 当前不会执行 patch，只提供未来 mutation runtime 需要的控制语义。
 
 ### Execution approval artifact
-Approval objects can be saved as run-local artifacts under `.forgeflow/runs/<run_id>/approvals/`.
-Approval artifacts are ignored by default and are not committed.
-They record approval state and contract fingerprint only; they do not store or apply patch content.
-Approval artifacts should be saved through the run-scoped helper so they remain under `.forgeflow/runs/<run_id>/approvals/`.
+approval 对象可作为 run-local artifact 保存到 `.forgeflow/runs/<run_id>/approvals/`。
+approval artifact 默认被忽略，不入库。
+它仅记录 approval state 与 contract fingerprint，不存储或 apply patch 内容。
+approval artifact 应通过 run-scoped helper 保存，确保路径保持在 `.forgeflow/runs/<run_id>/approvals/` 下。
 
 ### Approval-aware execution gate
-ForgeFlow can evaluate whether a validated execution contract has a valid approval artifact before entering mutation runtime.
-The current gate always blocks actual mutation because mutation runtime is not enabled yet.
-This separates approval validity from execution capability:
+ForgeFlow 可在进入 mutation runtime 之前，评估已校验 execution contract 是否具备有效 approval artifact。
+当前 gate 会始终阻止真实 mutation，因为 mutation runtime 仍未启用。
+这用于区分 approval 有效性与执行能力：
 - invalid contract -> blocked
 - missing approval -> blocked
 - stale approval -> blocked
-- approved contract -> still blocked until mutation runtime is enabled
+- approved contract -> 仍需等待 mutation runtime 启用
 
 ### Dry-run apply plan
-ForgeFlow can build a dry-run apply plan from a validated execution contract and approval artifact.
-The plan includes:
+ForgeFlow 可以基于已校验 execution contract 与 approval artifact 构建 dry-run apply plan。
+计划包含：
 - patch id
 - target module
 - files to create / modify / delete
@@ -132,23 +132,23 @@ The plan includes:
 - rollback plan
 - post-apply test plan
 - gate result
-The plan does not apply patches, write files, or run commands.
+该计划不会 apply patch、写文件或执行命令。
 
-### Apply plan validation
-ForgeFlow can validate a dry-run apply plan before any mutation runtime exists.
-Validation checks:
+### Apply plan 校验
+ForgeFlow 可在 mutation runtime 尚未存在时，对 dry-run apply plan 进行校验。
+校验项包括：
 - required fields
-- patch id consistency
-- target module consistency
+- patch id 一致性
+- target module 一致性
 - file path allowlist
 - blocked gate result
 - mutation_performed=false
 - safe post-apply test plan
-Validation does not apply patches, write files, or run commands.
-Execution governance 当前只表达可审阅执行意图，不触发真实 mutation。
+校验过程不会 apply patch、写文件或执行命令。
+执行治理（Execution governance）当前只表达可审阅执行意图，不触发真实 mutation。
 
-## Runtime Artifact Boundary
-- 以下属于 runtime cache，不应入库：
+## 运行产物边界
+- 以下属于运行时缓存（runtime cache），不应入库：
   - `.forgeflow/state/`
   - `.forgeflow/generated/`
   - `.forgeflow/runs/`
@@ -194,11 +194,10 @@ forgeflow --tui
 - patch preview / patch draft 仅用于设计与实现交接预览。
 - 多轮自动修复、真实 patch 落盘与命令执行仍未开放。
 
-## Roadmap
+## 路线图
 - 强化 LLM fallback policy consistency。
 - 在不破坏主 flow 的前提下，逐步引入安全可审计的执行能力。
 - 保持 Orchestrator 单控制面，不把 TUI 扩成第二控制面。
 
-## English version
+## 英文版本
 英文开发者概览见 [README_EN.md](./README_EN.md)。
-

@@ -181,6 +181,14 @@ forgeflow --tui
 - `ruff check .`
 - `pytest -q`
 
+## 分支协作边界
+- 推荐分支模型：`main`（稳定主干） + `track/*`（主题开发分支）。
+- `track/*` 分支会触发 CI 路径守卫（branch path guard），越界改动会直接失败。
+- 分支路径边界定义见：[docs/branch-boundaries.md](./docs/branch-boundaries.md)。
+- 守卫脚本与工作流：
+  - `scripts/branch_path_guard.sh`
+  - `.github/workflows/branch-path-guard.yml`
+
 ## 当前限制
 - execute 模式尚未开放真实执行能力。
 - patch preview / patch draft 仅用于设计与实现交接预览。

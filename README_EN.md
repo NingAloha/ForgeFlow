@@ -122,6 +122,14 @@ Current quality gate:
 - `ruff check .`
 - `pytest -q`
 
+## Branch Collaboration Boundary
+- Recommended branch model: `main` (stable trunk) + `track/*` (topic branches).
+- `track/*` branches are enforced by a CI branch path guard; out-of-scope file changes fail CI.
+- Boundary policy is defined in [docs/branch-boundaries.md](./docs/branch-boundaries.md).
+- Guard files:
+  - `scripts/branch_path_guard.sh`
+  - `.github/workflows/branch-path-guard.yml`
+
 ## Current Limitations
 - Execute mode is not enabled for real mutation.
 - Patch artifacts are previews only and are never applied.

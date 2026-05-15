@@ -55,6 +55,10 @@
 - 允许改动：
   - `tui/**`
   - `tests/unit/entrypoints/test_tui.py`
+  - `tests/unit/entrypoints/test_status_overview.py`
+  - `main.py`（仅只读入口与观测输出）
+  - `forgeflow/runtime/**`（只读 status snapshot/render 模块）
+  - `forgeflow/__init__.py`
   - `agents/orchestrator/**`（仅只读查询相关改动）
   - `docs/**`
   - `README.md`

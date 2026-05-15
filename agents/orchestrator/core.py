@@ -19,6 +19,7 @@ from .run_manifest import RunManifestWriter
 from .stage_evaluator import StageEvaluator
 from schemas.run_summary import RunSummaryModel
 from forgeflow.runtime.events import append_runtime_event
+from forgeflow.runtime.run_index import build_index_entry, update_run_index
 
 
 class Orchestrator:
@@ -66,17 +67,34 @@ class Orchestrator:
             + "-"
             + uuid4().hex[:8]
         )
+        self._started_at = datetime.now(timezone.utc)
         self.runs_dir = state_dir.parent / "runs" / self.run_id
         self.generated_project_dir = state_dir.parent / "generated" / self.run_id
         self.runs_dir.mkdir(parents=True, exist_ok=True)
         self.generated_project_dir.mkdir(parents=True, exist_ok=True)
         self._event_log_warnings: list[dict[str, Any]] = []
+        self._run_index_warnings: list[dict[str, Any]] = []
         self.run_manifest = RunManifestWriter(
             runs_dir=self.runs_dir,
             run_id=self.run_id,
             generated_project_dir=self.generated_project_dir,
             state_dir=str(state_dir),
         )
+        try:
+            runs_root = self.runs_dir.parent
+            update_run_index(
+                runs_root,
+                build_index_entry(
+                    run_id=self.run_id,
+                    status="running",
+                    final_stage="",
+                    finished_at="",
+                ),
+            )
+        except Exception as exc:
+            self._run_index_warnings.append(
+                {"action": "run_started", "error": str(exc)}
+            )
         try:
             append_runtime_event(
                 self.runs_dir,
@@ -428,6 +446,12 @@ class Orchestrator:
                 trace = {}
             trace["runtime_event_log_warnings"] = list(self._event_log_warnings)
             diagnostic_payload["execution_trace"] = trace
+        if self._run_index_warnings:
+            trace = diagnostic_payload.get("execution_trace", {})
+            if not isinstance(trace, dict):
+                trace = {}
+            trace["runtime_run_index_warnings"] = list(self._run_index_warnings)
+            diagnostic_payload["execution_trace"] = trace
         if agent_result:
             raw_llm_trace = agent_result.diagnostics.get("llm_trace")
             if raw_llm_trace:
@@ -561,6 +585,22 @@ class Orchestrator:
         except Exception as exc:
             self._event_log_warnings.append(
                 {"event_type": "run_finished", "error": str(exc)}
+            )
+
+        try:
+            runs_root = self.runs_dir.parent
+            update_run_index(
+                runs_root,
+                build_index_entry(
+                    run_id=self.run_id,
+                    status="finished",
+                    final_stage=str(decision.final_stage),
+                    finished_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                ),
+            )
+        except Exception as exc:
+            self._run_index_warnings.append(
+                {"action": "run_finished", "error": str(exc)}
             )
 
         result = OrchestrationResult(

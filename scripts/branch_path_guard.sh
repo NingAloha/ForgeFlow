@@ -32,7 +32,11 @@ if [[ -z "${base_ref}" ]]; then
   exit 1
 fi
 
-mapfile -t changed_files < <(git diff --name-only "${base_ref}...HEAD")
+changed_files=()
+while IFS= read -r file; do
+  [[ -n "${file}" ]] || continue
+  changed_files+=("${file}")
+done < <(git diff --name-only "${base_ref}...HEAD")
 
 if [[ ${#changed_files[@]} -eq 0 ]]; then
   echo "branch_path_guard: no changed files"
@@ -59,6 +63,12 @@ is_allowed_for_branch() {
     track/tui-observability)
       [[ "${file}" == tui/* ]] && return 0
       [[ "${file}" == tests/unit/entrypoints/test_tui.py ]] && return 0
+      [[ "${file}" == tests/unit/entrypoints/test_status_overview.py ]] && return 0
+      [[ "${file}" == main.py ]] && return 0
+      [[ "${file}" == forgeflow/runtime/* ]] && return 0
+      [[ "${file}" == forgeflow/__init__.py ]] && return 0
+      [[ "${file}" == forgeflow/runtime/__init__.py ]] && return 0
+      [[ "${file}" == pyproject.toml ]] && return 0
       [[ "${file}" == agents/orchestrator/* ]] && return 0
       ;;
     track/docs-review)

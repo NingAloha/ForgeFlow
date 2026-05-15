@@ -322,11 +322,23 @@ def main() -> int:
         help="Replay diagnostics from runs/<run_id>/summary.json in read-only mode.",
     )
     parser.add_argument(
+        "--status",
+        action="store_true",
+        help="Print a read-only runtime status overview and exit.",
+    )
+    parser.add_argument(
         "--tui",
         action="store_true",
         help="Start the minimal ForgeShell TUI wrapper.",
     )
     args = parser.parse_args()
+
+    if args.status:
+        from forgeflow.runtime.render import render_status
+        from forgeflow.runtime.status import build_status_snapshot
+
+        print(render_status(build_status_snapshot(args.state_dir)))
+        return 0
 
     if args.tui:
         from tui.app import ForgeShellApp

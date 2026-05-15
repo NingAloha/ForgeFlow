@@ -91,7 +91,14 @@ def _collect_blockers(steps: list[ReplayStep]) -> list[str]:
         qs = step.question_state
         status = str(qs.get("status", "")).strip()
         blocking = bool(qs.get("blocking", False))
-        has_questions = bool(qs.get("questions"))
+        questions = qs.get("questions")
+        question_count = qs.get("question_count", 0)
+        try:
+            question_count_int = int(question_count) if question_count is not None else 0
+        except (TypeError, ValueError):
+            question_count_int = 0
+
+        has_questions = bool(questions) or question_count_int > 0
         if blocking and status == "awaiting_user" and has_questions:
             stage = str(qs.get("stage_name", "")).strip() or "UNKNOWN"
             blockers.append(f"waiting_user_input(stage={stage})")
@@ -256,4 +263,3 @@ def render_replay(snapshot: RuntimeReplaySnapshot) -> str:
         lines.append(f"- {key}: {snapshot.artifacts.get(key)}")
 
     return "\n".join(lines)
-

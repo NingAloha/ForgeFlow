@@ -10,6 +10,24 @@ from forgeflow.runtime.replay import ReplayLoadError, load_replay_snapshot
 
 
 class RuntimeReplayInvariantTests(unittest.TestCase):
+    def test_replay_blocker_detects_question_count_without_questions_array(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_dir = Path(temp_dir) / "state"
+            run_id = "20260101T000000Z-demo"
+            run_dir = Path(temp_dir) / "runs" / run_id
+            run_dir.mkdir(parents=True, exist_ok=True)
+            (run_dir / "summary.json").write_text(
+                (
+                    '{"schema_version":"1","run_id":"20260101T000000Z-demo","steps":[{"timestamp":"t",'
+                    '"input":"","decision_type":"WAIT","computed_stage":"","final_stage":"","executed_stage":"",'
+                    '"question_state":{"status":"awaiting_user","blocking":true,"stage_name":"REQUIREMENTS","question_count":1},'
+                    '"execution_trace":{}}]}\n'
+                ),
+                encoding="utf-8",
+            )
+            snapshot = load_replay_snapshot(run_id, str(state_dir))
+            self.assertIn("waiting_user_input(stage=REQUIREMENTS)", snapshot.blockers)
+
     def test_replay_never_mutates_filesystem(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             state_dir = Path(temp_dir) / "state"
@@ -96,4 +114,3 @@ class RuntimeReplayInvariantTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

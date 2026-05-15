@@ -52,6 +52,7 @@ is_allowed_for_branch() {
       ;;
     track/implementation-governance)
       [[ "${file}" == agents/implementation_engineer/* ]] && return 0
+      [[ "${file}" == schemas/implementation.py ]] && return 0
       [[ "${file}" == tests/unit/agents/test_implementation_engineer.py ]] && return 0
       [[ "${file}" == tests/unit/agents/test_execution_* ]] && return 0
       ;;

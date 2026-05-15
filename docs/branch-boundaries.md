@@ -22,6 +22,7 @@
 ### `track/implementation-governance`
 - 允许改动：
   - `agents/implementation_engineer/**`
+  - `schemas/implementation.py`（例外路径：仅 execution governance contract/schema 扩展）
   - `tests/unit/agents/test_implementation_engineer.py`
   - `tests/unit/agents/test_execution_*.py`
   - `docs/**`

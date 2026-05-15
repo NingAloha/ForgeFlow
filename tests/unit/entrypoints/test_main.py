@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
 import sys
@@ -19,6 +20,50 @@ from schemas.llm_trace import LLMTraceModel
 
 
 class MainDiagnosticViewTests(unittest.TestCase):
+    @patch("main.Orchestrator")
+    def test_status_mode_does_not_write_events(
+        self,
+        mock_orchestrator_cls: MagicMock,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cwd = os.getcwd()
+            try:
+                os.chdir(temp_dir)
+                state_dir = Path(temp_dir) / ".forgeflow" / "state"
+                state_dir.mkdir(parents=True, exist_ok=True)
+                with patch("sys.argv", ["main.py", "--status"]):
+                    exit_code = main()
+                runs_root = Path(temp_dir) / ".forgeflow" / "runs"
+            finally:
+                os.chdir(cwd)
+
+            self.assertEqual(exit_code, 0)
+            self.assertFalse(runs_root.exists())
+            mock_orchestrator_cls.assert_not_called()
+
+    @patch("main.Orchestrator")
+    def test_replay_mode_does_not_write_events(
+        self,
+        mock_orchestrator_cls: MagicMock,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_id = "20260101T000000Z-demo"
+            runs_dir = Path(temp_dir) / "runs" / run_id
+            runs_dir.mkdir(parents=True, exist_ok=True)
+            (runs_dir / "summary.json").write_text(
+                '{"schema_version":"1","run_id":"20260101T000000Z-demo","steps":[]}\n',
+                encoding="utf-8",
+            )
+            state_dir = Path(temp_dir) / "state"
+            with patch(
+                "sys.argv",
+                ["main.py", "--state-dir", str(state_dir), "--replay-run", run_id],
+            ):
+                exit_code = main()
+            self.assertEqual(exit_code, 0)
+            self.assertFalse((runs_dir / "events.jsonl").exists())
+            mock_orchestrator_cls.assert_not_called()
+
     def test_classify_decision_marks_bootstrap_runs(self) -> None:
         result = OrchestrationResult(
             decision=TransitionDecision(

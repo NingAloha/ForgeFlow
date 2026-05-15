@@ -10,6 +10,45 @@ from forgeflow.runtime.replay import ReplayLoadError, load_replay_snapshot
 
 
 class RuntimeReplayInvariantTests(unittest.TestCase):
+    def test_replay_prefers_events_jsonl_when_present(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_dir = Path(temp_dir) / "state"
+            run_id = "20260101T000000Z-demo"
+            run_dir = Path(temp_dir) / "runs" / run_id
+            run_dir.mkdir(parents=True, exist_ok=True)
+            (run_dir / "events.jsonl").write_text(
+                (
+                    '{"timestamp":"t1","event_type":"run_started","run_id":"20260101T000000Z-demo","sequence":1,"payload":{}}\n'
+                    '{"timestamp":"t2","event_type":"run_finished","run_id":"20260101T000000Z-demo","sequence":2,"payload":{}}\n'
+                ),
+                encoding="utf-8",
+            )
+            (run_dir / "summary.json").write_text(
+                '{"schema_version":"1","run_id":"20260101T000000Z-demo","steps":[]}\n',
+                encoding="utf-8",
+            )
+            snapshot = load_replay_snapshot(run_id, str(state_dir))
+            self.assertTrue(snapshot.timeline)
+            self.assertEqual(snapshot.timeline[0].get("event_type"), "run_started")
+
+    def test_replay_falls_back_to_summary_steps_when_events_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_dir = Path(temp_dir) / "state"
+            run_id = "20260101T000000Z-demo"
+            run_dir = Path(temp_dir) / "runs" / run_id
+            run_dir.mkdir(parents=True, exist_ok=True)
+            (run_dir / "summary.json").write_text(
+                (
+                    '{"schema_version":"1","run_id":"20260101T000000Z-demo","steps":[{"timestamp":"t",'
+                    '"input":"","decision_type":"STAY","computed_stage":"INIT","final_stage":"REQUIREMENTS","executed_stage":"",'
+                    '"question_state":{"status":"idle","blocking":false,"stage_name":"","question_count":0},"execution_trace":{}}]}\n'
+                ),
+                encoding="utf-8",
+            )
+            snapshot = load_replay_snapshot(run_id, str(state_dir))
+            self.assertTrue(snapshot.timeline)
+            self.assertEqual(snapshot.timeline[0].get("event_type"), "summary_step")
+
     def test_replay_blocker_detects_question_count_without_questions_array(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             state_dir = Path(temp_dir) / "state"

@@ -18,6 +18,7 @@ from .question_flow import QuestionFlow
 from .run_manifest import RunManifestWriter
 from .stage_evaluator import StageEvaluator
 from schemas.run_summary import RunSummaryModel
+from forgeflow.runtime.events import append_runtime_event
 
 
 class Orchestrator:
@@ -69,12 +70,27 @@ class Orchestrator:
         self.generated_project_dir = state_dir.parent / "generated" / self.run_id
         self.runs_dir.mkdir(parents=True, exist_ok=True)
         self.generated_project_dir.mkdir(parents=True, exist_ok=True)
+        self._event_log_warnings: list[dict[str, Any]] = []
         self.run_manifest = RunManifestWriter(
             runs_dir=self.runs_dir,
             run_id=self.run_id,
             generated_project_dir=self.generated_project_dir,
             state_dir=str(state_dir),
         )
+        try:
+            append_runtime_event(
+                self.runs_dir,
+                event_type="run_started",
+                run_id=self.run_id,
+                payload={
+                    "generated_project_dir": str(self.generated_project_dir),
+                    "state_dir": str(state_dir),
+                },
+            )
+        except Exception as exc:
+            self._event_log_warnings.append(
+                {"event_type": "run_started", "error": str(exc)}
+            )
         self.question_flow = QuestionFlow()
         self.stage_evaluator = StageEvaluator()
         self.backflow_evaluator = BackflowEvaluator(
@@ -355,7 +371,7 @@ class Orchestrator:
             decision_type = "BOOTSTRAP"
         elif not decision.should_stay:
             decision_type = "EXECUTE"
-        diagnostic_payload = {
+        diagnostic_payload: dict[str, Any] = {
             "decision_type": decision_type,
             "stages": {
                 "computed": str(decision.computed_stage),
@@ -406,6 +422,12 @@ class Orchestrator:
             },
             "summary": summary,
         }
+        if self._event_log_warnings:
+            trace = diagnostic_payload.get("execution_trace", {})
+            if not isinstance(trace, dict):
+                trace = {}
+            trace["runtime_event_log_warnings"] = list(self._event_log_warnings)
+            diagnostic_payload["execution_trace"] = trace
         if agent_result:
             raw_llm_trace = agent_result.diagnostics.get("llm_trace")
             if raw_llm_trace:
@@ -458,6 +480,28 @@ class Orchestrator:
     ) -> OrchestrationResult:
         states_before = self.state_manager.load_all_states()
         decision = self.resolve_transition(states_before)
+        try:
+            append_runtime_event(
+                self.runs_dir,
+                event_type="decision_computed",
+                run_id=self.run_id,
+                payload={
+                    "computed_stage": str(decision.computed_stage),
+                    "final_stage": str(decision.final_stage),
+                    "should_stay": bool(decision.should_stay),
+                    "wait_for_user_input": bool(decision.wait_for_user_input),
+                    "next_stage_to_execute": str(decision.next_stage_to_execute)
+                    if decision.next_stage_to_execute
+                    else "",
+                    "backflow_target": str(decision.backflow_target)
+                    if decision.backflow_target
+                    else "",
+                },
+            )
+        except Exception as exc:
+            self._event_log_warnings.append(
+                {"event_type": "decision_computed", "error": str(exc)}
+            )
 
         executed_stage = self.determine_execution_stage(decision)
         agent_result: AgentResult | None = None
@@ -467,6 +511,23 @@ class Orchestrator:
                 user_input=user_input,
                 original_request=original_request or user_input,
             )
+            try:
+                append_runtime_event(
+                    self.runs_dir,
+                    event_type="stage_executed",
+                    run_id=self.run_id,
+                    payload={
+                        "executed_stage": str(executed_stage),
+                        "agent_name": agent_result.agent_name,
+                        "state_key": agent_result.state_key,
+                        "handoff_ready": bool(agent_result.handoff_ready),
+                        "requires_user_input": bool(agent_result.requires_user_input),
+                    },
+                )
+            except Exception as exc:
+                self._event_log_warnings.append(
+                    {"event_type": "stage_executed", "error": str(exc)}
+                )
 
         states_after = self.state_manager.load_all_states()
         summary = self.build_result_summary(
@@ -474,6 +535,33 @@ class Orchestrator:
             executed_stage=executed_stage,
             agent_result=agent_result,
         )
+
+        decision_type_for_event = "STAY"
+        if decision.wait_for_user_input:
+            decision_type_for_event = "WAIT"
+        elif decision.backflow_target is not None:
+            decision_type_for_event = "BACKFLOW"
+        elif decision.next_stage_to_execute is not None:
+            decision_type_for_event = "FORWARD"
+        elif decision.final_stage == Stage.INIT and executed_stage is not None:
+            decision_type_for_event = "BOOTSTRAP"
+        elif not decision.should_stay:
+            decision_type_for_event = "EXECUTE"
+
+        try:
+            append_runtime_event(
+                self.runs_dir,
+                event_type="run_finished",
+                run_id=self.run_id,
+                payload={
+                    "latest_final_stage": str(decision.final_stage),
+                    "latest_decision_type": decision_type_for_event,
+                },
+            )
+        except Exception as exc:
+            self._event_log_warnings.append(
+                {"event_type": "run_finished", "error": str(exc)}
+            )
 
         result = OrchestrationResult(
             decision=decision,

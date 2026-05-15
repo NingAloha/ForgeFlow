@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .events import load_runtime_events
+
 
 @dataclass(slots=True)
 class ReplayStep:
@@ -23,6 +25,7 @@ class RuntimeReplaySnapshot:
     run_id: str
     final_stage: str
     executed_steps: list[ReplayStep]
+    timeline: list[dict[str, Any]]
     latest_decision: dict[str, str]
     artifacts: dict[str, object]
     blockers: list[str]
@@ -213,11 +216,49 @@ def load_replay_snapshot(run_id: str, state_dir: str | None = None) -> RuntimeRe
             "final_stage": final_stage,
             "executed_stage": "",
         }
+    timeline: list[dict[str, Any]] = []
+    events_path = run_dir / "events.jsonl"
+    if events_path.exists() and events_path.is_file():
+        log = load_runtime_events(run_dir)
+        for event in log.events:
+            timeline.append(
+                {
+                    "sequence": event.sequence,
+                    "timestamp": event.timestamp,
+                    "event_type": event.event_type,
+                    "payload": event.payload,
+                }
+            )
+        if log.errors:
+            timeline.append(
+                {
+                    "sequence": 0,
+                    "timestamp": "",
+                    "event_type": "events_read_errors",
+                    "payload": {"errors": log.errors},
+                }
+            )
+    else:
+        for idx, step in enumerate(steps, start=1):
+            timeline.append(
+                {
+                    "sequence": idx,
+                    "timestamp": step.timestamp,
+                    "event_type": "summary_step",
+                    "payload": {
+                        "decision_type": step.decision_type,
+                        "computed_stage": step.computed_stage,
+                        "final_stage": step.final_stage,
+                        "executed_stage": step.executed_stage,
+                    },
+                }
+            )
 
     return RuntimeReplaySnapshot(
         run_id=str(payload.get("run_id", safe_run_id)).strip() or safe_run_id,
         final_stage=final_stage,
         executed_steps=steps,
+        timeline=timeline,
         latest_decision=latest_decision,
         artifacts=artifacts,
         blockers=_collect_blockers(steps),
@@ -228,6 +269,14 @@ def render_replay(snapshot: RuntimeReplaySnapshot) -> str:
     lines: list[str] = ["ForgeFlow Replay"]
     lines.append(f"Run ID: {snapshot.run_id}")
     lines.append(f"Final Stage: {snapshot.final_stage}")
+
+    if snapshot.timeline:
+        lines.append("Timeline:")
+        for item in snapshot.timeline:
+            seq = item.get("sequence", "")
+            ts = item.get("timestamp", "")
+            et = item.get("event_type", "")
+            lines.append(f"- {seq}. {ts} {et}")
 
     lines.append("Stages:")
     if snapshot.executed_steps:

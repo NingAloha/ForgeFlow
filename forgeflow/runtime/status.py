@@ -27,6 +27,8 @@ class RuntimeStatus:
 
 
 def _default_runs_root(state_dir: str | Path | None) -> Path:
+    # Deprecated: prefer deriving from the resolved StateManager.state_dir to avoid
+    # mixing state snapshots from one runtime root with run summaries from CWD.
     if state_dir:
         return Path(state_dir).parent / "runs"
     return Path.cwd() / ".forgeflow" / "runs"
@@ -146,7 +148,10 @@ def build_status_snapshot(state_dir: str | None = None) -> RuntimeStatus:
     orchestrator_shell = _build_orchestrator_shell()
     decision = Orchestrator.resolve_transition(orchestrator_shell, states)
 
-    runs_root = _default_runs_root(state_dir)
+    # Always derive runs root from the resolved state directory (not CWD), so
+    # status reads a consistent runtime snapshot even when invoked from another
+    # working directory.
+    runs_root = Path(state_manager.state_dir).parent / "runs"
     summary = _load_latest_run_summary(runs_root)
 
     executed_stage = ""

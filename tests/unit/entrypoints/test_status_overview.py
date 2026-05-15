@@ -345,6 +345,102 @@ class RuntimeStatusOverviewTests(unittest.TestCase):
             status = build_status_snapshot(str(state_dir))
             self.assertEqual(status.last_decision["summary"], "valid")
 
+    def test_latest_run_summary_breaks_same_second_ties_by_payload_timestamp(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            runtime_root = Path(tmp_dir)
+            state_dir = runtime_root / "state"
+            state_dir.mkdir(parents=True, exist_ok=True)
+
+            runs_root = runtime_root / "runs"
+            # Same second prefix; lexicographic suffix order should not decide recency.
+            older_run = runs_root / "20260104T000000Z-ffff0000"
+            newer_run = runs_root / "20260104T000000Z-00000000"
+            older_run.mkdir(parents=True, exist_ok=True)
+            newer_run.mkdir(parents=True, exist_ok=True)
+
+            older_payload = {
+                "schema_version": "1",
+                "run_id": "20260104T000000Z-ffff0000",
+                "original_request": "x",
+                "generated_project_dir": str(runtime_root / "generated" / "older"),
+                "state_dir": str(state_dir),
+                "latest_summary": "older",
+                "latest_final_stage": "REQUIREMENTS",
+                "latest_decision_type": "STAY",
+                "steps": [
+                    {
+                        "timestamp": "2026-01-04T00:00:00.100000+00:00",
+                        "input": "",
+                        "decision_type": "STAY",
+                        "computed_stage": "REQUIREMENTS",
+                        "final_stage": "REQUIREMENTS",
+                        "executed_stage": "REQUIREMENTS",
+                        "summary": "older",
+                        "llm_trace": {
+                            "status": "none",
+                            "failure_type": "none",
+                            "repair_attempts": 0,
+                            "validation_errors": [],
+                            "raw_excerpt": "",
+                            "model": "",
+                            "provider": "",
+                            "protocol": "openai",
+                            "latency_ms": 0,
+                            "error": None,
+                        },
+                        "execution_trace": {},
+                        "state_changes": [],
+                        "question_state": {"status": "idle"},
+                    }
+                ],
+            }
+            newer_payload = {
+                "schema_version": "1",
+                "run_id": "20260104T000000Z-00000000",
+                "original_request": "x",
+                "generated_project_dir": str(runtime_root / "generated" / "newer"),
+                "state_dir": str(state_dir),
+                "latest_summary": "newer",
+                "latest_final_stage": "SOLUTION",
+                "latest_decision_type": "FORWARD",
+                "steps": [
+                    {
+                        "timestamp": "2026-01-04T00:00:00.900000+00:00",
+                        "input": "",
+                        "decision_type": "FORWARD",
+                        "computed_stage": "REQUIREMENTS",
+                        "final_stage": "SOLUTION",
+                        "executed_stage": "REQUIREMENTS",
+                        "summary": "newer",
+                        "llm_trace": {
+                            "status": "none",
+                            "failure_type": "none",
+                            "repair_attempts": 0,
+                            "validation_errors": [],
+                            "raw_excerpt": "",
+                            "model": "",
+                            "provider": "",
+                            "protocol": "openai",
+                            "latency_ms": 0,
+                            "error": None,
+                        },
+                        "execution_trace": {},
+                        "state_changes": [],
+                        "question_state": {"status": "idle"},
+                    }
+                ],
+            }
+
+            (older_run / "summary.json").write_text(
+                json.dumps(older_payload), encoding="utf-8"
+            )
+            (newer_run / "summary.json").write_text(
+                json.dumps(newer_payload), encoding="utf-8"
+            )
+
+            status = build_status_snapshot(str(state_dir))
+            self.assertEqual(status.last_decision["summary"], "newer")
+
     def test_cli_status_prints_overview(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             state_dir = Path(tmp_dir) / "state"

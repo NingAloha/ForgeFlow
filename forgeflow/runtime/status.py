@@ -43,19 +43,56 @@ def _find_latest_summary_path(runs_root: Path) -> Path | None:
     if not candidates:
         return None
 
-    def _run_key(path: Path) -> tuple[datetime, str]:
-        run_id = path.parent.name
+    def _run_prefix_key(run_id: str) -> datetime:
         match = re.match(r"^(?P<prefix>\d{8}T\d{6}Z)-", run_id)
-        if match:
-            prefix = match.group("prefix")
-            try:
-                parsed = datetime.strptime(prefix, "%Y%m%dT%H%M%SZ").replace(
-                    tzinfo=timezone.utc
-                )
-                return parsed, run_id
-            except ValueError:
-                pass
-        return datetime.min.replace(tzinfo=timezone.utc), run_id
+        if not match:
+            return datetime.min.replace(tzinfo=timezone.utc)
+        prefix = match.group("prefix")
+        try:
+            return datetime.strptime(prefix, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+        except ValueError:
+            return datetime.min.replace(tzinfo=timezone.utc)
+
+    def _parse_step_timestamp(raw: object) -> datetime:
+        if not isinstance(raw, str):
+            return datetime.min.replace(tzinfo=timezone.utc)
+        text = raw.strip()
+        if not text:
+            return datetime.min.replace(tzinfo=timezone.utc)
+        if text.endswith("Z"):
+            text = text[:-1] + "+00:00"
+        try:
+            parsed = datetime.fromisoformat(text)
+        except ValueError:
+            return datetime.min.replace(tzinfo=timezone.utc)
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone.utc)
+        return parsed
+
+    def _summary_step_key(path: Path) -> datetime:
+        # Prefer payload timestamps to break ties when multiple run IDs share the
+        # same second-level prefix (YYYYMMDDTHHMMSSZ-...).
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return datetime.min.replace(tzinfo=timezone.utc)
+        if not isinstance(payload, dict):
+            return datetime.min.replace(tzinfo=timezone.utc)
+        steps = payload.get("steps", [])
+        if not isinstance(steps, list) or not steps:
+            return datetime.min.replace(tzinfo=timezone.utc)
+        last = steps[-1]
+        if not isinstance(last, dict):
+            return datetime.min.replace(tzinfo=timezone.utc)
+        return _parse_step_timestamp(last.get("timestamp"))
+
+    def _run_key(path: Path) -> tuple[datetime, datetime, str]:
+        run_id = path.parent.name
+        return (
+            _run_prefix_key(run_id),
+            _summary_step_key(path),
+            run_id,
+        )
 
     # Prefer run identity over filesystem mtime: run IDs are timestamp-prefixed.
     candidates.sort(key=_run_key)

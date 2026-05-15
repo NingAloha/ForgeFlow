@@ -3,15 +3,11 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from pathlib import Path
 from typing import Any
-
-from pydantic import BaseModel
 
 from agents.orchestrator import OrchestrationResult, Orchestrator
 from agents.orchestrator.models import Stage
 from agents.state_manager import StateManager
-from schemas.run_summary import RunSummaryModel
 
 
 def build_user_input(args: argparse.Namespace) -> str:
@@ -82,8 +78,8 @@ def llm_outcome_from_status(status: str) -> str:
 
 
 def normalize_mapping(value: Any) -> dict[str, Any]:
-    if isinstance(value, BaseModel):
-        dumped = value.model_dump(mode="python")
+    if hasattr(value, "model_dump"):
+        dumped = value.model_dump(mode="python")  # type: ignore[attr-defined]
         return dumped if isinstance(dumped, dict) else {}
     if isinstance(value, dict):
         return value
@@ -214,81 +210,6 @@ def format_diagnostic_report(result: OrchestrationResult) -> str:
     return "\n".join(lines)
 
 
-def load_run_summary(run_id: str, state_dir: str | None) -> dict[str, Any]:
-    if state_dir:
-        runs_root = Path(state_dir).parent / "runs"
-    else:
-        runs_root = Path.cwd() / ".forgeflow" / "runs"
-    summary_path = runs_root / run_id / "summary.json"
-    if not summary_path.exists():
-        raise FileNotFoundError(f"Run summary not found: {summary_path}")
-    payload = json.loads(summary_path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        raise ValueError("Run summary payload must be an object.")
-    return RunSummaryModel.model_validate(payload).model_dump(mode="python")
-
-
-def format_replay_report(summary: dict[str, Any]) -> str:
-    lines = ["ForgeFlow Replay"]
-    lines.append(f"Run ID: {summary.get('run_id', '')}")
-    lines.append(f"Original Request: {summary.get('original_request', '')}")
-    lines.append(f"Generated Project Dir: {summary.get('generated_project_dir', '')}")
-    lines.append(f"Latest Decision: {summary.get('latest_decision_type', '')}")
-    lines.append(f"Latest Stage: {summary.get('latest_final_stage', '')}")
-
-    steps = summary.get("steps", [])
-    if not isinstance(steps, list):
-        steps = []
-    lines.append(f"Steps: {len(steps)}")
-
-    for idx, step in enumerate(steps, start=1):
-        if not isinstance(step, dict):
-            continue
-        lines.append(f"--- Step {idx} ---")
-        lines.append(f"time: {step.get('timestamp', '')}")
-        lines.append(
-            "decision: "
-            f"{step.get('decision_type', '')} | "
-            f"computed={step.get('computed_stage', '')} "
-            f"final={step.get('final_stage', '')} "
-            f"executed={step.get('executed_stage', '')}"
-        )
-        llm_trace = normalize_mapping(step.get("llm_trace", {}))
-        if llm_trace:
-            status = str(llm_trace.get("status", ""))
-            failure_type = str(llm_trace.get("failure_type", ""))
-            lines.append(
-                "llm: "
-                f"status={status} "
-                f"failure={failure_type} "
-                f"latency_ms={llm_trace.get('latency_ms', 0)} "
-                f"outcome={llm_outcome_from_status(status)}"
-            )
-        execution_trace = step.get("execution_trace", {})
-        if isinstance(execution_trace, dict) and execution_trace:
-            lines.append(
-                "execution: "
-                f"workspace={execution_trace.get('workspace_path', '')} "
-                f"writes={len(execution_trace.get('file_writes', [])) if isinstance(execution_trace.get('file_writes', []), list) else 0} "
-                f"commands={len(execution_trace.get('command_results', [])) if isinstance(execution_trace.get('command_results', []), list) else 0}"
-            )
-        state_changes = step.get("state_changes", [])
-        if isinstance(state_changes, list):
-            lines.append(
-                f"state_changes: {', '.join(state_changes) if state_changes else 'None'}"
-            )
-        question_state = step.get("question_state", {})
-        if isinstance(question_state, dict):
-            lines.append(
-                "question_state: "
-                f"{question_state.get('status', 'idle')} "
-                f"blocking={question_state.get('blocking', False)} "
-                f"stage={question_state.get('stage_name', '')}"
-            )
-
-    return "\n".join(lines)
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Run the ForgeFlow orchestrator for a single input."
@@ -347,12 +268,23 @@ def main() -> int:
         return app.run()
 
     if args.replay_run:
+        from forgeflow.runtime.replay import ReplayLoadError, load_replay_snapshot, render_replay
+
         try:
-            summary = load_run_summary(args.replay_run, args.state_dir)
-        except (FileNotFoundError, ValueError) as exc:
+            snapshot = load_replay_snapshot(args.replay_run, args.state_dir)
+        except ReplayLoadError as exc:
+            suffix = f"{exc.code}: {exc.message}"
+            print(f"Replay error: {suffix}", file=sys.stderr)
+            if exc.details:
+                try:
+                    print(json.dumps(exc.details, ensure_ascii=False), file=sys.stderr)
+                except TypeError:
+                    pass
+            return 1
+        except Exception as exc:
             print(f"Replay error: {exc}", file=sys.stderr)
             return 1
-        print(format_replay_report(summary))
+        print(render_replay(snapshot))
         return 0
 
     orchestrator = Orchestrator(

@@ -72,6 +72,12 @@ is_allowed_for_branch() {
       [[ "${file}" == pyproject.toml ]] && return 0
       [[ "${file}" == agents/orchestrator/* ]] && return 0
       ;;
+    track/runtime-replay-foundation)
+      [[ "${file}" == main.py ]] && return 0
+      [[ "${file}" == forgeflow/runtime/* ]] && return 0
+      [[ "${file}" == tests/unit/runtime/* ]] && return 0
+      [[ "${file}" == tests/unit/entrypoints/test_main.py ]] && return 0
+      ;;
     track/docs-review)
       [[ "${file}" == docs/* ]] && return 0
       [[ "${file}" == runs/manual_reviews/* ]] && return 0

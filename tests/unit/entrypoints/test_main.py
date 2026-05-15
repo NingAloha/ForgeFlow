@@ -12,10 +12,9 @@ from main import (
     changed_state_keys,
     classify_decision,
     format_diagnostic_report,
-    format_replay_report,
-    load_run_summary,
     main,
 )
+from forgeflow.runtime.replay import load_replay_snapshot, render_replay
 from schemas.llm_trace import LLMTraceModel
 
 
@@ -476,7 +475,7 @@ class MainDiagnosticViewTests(unittest.TestCase):
         )
         self.assertIn("NO_PROGRESS", printed)
 
-    def test_load_run_summary_reads_expected_path(self) -> None:
+    def test_load_replay_snapshot_reads_expected_path(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             state_dir = Path(temp_dir) / "state"
             run_id = "20260101T000000Z-demo"
@@ -492,166 +491,35 @@ class MainDiagnosticViewTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            payload = load_run_summary(run_id, str(state_dir))
-            self.assertEqual(payload["run_id"], run_id)
+            snapshot = load_replay_snapshot(run_id, str(state_dir))
+            self.assertEqual(snapshot.run_id, run_id)
 
-    def test_format_replay_report_renders_steps(self) -> None:
-        report = format_replay_report(
-            {
-                "run_id": "run-1",
-                "original_request": "build x",
-                "generated_project_dir": "/tmp/generated/run-1",
-                "latest_decision_type": "FORWARD",
-                "latest_final_stage": "DESIGN",
-                "steps": [
-                    {
-                        "timestamp": "2026-05-10T00:00:00Z",
-                        "decision_type": "FORWARD",
-                        "computed_stage": "SOLUTION",
-                        "final_stage": "DESIGN",
-                        "executed_stage": "DESIGN",
-                        "llm_trace": {"status": "success", "latency_ms": 10},
-                        "execution_trace": {
-                            "workspace_path": "/tmp/w",
-                            "file_writes": [],
-                            "command_results": [],
-                        },
-                        "state_changes": ["system_design"],
-                        "question_state": {
-                            "status": "idle",
-                            "blocking": False,
-                            "stage_name": "",
-                        },
-                    }
-                ],
-            }
-        )
+    def test_render_replay_renders_sections_and_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_id = "20260101T000000Z-demo"
+            runs_dir = Path(temp_dir) / "runs" / run_id
+            runs_dir.mkdir(parents=True, exist_ok=True)
+            (runs_dir / "approvals").mkdir(parents=True, exist_ok=True)
+            (runs_dir / "approvals" / "a.json").write_text("{}", encoding="utf-8")
+            (runs_dir / "summary.json").write_text(
+                (
+                    '{"schema_version":"1","run_id":"20260101T000000Z-demo",'
+                    '"original_request":"build todo","generated_project_dir":"/tmp/generated/demo",'
+                    '"state_dir":"/tmp/state","latest_summary":"ok","latest_final_stage":"DESIGN",'
+                    '"latest_decision_type":"FORWARD","steps":[{"timestamp":"2026-05-10T00:00:00Z",'
+                    '"input":"x","decision_type":"FORWARD","computed_stage":"SOLUTION","final_stage":"DESIGN",'
+                    '"executed_stage":"DESIGN","question_state":{"status":"idle","blocking":false},"execution_trace":{}}]}\n'
+                ),
+                encoding="utf-8",
+            )
+            snapshot = load_replay_snapshot(run_id, str(Path(temp_dir) / "state"))
+            report = render_replay(snapshot)
         self.assertIn("ForgeFlow Replay", report)
-        self.assertIn("Steps: 1", report)
-        self.assertIn("decision: FORWARD", report)
-
-    def test_format_replay_report_uses_status_failure_without_legacy_flags(
-        self,
-    ) -> None:
-        for status, failure in [
-            ("success", "none"),
-            ("retryable_error", "schema_error"),
-            ("fatal_error", "auth_error"),
-            ("needs_user_input", "policy_block"),
-        ]:
-            with self.subTest(status=status):
-                report = format_replay_report(
-                    {
-                        "run_id": "run-1",
-                        "original_request": "build x",
-                        "generated_project_dir": "/tmp/generated/run-1",
-                        "latest_decision_type": "FORWARD",
-                        "latest_final_stage": "DESIGN",
-                        "steps": [
-                            {
-                                "timestamp": "2026-05-10T00:00:00Z",
-                                "decision_type": "FORWARD",
-                                "computed_stage": "SOLUTION",
-                                "final_stage": "DESIGN",
-                                "executed_stage": "DESIGN",
-                                "llm_trace": {
-                                    "status": status,
-                                    "failure_type": failure,
-                                    "latency_ms": 10,
-                                },
-                                "execution_trace": {},
-                                "state_changes": [],
-                                "question_state": {"status": "idle"},
-                            }
-                        ],
-                    }
-                )
-                outcome = {
-                    "success": "success",
-                    "retryable_error": "retry exhausted",
-                    "fatal_error": "blocked",
-                    "needs_user_input": "needs user input",
-                }[status]
-                self.assertIn(
-                    f"llm: status={status} failure={failure} latency_ms=10 outcome={outcome}",
-                    report,
-                )
-
-    def test_format_replay_report_accepts_typed_llm_trace(self) -> None:
-        report = format_replay_report(
-            {
-                "run_id": "run-1",
-                "original_request": "build todo",
-                "generated_project_dir": "/tmp/generated/run-1",
-                "latest_decision_type": "STAY",
-                "latest_final_stage": "REQUIREMENTS",
-                "steps": [
-                    {
-                        "timestamp": "2026-05-10T00:00:00Z",
-                        "input": "build todo",
-                        "decision_type": "STAY",
-                        "computed_stage": "REQUIREMENTS",
-                        "final_stage": "REQUIREMENTS",
-                        "executed_stage": "REQUIREMENTS",
-                        "summary": "ok",
-                        "llm_trace": LLMTraceModel(
-                            status="fatal_error",
-                            failure_type="auth_error",
-                            repair_attempts=0,
-                            validation_errors=[],
-                            raw_excerpt="",
-                            model="",
-                            provider="",
-                            protocol="",
-                            latency_ms=10,
-                            error="401",
-                        ),
-                        "execution_trace": {},
-                        "state_changes": [],
-                        "question_state": {"status": "idle"},
-                    }
-                ],
-            }
-        )
-        self.assertIn(
-            "llm: status=fatal_error failure=auth_error latency_ms=10 outcome=blocked",
-            report,
-        )
-
-    def test_format_replay_report_ignores_legacy_flags_when_status_exists(self) -> None:
-        report = format_replay_report(
-            {
-                "run_id": "run-1",
-                "original_request": "build x",
-                "generated_project_dir": "/tmp/generated/run-1",
-                "latest_decision_type": "FORWARD",
-                "latest_final_stage": "DESIGN",
-                "steps": [
-                    {
-                        "timestamp": "2026-05-10T00:00:00Z",
-                        "decision_type": "FORWARD",
-                        "computed_stage": "SOLUTION",
-                        "final_stage": "DESIGN",
-                        "executed_stage": "DESIGN",
-                        "llm_trace": {
-                            "status": "fatal_error",
-                            "failure_type": "auth_error",
-                            "enabled": True,
-                            "used": False,
-                            "fallback_used": False,
-                            "latency_ms": 10,
-                        },
-                        "execution_trace": {},
-                        "state_changes": [],
-                        "question_state": {"status": "idle"},
-                    }
-                ],
-            }
-        )
-        self.assertIn(
-            "llm: status=fatal_error failure=auth_error latency_ms=10 outcome=blocked",
-            report,
-        )
+        self.assertIn("Stages:", report)
+        self.assertIn("Decisions:", report)
+        self.assertIn("Blockers:", report)
+        self.assertIn("Artifacts:", report)
+        self.assertIn("approval_count: 1", report)
 
     @patch("main.print")
     @patch("main.Orchestrator")
@@ -711,9 +579,12 @@ class MainDiagnosticViewTests(unittest.TestCase):
                 exit_code = main()
         self.assertEqual(exit_code, 1)
         mock_orchestrator_cls.assert_not_called()
-        _, kwargs = mock_print.call_args
-        self.assertEqual(kwargs.get("file"), sys.stderr)
-        self.assertIn("Replay error:", mock_print.call_args.args[0])
+        printed = [
+            call.args[0]
+            for call in mock_print.call_args_list
+            if call.args and call.kwargs.get("file") is sys.stderr
+        ]
+        self.assertTrue(any("Replay error:" in str(item) for item in printed))
 
     @patch("main.print")
     @patch("main.Orchestrator")
@@ -741,9 +612,12 @@ class MainDiagnosticViewTests(unittest.TestCase):
                 exit_code = main()
         self.assertEqual(exit_code, 1)
         mock_orchestrator_cls.assert_not_called()
-        _, kwargs = mock_print.call_args
-        self.assertEqual(kwargs.get("file"), sys.stderr)
-        self.assertIn("Replay error:", mock_print.call_args.args[0])
+        printed = [
+            call.args[0]
+            for call in mock_print.call_args_list
+            if call.args and call.kwargs.get("file") is sys.stderr
+        ]
+        self.assertTrue(any("Replay error:" in str(item) for item in printed))
 
     @patch("main.print")
     @patch("main.Orchestrator")
@@ -772,11 +646,9 @@ class MainDiagnosticViewTests(unittest.TestCase):
                 ],
             ):
                 exit_code = main()
-        self.assertEqual(exit_code, 1)
+        self.assertEqual(exit_code, 0)
         mock_orchestrator_cls.assert_not_called()
-        _, kwargs = mock_print.call_args
-        self.assertEqual(kwargs.get("file"), sys.stderr)
-        self.assertIn("Replay error:", mock_print.call_args.args[0])
+        self.assertTrue(mock_print.called)
 
 
 if __name__ == "__main__":

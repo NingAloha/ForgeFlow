@@ -45,7 +45,7 @@ def _find_latest_summary_path(runs_root: Path) -> Path | None:
 
     def _run_key(path: Path) -> tuple[datetime, str]:
         run_id = path.parent.name
-        match = re.match(r"^(?P<prefix>\\d{8}T\\d{6}Z)-", run_id)
+        match = re.match(r"^(?P<prefix>\d{8}T\d{6}Z)-", run_id)
         if match:
             prefix = match.group("prefix")
             try:

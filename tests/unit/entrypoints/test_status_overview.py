@@ -269,6 +269,82 @@ class RuntimeStatusOverviewTests(unittest.TestCase):
             self.assertEqual(status.executed_stage, "SOLUTION")
             self.assertEqual(status.last_decision["summary"], "new")
 
+    def test_latest_run_summary_ignores_nonstandard_run_dirs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            runtime_root = Path(tmp_dir)
+            state_dir = runtime_root / "state"
+            state_dir.mkdir(parents=True, exist_ok=True)
+
+            runs_root = runtime_root / "runs"
+            valid_run = runs_root / "20260103T000000Z-cccc0000"
+            weird_run = runs_root / "zzzz-not-a-run-id"
+            valid_run.mkdir(parents=True, exist_ok=True)
+            weird_run.mkdir(parents=True, exist_ok=True)
+
+            (valid_run / "summary.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": "1",
+                        "run_id": "20260103T000000Z-cccc0000",
+                        "original_request": "x",
+                        "generated_project_dir": str(runtime_root / "generated" / "valid"),
+                        "state_dir": str(state_dir),
+                        "latest_summary": "valid",
+                        "latest_final_stage": "SOLUTION",
+                        "latest_decision_type": "STAY",
+                        "steps": [
+                            {
+                                "timestamp": "2026-01-03T00:00:00Z",
+                                "input": "",
+                                "decision_type": "STAY",
+                                "computed_stage": "SOLUTION",
+                                "final_stage": "SOLUTION",
+                                "executed_stage": "SOLUTION",
+                                "summary": "valid",
+                                "llm_trace": {
+                                    "status": "none",
+                                    "failure_type": "none",
+                                    "repair_attempts": 0,
+                                    "validation_errors": [],
+                                    "raw_excerpt": "",
+                                    "model": "",
+                                    "provider": "",
+                                    "protocol": "openai",
+                                    "latency_ms": 0,
+                                    "error": None,
+                                },
+                                "execution_trace": {},
+                                "state_changes": [],
+                                "question_state": {"status": "idle"},
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            # If timestamp parsing is broken and we fall back to ordering by raw
+            # directory name, "zzzz-..." would incorrectly win.
+            (weird_run / "summary.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": "1",
+                        "run_id": "zzzz-not-a-run-id",
+                        "original_request": "x",
+                        "generated_project_dir": "",
+                        "state_dir": str(state_dir),
+                        "latest_summary": "weird",
+                        "latest_final_stage": "INIT",
+                        "latest_decision_type": "STAY",
+                        "steps": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            status = build_status_snapshot(str(state_dir))
+            self.assertEqual(status.last_decision["summary"], "valid")
+
     def test_cli_status_prints_overview(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             state_dir = Path(tmp_dir) / "state"

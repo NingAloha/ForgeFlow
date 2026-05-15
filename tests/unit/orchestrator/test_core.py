@@ -4,6 +4,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from pydantic import ValidationError
 
@@ -15,6 +16,7 @@ from agents.orchestrator import (
     TransitionDecision,
 )
 from agents.orchestrator.run_manifest import RunManifestWriter
+from agents.state_manager import StateManager
 from schemas.llm_trace import EMPTY_LLM_TRACE, LLMTraceModel
 from schemas.run_summary import RunStepModel, RunSummaryModel
 from tests.unit.support.orchestrator_fixtures import (
@@ -95,6 +97,37 @@ class OrchestratorCoreTests(unittest.TestCase):
             Stage.TESTING,
         )
         self.assertEqual(target, Stage.DONE)
+
+    def test_orchestrator_does_not_block_when_run_index_write_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            state_dir = Path(tmp_dir) / "state"
+            state_dir.mkdir(parents=True, exist_ok=True)
+            manager = StateManager(state_dir=str(state_dir))
+            with patch(
+                "agents.orchestrator.core.update_run_index",
+                side_effect=RuntimeError("index write failed"),
+            ):
+                orchestrator = Orchestrator(state_manager=manager)
+                _ = orchestrator.orchestrate("x", original_request="x")
+
+            summary_path = (
+                Path(manager.state_dir).parent
+                / "runs"
+                / orchestrator.run_id
+                / "summary.json"
+            )
+            payload = json.loads(summary_path.read_text(encoding="utf-8"))
+            self.assertIsInstance(payload, dict)
+            steps = payload.get("steps", [])
+            self.assertIsInstance(steps, list)
+            self.assertTrue(steps)
+            last = steps[-1]
+            self.assertIsInstance(last, dict)
+            trace = last.get("execution_trace", {})
+            self.assertIsInstance(trace, dict)
+            warnings = trace.get("runtime_run_index_warnings", [])
+            self.assertIsInstance(warnings, list)
+            self.assertTrue(warnings)
 
     def test_determine_execution_stage_respects_wait_backflow_forward_and_bootstrap(
         self,

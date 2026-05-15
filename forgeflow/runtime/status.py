@@ -14,6 +14,7 @@ from agents.orchestrator.question_flow import QuestionFlow
 from agents.orchestrator.stage_evaluator import StageEvaluator
 from agents.state_manager import StateManager
 from schemas.run_summary import RunSummaryModel
+from forgeflow.runtime.run_index import load_run_index
 
 
 @dataclass(slots=True)
@@ -36,7 +37,21 @@ def _default_runs_root(state_dir: str | Path | None) -> Path:
     return Path.cwd() / ".forgeflow" / "runs"
 
 
-def _find_latest_summary_path(runs_root: Path) -> Path | None:
+def _find_latest_summary_path_from_index(runs_root: Path) -> Path | None:
+    index = load_run_index(runs_root)
+    if index is None or not index.runs:
+        return None
+    for entry in index.runs:
+        rel = str(entry.summary_path).strip()
+        if not rel:
+            continue
+        candidate = runs_root / rel
+        if candidate.exists() and candidate.is_file():
+            return candidate
+    return None
+
+
+def _find_latest_summary_path_by_scan(runs_root: Path) -> Path | None:
     if not runs_root.exists():
         return None
     candidates = list(runs_root.glob("*/summary.json"))
@@ -99,10 +114,13 @@ def _find_latest_summary_path(runs_root: Path) -> Path | None:
     return candidates[-1]
 
 
-def _load_latest_run_summary(runs_root: Path) -> dict[str, Any] | None:
-    summary_path = _find_latest_summary_path(runs_root)
-    if summary_path is None:
-        return None
+def _find_latest_summary_path(runs_root: Path) -> Path | None:
+    return _find_latest_summary_path_from_index(runs_root) or _find_latest_summary_path_by_scan(
+        runs_root
+    )
+
+
+def _load_summary_payload(summary_path: Path) -> dict[str, Any] | None:
     try:
         payload = json.loads(summary_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
@@ -114,6 +132,19 @@ def _load_latest_run_summary(runs_root: Path) -> dict[str, Any] | None:
     except Exception:
         return None
     return model.model_dump(mode="python")
+
+
+def _load_latest_run_summary(runs_root: Path) -> dict[str, Any] | None:
+    index_path = _find_latest_summary_path_from_index(runs_root)
+    if index_path is not None:
+        loaded = _load_summary_payload(index_path)
+        if loaded is not None:
+            return loaded
+
+    scan_path = _find_latest_summary_path_by_scan(runs_root)
+    if scan_path is None:
+        return None
+    return _load_summary_payload(scan_path)
 
 
 def _build_orchestrator_shell() -> Orchestrator:

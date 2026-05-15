@@ -143,6 +143,7 @@ class ImplementationEngineerAgent(ImplementationPlanningMixin, BaseAgent):
             "commands_executed": [],
             "artifacts_generated": ["handoff_package_generated"],
             "suggested_test_command": [],
+            "patch_preview_metadata": None,
         }
         updated_state = ImplementationStatusState.model_validate(
             updated_state

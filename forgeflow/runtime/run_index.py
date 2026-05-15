@@ -15,6 +15,7 @@ RunIndexStatus = Literal["running", "finished", "unknown"]
 class RunIndexEntry:
     run_id: str
     created_at: str
+    finished_at: str
     summary_path: str
     events_path: str
     final_stage: str
@@ -47,6 +48,7 @@ def build_index_entry(
     run_id: str,
     final_stage: str = "",
     status: RunIndexStatus = "unknown",
+    finished_at: str = "",
 ) -> RunIndexEntry:
     rid = str(run_id).strip()
     created_at = _parse_created_at_from_run_id(rid)
@@ -56,6 +58,7 @@ def build_index_entry(
     return RunIndexEntry(
         run_id=rid,
         created_at=created_at,
+        finished_at=str(finished_at).strip(),
         summary_path=f"{rid}/summary.json",
         events_path=f"{rid}/events.jsonl",
         final_stage=str(final_stage).strip(),
@@ -85,6 +88,7 @@ def load_run_index(runs_root: Path) -> RunIndex | None:
             entry = RunIndexEntry(
                 run_id=str(item.get("run_id", "")).strip(),
                 created_at=str(item.get("created_at", "")).strip(),
+                finished_at=str(item.get("finished_at", "")).strip(),
                 summary_path=str(item.get("summary_path", "")).strip(),
                 events_path=str(item.get("events_path", "")).strip(),
                 final_stage=str(item.get("final_stage", "")).strip(),
@@ -101,15 +105,18 @@ def load_run_index(runs_root: Path) -> RunIndex | None:
     return RunIndex(runs=entries)
 
 
-def _sort_key(entry: RunIndexEntry) -> tuple[int, int, str, str]:
+def _sort_key(entry: RunIndexEntry) -> tuple[int, int, str, str, str]:
     # Sort descending:
     # 1) valid created_at first (created_at != "")
     # 2) finished first
-    # 3) valid created_at: by created_at desc; invalid: by run_id desc
+    # 3) valid created_at: by created_at desc
+    # 4) finished_at desc (break same-second created_at ties for finished runs)
+    # 5) invalid created_at: by run_id desc
     valid = 1 if entry.created_at else 0
     finished = 1 if entry.status == "finished" else 0
-    time_or_id = entry.created_at if entry.created_at else entry.run_id
-    return (valid, finished, time_or_id, entry.run_id)
+    created_at_or_id = entry.created_at if entry.created_at else entry.run_id
+    finished_at = entry.finished_at if entry.finished_at else ""
+    return (valid, finished, created_at_or_id, finished_at, entry.run_id)
 
 
 def update_run_index(runs_root: Path, entry: RunIndexEntry) -> None:
@@ -131,6 +138,7 @@ def update_run_index(runs_root: Path, entry: RunIndexEntry) -> None:
                     {
                         "run_id": item.run_id,
                         "created_at": item.created_at,
+                        "finished_at": item.finished_at,
                         "summary_path": item.summary_path,
                         "events_path": item.events_path,
                         "final_stage": item.final_stage,

@@ -67,6 +67,7 @@ class Orchestrator:
             + "-"
             + uuid4().hex[:8]
         )
+        self._started_at = datetime.now(timezone.utc)
         self.runs_dir = state_dir.parent / "runs" / self.run_id
         self.generated_project_dir = state_dir.parent / "generated" / self.run_id
         self.runs_dir.mkdir(parents=True, exist_ok=True)
@@ -83,7 +84,12 @@ class Orchestrator:
             runs_root = self.runs_dir.parent
             update_run_index(
                 runs_root,
-                build_index_entry(run_id=self.run_id, status="running", final_stage=""),
+                build_index_entry(
+                    run_id=self.run_id,
+                    status="running",
+                    final_stage="",
+                    finished_at="",
+                ),
             )
         except Exception as exc:
             self._run_index_warnings.append(
@@ -589,6 +595,7 @@ class Orchestrator:
                     run_id=self.run_id,
                     status="finished",
                     final_stage=str(decision.final_stage),
+                    finished_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 ),
             )
         except Exception as exc:

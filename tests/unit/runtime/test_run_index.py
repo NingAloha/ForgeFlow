@@ -22,7 +22,12 @@ class RuntimeRunIndexTests(unittest.TestCase):
             update_run_index(runs_root, build_index_entry(run_id=run_id, status="running", final_stage=""))
             update_run_index(
                 runs_root,
-                build_index_entry(run_id=run_id, status="finished", final_stage="DESIGN"),
+                build_index_entry(
+                    run_id=run_id,
+                    status="finished",
+                    final_stage="DESIGN",
+                    finished_at="2026-01-01T00:00:01Z",
+                ),
             )
             index = load_run_index(runs_root)
             self.assertIsNotNone(index)
@@ -30,6 +35,7 @@ class RuntimeRunIndexTests(unittest.TestCase):
             self.assertEqual(index.runs[0].run_id, run_id)
             self.assertEqual(index.runs[0].status, "finished")
             self.assertEqual(index.runs[0].final_stage, "DESIGN")
+            self.assertEqual(index.runs[0].finished_at, "2026-01-01T00:00:01Z")
 
     def test_load_run_index_returns_none_on_corruption(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -47,7 +53,34 @@ class RuntimeRunIndexTests(unittest.TestCase):
             payload = json.loads((runs_root / "index.json").read_text(encoding="utf-8"))
             self.assertIn("runs", payload)
 
+    def test_sort_breaks_same_second_ties_by_finished_at(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            runs_root = Path(temp_dir) / "runs"
+            runs_root.mkdir(parents=True, exist_ok=True)
+            run_a = "20260101T000000Z-aaaa0000"
+            run_b = "20260101T000000Z-bbbb0000"
+            update_run_index(
+                runs_root,
+                build_index_entry(
+                    run_id=run_a,
+                    status="finished",
+                    final_stage="SOLUTION",
+                    finished_at="2026-01-01T00:00:02Z",
+                ),
+            )
+            update_run_index(
+                runs_root,
+                build_index_entry(
+                    run_id=run_b,
+                    status="finished",
+                    final_stage="DESIGN",
+                    finished_at="2026-01-01T00:00:03Z",
+                ),
+            )
+            index = load_run_index(runs_root)
+            self.assertIsNotNone(index)
+            self.assertEqual(index.runs[0].run_id, run_b)
+
 
 if __name__ == "__main__":
     unittest.main()
-

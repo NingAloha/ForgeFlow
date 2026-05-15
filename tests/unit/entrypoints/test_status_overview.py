@@ -163,6 +163,112 @@ class RuntimeStatusOverviewTests(unittest.TestCase):
             self.assertEqual(status.executed_stage, "SOLUTION")
             self.assertEqual(status.last_decision["final_stage"], "DESIGN")
 
+    def test_latest_run_summary_prefers_run_id_over_mtime(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            runtime_root = Path(tmp_dir)
+            state_dir = runtime_root / "state"
+            state_dir.mkdir(parents=True, exist_ok=True)
+
+            runs_root = runtime_root / "runs"
+            old_run = runs_root / "20260101T000000Z-aaaa0000"
+            new_run = runs_root / "20260102T000000Z-bbbb0000"
+            old_run.mkdir(parents=True, exist_ok=True)
+            new_run.mkdir(parents=True, exist_ok=True)
+
+            (old_run / "summary.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": "1",
+                        "run_id": "20260101T000000Z-aaaa0000",
+                        "original_request": "x",
+                        "generated_project_dir": str(runtime_root / "generated" / "old"),
+                        "state_dir": str(state_dir),
+                        "latest_summary": "old",
+                        "latest_final_stage": "REQUIREMENTS",
+                        "latest_decision_type": "STAY",
+                        "steps": [
+                            {
+                                "timestamp": "2026-01-01T00:00:00Z",
+                                "input": "",
+                                "decision_type": "STAY",
+                                "computed_stage": "REQUIREMENTS",
+                                "final_stage": "REQUIREMENTS",
+                                "executed_stage": "REQUIREMENTS",
+                                "summary": "old",
+                                "llm_trace": {
+                                    "status": "none",
+                                    "failure_type": "none",
+                                    "repair_attempts": 0,
+                                    "validation_errors": [],
+                                    "raw_excerpt": "",
+                                    "model": "",
+                                    "provider": "",
+                                    "protocol": "openai",
+                                    "latency_ms": 0,
+                                    "error": None,
+                                },
+                                "execution_trace": {},
+                                "state_changes": [],
+                                "question_state": {"status": "idle"},
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            (new_run / "summary.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": "1",
+                        "run_id": "20260102T000000Z-bbbb0000",
+                        "original_request": "x",
+                        "generated_project_dir": str(runtime_root / "generated" / "new"),
+                        "state_dir": str(state_dir),
+                        "latest_summary": "new",
+                        "latest_final_stage": "DESIGN",
+                        "latest_decision_type": "FORWARD",
+                        "steps": [
+                            {
+                                "timestamp": "2026-01-02T00:00:00Z",
+                                "input": "",
+                                "decision_type": "FORWARD",
+                                "computed_stage": "SOLUTION",
+                                "final_stage": "DESIGN",
+                                "executed_stage": "SOLUTION",
+                                "summary": "new",
+                                "llm_trace": {
+                                    "status": "none",
+                                    "failure_type": "none",
+                                    "repair_attempts": 0,
+                                    "validation_errors": [],
+                                    "raw_excerpt": "",
+                                    "model": "",
+                                    "provider": "",
+                                    "protocol": "openai",
+                                    "latency_ms": 0,
+                                    "error": None,
+                                },
+                                "execution_trace": {},
+                                "state_changes": [],
+                                "question_state": {"status": "idle"},
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            # Touch old summary after the new one exists: mtime would wrongly pick old.
+            (old_run / "summary.json").write_text(
+                (old_run / "summary.json").read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+
+            status = build_status_snapshot(str(state_dir))
+            self.assertEqual(status.executed_stage, "SOLUTION")
+            self.assertEqual(status.last_decision["summary"], "new")
+
     def test_cli_status_prints_overview(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             state_dir = Path(tmp_dir) / "state"

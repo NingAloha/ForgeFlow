@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -40,7 +42,23 @@ def _find_latest_summary_path(runs_root: Path) -> Path | None:
     candidates = list(runs_root.glob("*/summary.json"))
     if not candidates:
         return None
-    candidates.sort(key=lambda path: path.stat().st_mtime)
+
+    def _run_key(path: Path) -> tuple[datetime, str]:
+        run_id = path.parent.name
+        match = re.match(r"^(?P<prefix>\\d{8}T\\d{6}Z)-", run_id)
+        if match:
+            prefix = match.group("prefix")
+            try:
+                parsed = datetime.strptime(prefix, "%Y%m%dT%H%M%SZ").replace(
+                    tzinfo=timezone.utc
+                )
+                return parsed, run_id
+            except ValueError:
+                pass
+        return datetime.min.replace(tzinfo=timezone.utc), run_id
+
+    # Prefer run identity over filesystem mtime: run IDs are timestamp-prefixed.
+    candidates.sort(key=_run_key)
     return candidates[-1]
 
 

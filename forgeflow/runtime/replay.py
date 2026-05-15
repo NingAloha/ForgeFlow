@@ -85,33 +85,29 @@ def _normalize_step(raw: object) -> ReplayStep | None:
 
 
 def _collect_blockers(steps: list[ReplayStep]) -> list[str]:
-    blockers: list[str] = []
+    if not steps:
+        return []
 
-    for step in steps:
-        qs = step.question_state
-        status = str(qs.get("status", "")).strip()
-        blocking = bool(qs.get("blocking", False))
-        questions = qs.get("questions")
-        question_count = qs.get("question_count", 0)
-        try:
-            question_count_int = int(question_count) if question_count is not None else 0
-        except (TypeError, ValueError):
-            question_count_int = 0
+    # Blockers should reflect the current/latest runtime state of the run.
+    # Only consult the latest recorded step to avoid "sticky blockers" from
+    # historical states that have since been resolved.
+    step = steps[-1]
+    qs = step.question_state
+    status = str(qs.get("status", "")).strip()
+    blocking = bool(qs.get("blocking", False))
+    questions = qs.get("questions")
+    question_count = qs.get("question_count", 0)
+    try:
+        question_count_int = int(question_count) if question_count is not None else 0
+    except (TypeError, ValueError):
+        question_count_int = 0
 
-        has_questions = bool(questions) or question_count_int > 0
-        if blocking and status == "awaiting_user" and has_questions:
-            stage = str(qs.get("stage_name", "")).strip() or "UNKNOWN"
-            blockers.append(f"waiting_user_input(stage={stage})")
+    has_questions = bool(questions) or question_count_int > 0
+    if blocking and status == "awaiting_user" and has_questions:
+        stage = str(qs.get("stage_name", "")).strip() or "UNKNOWN"
+        return [f"waiting_user_input(stage={stage})"]
 
-    # Keep stable ordering and avoid duplicates.
-    seen: set[str] = set()
-    normalized: list[str] = []
-    for item in blockers:
-        if item in seen:
-            continue
-        seen.add(item)
-        normalized.append(item)
-    return normalized
+    return []
 
 
 def load_replay_snapshot(run_id: str, state_dir: str | None = None) -> RuntimeReplaySnapshot:

@@ -7,6 +7,7 @@ from typing import Any
 
 from agents.orchestrator import Orchestrator
 from agents.orchestrator.backflow_evaluator import BackflowEvaluator
+from agents.orchestrator.models import Stage
 from agents.orchestrator.question_flow import QuestionFlow
 from agents.orchestrator.stage_evaluator import StageEvaluator
 from agents.state_manager import StateManager
@@ -69,6 +70,15 @@ def _build_orchestrator_shell() -> Orchestrator:
         is_requirements_ready=stage_evaluator.is_requirements_ready,
         is_solution_ready=stage_evaluator.is_solution_ready,
     )
+    # resolve_transition() checks membership in self.agents for answered questions.
+    # Provide a minimal stage-key mapping without constructing real agents.
+    shell.agents = {  # type: ignore[attr-defined]
+        Stage.REQUIREMENTS: None,
+        Stage.SOLUTION: None,
+        Stage.DESIGN: None,
+        Stage.IMPLEMENTATION: None,
+        Stage.TESTING: None,
+    }
     return shell
 
 
@@ -166,4 +176,3 @@ def build_status_snapshot(state_dir: str | None = None) -> RuntimeStatus:
         blockers=blockers,
         last_decision=last_decision,
     )
-

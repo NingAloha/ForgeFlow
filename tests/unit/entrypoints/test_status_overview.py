@@ -115,6 +115,29 @@ class RuntimeStatusOverviewTests(unittest.TestCase):
             self.assertIn("ForgeFlow Status", printed)
             self.assertIn("Artifacts", printed)
 
+    def test_status_does_not_crash_when_question_state_is_answered(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            state_dir = Path(tmp_dir) / "state"
+            state_dir.mkdir(parents=True, exist_ok=True)
+            (state_dir / "question_state.json").write_text(
+                json.dumps(
+                    {
+                        "status": "answered",
+                        "stage_name": "SOLUTION",
+                        "state_key": "solution",
+                        "blocking": True,
+                        "questions": [{"id": "q1"}],
+                        "created_by": "Solution Engineer",
+                        "resolution_summary": "ok",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            status = build_status_snapshot(str(state_dir))
+
+            self.assertEqual(status.current_stage, "SOLUTION")
+
     def test_render_status_is_pure_string_formatting(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             state_dir = Path(tmp_dir) / "state"
@@ -127,4 +150,3 @@ class RuntimeStatusOverviewTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

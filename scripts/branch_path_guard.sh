@@ -68,6 +68,7 @@ is_allowed_for_branch() {
       [[ "${file}" == forgeflow/runtime/* ]] && return 0
       [[ "${file}" == forgeflow/__init__.py ]] && return 0
       [[ "${file}" == forgeflow/runtime/__init__.py ]] && return 0
+      [[ "${file}" == pyproject.toml ]] && return 0
       [[ "${file}" == agents/orchestrator/* ]] && return 0
       ;;
     track/docs-review)

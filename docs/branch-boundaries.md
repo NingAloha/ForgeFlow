@@ -59,6 +59,7 @@
   - `main.py`（仅只读入口与观测输出）
   - `forgeflow/runtime/**`（只读 status snapshot/render 模块）
   - `forgeflow/__init__.py`
+  - `pyproject.toml`（例外路径：仅允许 package discovery include 调整；不代表放开 CLI entrypoint / package migration）
   - `agents/orchestrator/**`（仅只读查询相关改动）
   - `docs/**`
   - `README.md`

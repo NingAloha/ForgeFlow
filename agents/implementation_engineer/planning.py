@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ..common.text import TextHelper
+from schemas.implementation import PatchPreviewMetadataModel
 
 
 class ImplementationPlanningMixin(TextHelper):
@@ -71,6 +72,16 @@ class ImplementationPlanningMixin(TextHelper):
                     ]
                 )
             )
+        patch_preview_metadata = (
+            PatchPreviewMetadataModel(
+                generated_by="ImplementationEngineerAgent",
+                source_artifacts=["system_design"],
+                preview_only=True,
+                target_module=primary_module,
+            ).model_dump(mode="python")
+            if primary_module
+            else None
+        )
         return {
             **current_state,
             "module_name": primary_module,
@@ -84,6 +95,7 @@ class ImplementationPlanningMixin(TextHelper):
             "commands_executed": [],
             "artifacts_generated": [],
             "suggested_test_command": [],
+            "patch_preview_metadata": patch_preview_metadata,
         }
 
     def build_execution_contract_lines(self, module_name: str) -> list[str]:

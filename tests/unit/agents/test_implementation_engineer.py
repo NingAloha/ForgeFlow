@@ -202,6 +202,13 @@ class ImplementationEngineerHandoffTests(unittest.TestCase):
         self.assertIn("implementation_mode=handoff", result.notes)
         self.assertTrue(result.updated_state["files_touched"])
         self.assertTrue(result.updated_state["tests_added_or_updated"])
+        execution_policy = result.updated_state["execution_policy"]
+        self.assertFalse(execution_policy["execution_allowed"])
+        self.assertFalse(execution_policy["mutation_enabled"])
+        self.assertEqual(execution_policy["execution_mode"], "preview-only")
+        self.assertTrue(execution_policy["requires_approval"])
+        self.assertEqual(execution_policy["blocking_reason"], "mutation_disabled")
+        self.assertFalse(execution_policy["safe_preview_available"])
 
     def test_execute_mode_returns_structured_blocker_without_execution_side_effects(
         self,
@@ -274,6 +281,21 @@ class ImplementationEngineerHandoffTests(unittest.TestCase):
         self.assertEqual(result.updated_state["artifacts_generated"], [])
         self.assertEqual(result.updated_state["commands_executed"], [])
         self.assertFalse(result.handoff_ready)
+        execution_policy = result.updated_state["execution_policy"]
+        self.assertFalse(execution_policy["execution_allowed"])
+        self.assertFalse(execution_policy["mutation_enabled"])
+        self.assertEqual(execution_policy["execution_mode"], "preview-only")
+        self.assertTrue(execution_policy["requires_approval"])
+        self.assertEqual(execution_policy["blocking_reason"], "mutation_disabled")
+        self.assertTrue(execution_policy["safe_preview_available"])
+        metadata = result.updated_state["patch_preview_metadata"]
+        self.assertIsInstance(metadata, dict)
+        self.assertEqual(metadata["generated_by"], "ImplementationEngineerAgent")
+        self.assertEqual(metadata["source_artifacts"], ["system_design"])
+        self.assertTrue(metadata["preview_only"])
+        self.assertEqual(metadata["target_module"], "markdown_parser")
+        self.assertEqual(result.diagnostics["execution_trace"]["file_writes"], [])
+        self.assertEqual(result.diagnostics["execution_trace"]["command_results"], [])
 
         notes_text = "\n".join(result.notes)
         self.assertIn("BEGIN_EXECUTION_CONTRACT", notes_text)
@@ -335,6 +357,14 @@ class ImplementationEngineerHandoffTests(unittest.TestCase):
             "no design module available for patch draft",
             result.updated_state["blockers"],
         )
+        self.assertIsNone(result.updated_state["patch_preview_metadata"])
+        execution_policy = result.updated_state["execution_policy"]
+        self.assertFalse(execution_policy["execution_allowed"])
+        self.assertFalse(execution_policy["mutation_enabled"])
+        self.assertEqual(execution_policy["execution_mode"], "preview-only")
+        self.assertTrue(execution_policy["requires_approval"])
+        self.assertEqual(execution_policy["blocking_reason"], "mutation_disabled")
+        self.assertFalse(execution_policy["safe_preview_available"])
         notes_text = "\n".join(result.notes)
         self.assertNotIn("diff --git", notes_text)
 

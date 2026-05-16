@@ -149,6 +149,20 @@
   - `schemas/**`
   - `main.py`
 
+### `track/execution-gate-diagnostics`
+- 允许改动：
+  - `main.py`（只读 gate diagnostics 命令入口）
+  - `forgeflow/runtime/**`
+  - `tests/unit/runtime/**`
+  - `docs/**`
+  - `.github/workflows/**`
+  - `scripts/branch_path_guard.sh`
+- 禁止改动：
+  - `agents/**`
+  - `tui/**`
+  - `schemas/**`
+  - `tests/unit/agents/**`
+
 ### `track/docs-review`
 - 允许改动：
   - `README.md`

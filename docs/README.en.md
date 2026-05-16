@@ -1,10 +1,10 @@
 # ForgeFlow / ForgeShell
 
-A multi-agent software engineering pipeline driven by structured state.
+A structured AI workflow runtime (first profile: ForgeFlow SE).
 
 ## Overview
 
-ForgeFlow turns a user request into a staged engineering flow:
+ForgeFlow SE (the first target profile) turns a user request into a staged engineering flow:
 
 * Requirements
 * Solution

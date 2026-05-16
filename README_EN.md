@@ -5,10 +5,40 @@
 > This English document is a lightweight developer-oriented overview.
 
 ## Overview
-ForgeFlow is a structured-state software engineering pipeline with staged progression:
+ForgeFlow is a structured AI workflow runtime.
+It provides an auditable runtime control plane (state, events, replay, governance, approvals) to drive an explicit, explainable, replayable workflow.
+
+ForgeFlow SE is ForgeFlow's first target profile: a Software Engineering pipeline profile, with staged progression:
 `Requirements -> Solution -> Design -> Implementation -> Testing`.
 
 ForgeShell is the primary UI target, while the CLI runner is the current development/debug entrypoint.
+
+## Three Layers (Core / Profile / Shell)
+
+### ForgeFlow Core
+Owns runtime convergence and control-plane semantics:
+- orchestration
+- runtime
+- replay
+- governance
+- events
+- approvals
+- state semantics
+
+### ForgeFlow SE (first profile)
+Owns staged software engineering artifacts:
+- Requirements
+- Solution
+- Design
+- Implementation
+- Testing
+
+### ForgeShell
+Owns human-in-the-loop interaction and inspection:
+- human-in-the-loop interaction
+- runtime inspection
+- approvals
+- replay/status
 
 ## Architecture
 
@@ -99,6 +129,47 @@ Patch draft constraints in current implementation:
 - Repository knowledge that should remain versioned:
   - `runs/manual_reviews/` (curated review artifacts)
 - Goal: keep runtime outputs (generated files, run summaries, previews) from polluting repository history.
+
+## Runtime Principles
+- State is explicit.
+- Replay is read-only.
+- Events are append-only.
+- Execution is governed.
+- Runtime artifacts are auditable.
+- Human approval is first-class.
+
+## Runtime Root
+
+The default runtime root is `.forgeflow/`:
+
+```text
+.forgeflow/
+├── state/
+├── runs/
+│   ├── <run_id>/
+│   │   ├── summary.json
+│   │   ├── events.jsonl
+│   │   └── approvals/
+└── generated/
+```
+
+### Planned runtime artifacts
+```text
+.forgeflow/runs/index.json  (planned in Phase B)
+```
+
+## Repo metadata suggestions (not applied in this PR)
+- GitHub Description:
+  - A structured AI workflow runtime. First profile: Software Engineering Pipeline.
+- Topics:
+  - ai-workflow-runtime
+  - llm-orchestration
+  - structured-workflow
+  - ai-engineering
+  - agentic-workflow
+  - runtime-governance
+- LICENSE:
+  - MIT (suggested via a separate small PR)
 
 ## Installation
 

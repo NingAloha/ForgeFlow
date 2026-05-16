@@ -3,10 +3,40 @@
 [English version](./README_EN.md)
 
 ## 项目定位
-ForgeFlow 是一个以结构化状态驱动的软件工程流水线。当前目标是把用户输入沿着固定阶段推进：
-`Requirements -> Solution -> Design -> Implementation -> Testing`。
+ForgeFlow 是一个结构化的 AI workflow runtime：
+它提供可审计的 runtime control plane（状态、事件、回放、治理与审批），用于驱动一个明确、可解释、可回放的工作流执行过程。
+
+ForgeFlow SE 是 ForgeFlow 的第一个 target profile：软件工程工作流（Software Engineering pipeline profile）。
+其阶段链路为：`Requirements -> Solution -> Design -> Implementation -> Testing`。
 
 ForgeShell 是主界面（Primary UI）目标；CLI Runner 是当前可运行的开发/调试入口。
+
+## 三层概念（Core / Profile / Shell）
+
+### ForgeFlow Core
+负责 runtime 的控制面与语义收敛：
+* orchestration
+* runtime
+* replay
+* governance
+* events
+* approvals
+* state semantics
+
+### ForgeFlow SE（第一个 profile）
+负责软件工程工作流的阶段产物：
+* Requirements
+* Solution
+* Design
+* Implementation
+* Testing
+
+### ForgeShell
+负责 human-in-the-loop 交互与观测：
+* human-in-the-loop interaction
+* runtime inspection
+* approvals
+* replay/status
 
 ## 当前架构
 
@@ -41,6 +71,36 @@ CLI Runner (Dev / Debug) ┘
 - `--tui` 可启动最小 ForgeShell 终端壳。
 - requirements/solution/design/implementation/testing 均已接入主链路。
 - implementation 当前产出是交接信息与预览信息，不是实际代码落盘。
+
+## Runtime Principles
+- State is explicit.
+- Replay is read-only.
+- Events are append-only.
+- Execution is governed.
+- Runtime artifacts are auditable.
+- Human approval is first-class.
+
+## Runtime Root
+
+ForgeFlow 的默认 runtime root 为 `.forgeflow/`：
+
+```text
+.forgeflow/
+├── state/
+├── runs/
+│   ├── <run_id>/
+│   │   ├── summary.json
+│   │   ├── events.jsonl
+│   │   └── approvals/
+└── generated/
+```
+
+### Planned runtime artifacts
+以下 runtime artifacts 会在后续阶段引入：
+
+```text
+.forgeflow/runs/index.json  (planned in Phase B)
+```
 
 ### 当前能力边界矩阵
 | 能力 | 当前状态 |
@@ -198,6 +258,21 @@ forgeflow --tui
 - 强化 LLM fallback policy consistency。
 - 在不破坏主 flow 的前提下，逐步引入安全可审计的执行能力。
 - 保持 Orchestrator 单控制面，不把 TUI 扩成第二控制面。
+
+## Repo metadata suggestions（not applied in this PR）
+以下是建议的 GitHub repo 元信息（本 PR 不修改 repo settings，也不修改 `LICENSE` 文件）：
+
+- GitHub Description：
+  - A structured AI workflow runtime. First profile: Software Engineering Pipeline.
+- Topics：
+  - ai-workflow-runtime
+  - llm-orchestration
+  - structured-workflow
+  - ai-engineering
+  - agentic-workflow
+  - runtime-governance
+- LICENSE：
+  - MIT（建议另开极小 PR 初始化）
 
 ## 英文版本
 英文开发者概览见 [README_EN.md](./README_EN.md)。

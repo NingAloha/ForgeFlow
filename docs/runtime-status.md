@@ -1,6 +1,6 @@
 # Runtime Status (Read-only)
 
-ForgeFlow 的 runtime 不是“输入 -> 输出”，而是 stateful pipeline。为了让系统可解释自己处于什么状态，本分支新增只读观测入口：
+ForgeFlow 的 runtime 不是“输入 -> 输出”，而是 stateful workflow runtime。为了让系统可解释自己处于什么状态，本分支新增只读观测入口：
 
 ```bash
 python3.11 main.py --status
@@ -25,4 +25,3 @@ python3.11 main.py --status --state-dir <path-to-state-dir>
 ## 复用入口
 - `forgeflow/runtime/status.py`: `build_status_snapshot(...)` 统一状态读取与汇总（只读）。
 - `forgeflow/runtime/render.py`: `render_status(...)` 负责渲染输出（无 IO）。
-

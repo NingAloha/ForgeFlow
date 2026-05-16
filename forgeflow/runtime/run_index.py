@@ -229,3 +229,40 @@ def update_run_index(runs_root: Path, entry: RunIndexEntry) -> None:
         encoding="utf-8",
     )
     tmp_path.replace(path)
+
+
+def write_run_index(runs_root: Path, index: RunIndex) -> None:
+    """
+    Write index.json as an atomic rewrite.
+
+    Callers must treat index as a cache: it is not a source of truth.
+    """
+    entries = list(index.runs)
+    entries.sort(key=_sort_key, reverse=True)
+
+    path = _index_path(runs_root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(".json.tmp")
+    tmp_path.write_text(
+        json.dumps(
+            {
+                "runs": [
+                    {
+                        "run_id": item.run_id,
+                        "created_at": item.created_at,
+                        "finished_at": item.finished_at,
+                        "summary_path": item.summary_path,
+                        "events_path": item.events_path,
+                        "final_stage": item.final_stage,
+                        "status": item.status,
+                    }
+                    for item in entries
+                ]
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    tmp_path.replace(path)

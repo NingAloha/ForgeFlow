@@ -5,7 +5,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from forgeflow.runtime.run_index import build_index_entry, load_run_index, update_run_index
+from forgeflow.runtime.run_index import (
+    build_index_entry,
+    load_run_index,
+    load_run_index_result,
+    update_run_index,
+)
 
 
 class RuntimeRunIndexTests(unittest.TestCase):
@@ -43,6 +48,23 @@ class RuntimeRunIndexTests(unittest.TestCase):
             runs_root.mkdir(parents=True, exist_ok=True)
             (runs_root / "index.json").write_text("{bad json", encoding="utf-8")
             self.assertIsNone(load_run_index(runs_root))
+
+    def test_load_run_index_result_reports_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            runs_root = Path(temp_dir) / "runs"
+            runs_root.mkdir(parents=True, exist_ok=True)
+            result = load_run_index_result(runs_root)
+            self.assertEqual(result.status, "missing")
+            self.assertIsNone(result.index)
+
+    def test_load_run_index_result_reports_invalid_json(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            runs_root = Path(temp_dir) / "runs"
+            runs_root.mkdir(parents=True, exist_ok=True)
+            (runs_root / "index.json").write_text("{bad json", encoding="utf-8")
+            result = load_run_index_result(runs_root)
+            self.assertEqual(result.status, "invalid")
+            self.assertIsNone(result.index)
 
     def test_update_run_index_is_atomic_rewrite(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

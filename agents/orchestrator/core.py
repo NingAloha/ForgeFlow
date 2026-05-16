@@ -19,7 +19,7 @@ from .run_manifest import RunManifestWriter
 from .stage_evaluator import StageEvaluator
 from schemas.run_summary import RunSummaryModel
 from forgeflow.runtime.events import append_runtime_event
-from forgeflow.runtime.run_index import build_index_entry, update_run_index
+from forgeflow.runtime.run_index import update_index_on_run_event
 
 
 class Orchestrator:
@@ -82,14 +82,10 @@ class Orchestrator:
         )
         try:
             runs_root = self.runs_dir.parent
-            update_run_index(
-                runs_root,
-                build_index_entry(
-                    run_id=self.run_id,
-                    status="running",
-                    final_stage="",
-                    finished_at="",
-                ),
+            update_index_on_run_event(
+                runs_root=runs_root,
+                event_type="run_started",
+                run_id=self.run_id,
             )
         except Exception as exc:
             self._run_index_warnings.append(
@@ -589,14 +585,12 @@ class Orchestrator:
 
         try:
             runs_root = self.runs_dir.parent
-            update_run_index(
-                runs_root,
-                build_index_entry(
-                    run_id=self.run_id,
-                    status="finished",
-                    final_stage=str(decision.final_stage),
-                    finished_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                ),
+            update_index_on_run_event(
+                runs_root=runs_root,
+                event_type="run_finished",
+                run_id=self.run_id,
+                final_stage=str(decision.final_stage),
+                finished_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             )
         except Exception as exc:
             self._run_index_warnings.append(

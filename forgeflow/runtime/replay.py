@@ -7,6 +7,7 @@ from typing import Any
 
 from .events import load_runtime_events
 from .lineage import load_lineage
+from .review_state import load_review_state
 
 
 @dataclass(slots=True)
@@ -31,6 +32,7 @@ class RuntimeReplaySnapshot:
     artifacts: dict[str, object]
     blockers: list[str]
     lineage_entries: list[dict[str, Any]]
+    review_items: list[dict[str, Any]]
 
 
 @dataclass(slots=True)
@@ -126,6 +128,7 @@ def load_replay_snapshot(run_id: str, state_dir: str | None = None) -> RuntimeRe
         "approvals_dir": False,
         "approval_count": 0,
         "lineage_json": False,
+        "review_state_json": False,
     }
 
     if not run_dir.exists():
@@ -271,6 +274,21 @@ def load_replay_snapshot(run_id: str, state_dir: str | None = None) -> RuntimeRe
             for item in lineage.entries
         ]
 
+    review_items: list[dict[str, Any]] = []
+    review_state = load_review_state(run_dir)
+    if review_state is not None:
+        artifacts["review_state_json"] = True
+        review_items = [
+            {
+                "artifact": item.artifact,
+                "review_status": item.review_status,
+                "reviewed_by": item.reviewed_by,
+                "reviewed_at": item.reviewed_at,
+                "review_reason": item.review_reason,
+            }
+            for item in review_state.items
+        ]
+
     return RuntimeReplaySnapshot(
         run_id=str(payload.get("run_id", safe_run_id)).strip() or safe_run_id,
         final_stage=final_stage,
@@ -280,6 +298,7 @@ def load_replay_snapshot(run_id: str, state_dir: str | None = None) -> RuntimeRe
         artifacts=artifacts,
         blockers=_collect_blockers(steps),
         lineage_entries=lineage_entries,
+        review_items=review_items,
     )
 
 
@@ -328,6 +347,7 @@ def render_replay(snapshot: RuntimeReplaySnapshot) -> str:
         "approvals_dir",
         "approval_count",
         "lineage_json",
+        "review_state_json",
     ]:
         lines.append(f"- {key}: {snapshot.artifacts.get(key)}")
 
@@ -340,5 +360,12 @@ def render_replay(snapshot: RuntimeReplaySnapshot) -> str:
                 depends_on = []
             generated_by = str(item.get("generated_by", "")).strip() or "unknown"
             lines.append(f"- {artifact}: depends_on={depends_on} generated_by={generated_by}")
+
+    if snapshot.review_items:
+        lines.append("Review State:")
+        for item in snapshot.review_items:
+            artifact = str(item.get("artifact", "")).strip() or "unknown"
+            status = str(item.get("review_status", "")).strip() or "unknown"
+            lines.append(f"- {artifact}: {status}")
 
     return "\n".join(lines)

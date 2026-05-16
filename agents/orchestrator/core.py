@@ -20,6 +20,8 @@ from .stage_evaluator import StageEvaluator
 from schemas.run_summary import RunSummaryModel
 from forgeflow.runtime.events import append_runtime_event
 from forgeflow.runtime.lineage import upsert_lineage_entry
+from forgeflow.runtime.pause import load_runtime_pause_state
+from forgeflow.runtime.review_state import upsert_pending_review
 from forgeflow.runtime.run_index import update_index_on_run_event
 
 
@@ -500,7 +502,21 @@ class Orchestrator:
         self, user_input: str = "", original_request: str = ""
     ) -> OrchestrationResult:
         states_before = self.state_manager.load_all_states()
+        pause_state = load_runtime_pause_state(getattr(self.state_manager, "state_dir", None))
         decision = self.resolve_transition(states_before)
+        if pause_state.paused:
+            decision = TransitionDecision(
+                computed_stage=decision.computed_stage,
+                final_stage=decision.final_stage,
+                source_stage=decision.source_stage,
+                wait_for_user_input=True,
+                should_stay=True,
+                reason="Runtime is paused.",
+                evidence=[
+                    "runtime_pause.paused is true.",
+                    f"reason: {pause_state.reason}" if pause_state.reason else "reason: (empty)",
+                ],
+            )
         try:
             append_runtime_event(
                 self.runs_dir,
@@ -575,6 +591,11 @@ class Orchestrator:
                             run_id=self.run_id,
                             artifact=artifact,  # type: ignore[arg-type]
                             generated_by=str(agent_result.agent_name).strip() or "unknown",
+                        )
+                        upsert_pending_review(
+                            run_dir=self.runs_dir,
+                            run_id=self.run_id,
+                            artifact=artifact,
                         )
             except Exception as exc:
                 self._event_log_warnings.append(

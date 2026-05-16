@@ -23,6 +23,11 @@ def render_status(status: RuntimeStatus) -> str:
     lines.append("Execution")
     lines.append(f"- mutation: {'enabled' if status.mutation_enabled else 'disabled'}")
     lines.append(f"- execution: {status.execution_mode}")
+    if status.runtime_paused:
+        lines.append("Pause")
+        reason = status.pause_reason.strip() or "(empty)"
+        lines.append("- paused: true")
+        lines.append(f"- reason: {reason}")
 
     if status.lineage_entries:
         lines.append("Lineage")
@@ -33,6 +38,13 @@ def render_status(status: RuntimeStatus) -> str:
                 depends_on = []
             generated_by = str(item.get("generated_by", "")).strip() or "unknown"
             lines.append(f"- {artifact}: depends_on={depends_on} generated_by={generated_by}")
+
+    if status.pending_reviews:
+        lines.append("Approval Queue")
+        for item in status.pending_reviews:
+            run_id = str(item.get("run_id", "")).strip()
+            artifact = str(item.get("artifact", "")).strip()
+            lines.append(f"- pending_review: run_id={run_id} artifact={artifact}")
 
     if status.last_decision:
         lines.append("Last Decision")

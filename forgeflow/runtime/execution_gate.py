@@ -33,18 +33,31 @@ EXPECTED_LINEAGE_ARTIFACTS = [
 
 
 def _latest_run_dir(runs_root: Path) -> Path | None:
-    index = load_run_index(runs_root)
-    if index is not None and index.runs:
-        entry = index.runs[0]
-        candidate = runs_root / str(entry.run_id).strip()
-        if candidate.exists() and candidate.is_dir():
-            return candidate
-
     if not runs_root.exists():
         return None
-    candidates = [p for p in runs_root.iterdir() if p.is_dir()]
-    candidates.sort(key=lambda p: p.name, reverse=True)
-    return candidates[0] if candidates else None
+
+    # Source of truth is the filesystem. runs/index.json is a cache and can lag behind,
+    # be unsorted, or contain only a subset of runs. Prefer the newest run directory by name,
+    # but still consult the index to avoid missing runs when the filesystem view is partial.
+    scan_candidates = [p for p in runs_root.iterdir() if p.is_dir()]
+    scan_candidates.sort(key=lambda p: p.name, reverse=True)
+    scan_latest = scan_candidates[0] if scan_candidates else None
+
+    index = load_run_index(runs_root)
+    index_latest: Path | None = None
+    if index is not None and index.runs:
+        # Do not trust index ordering. Pick the max run_id that exists on disk.
+        for entry in sorted(index.runs, key=lambda e: e.run_id, reverse=True):
+            candidate = runs_root / str(entry.run_id).strip()
+            if candidate.exists() and candidate.is_dir():
+                index_latest = candidate
+                break
+
+    if scan_latest is None:
+        return index_latest
+    if index_latest is None:
+        return scan_latest
+    return scan_latest if scan_latest.name >= index_latest.name else index_latest
 
 
 def _load_json_object(path: Path) -> dict[str, Any]:

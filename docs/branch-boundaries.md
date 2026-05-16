@@ -72,6 +72,23 @@
   - `agents/test_validation_engineer/**`
   - `schemas/**`
 
+### `track/artifact-lineage-foundation`
+- 允许改动：
+  - `agents/orchestrator/**`
+  - `forgeflow/runtime/**`
+  - `tests/unit/runtime/**`
+  - `tests/unit/orchestrator/test_core.py`
+  - `docs/**`
+  - `README.md`
+  - `README_EN.md`
+  - `.github/workflows/**`
+  - `scripts/branch_path_guard.sh`
+- 禁止改动：
+  - `agents/implementation_engineer/**`
+  - `agents/test_validation_engineer/**`
+  - `tui/**`
+  - `schemas/**`
+
 ### `track/docs-review`
 - 允许改动：
   - `README.md`

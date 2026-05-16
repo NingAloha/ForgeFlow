@@ -24,6 +24,16 @@ def render_status(status: RuntimeStatus) -> str:
     lines.append(f"- mutation: {'enabled' if status.mutation_enabled else 'disabled'}")
     lines.append(f"- execution: {status.execution_mode}")
 
+    if status.lineage_entries:
+        lines.append("Lineage")
+        for item in status.lineage_entries:
+            artifact = str(item.get("artifact", "")).strip() or "unknown"
+            depends_on = item.get("depends_on", [])
+            if not isinstance(depends_on, list):
+                depends_on = []
+            generated_by = str(item.get("generated_by", "")).strip() or "unknown"
+            lines.append(f"- {artifact}: depends_on={depends_on} generated_by={generated_by}")
+
     if status.last_decision:
         lines.append("Last Decision")
         action = status.last_decision.get("action", "").strip() or "unknown"
@@ -39,4 +49,3 @@ def render_status(status: RuntimeStatus) -> str:
         lines.append("- none")
 
     return "\n".join(lines)
-

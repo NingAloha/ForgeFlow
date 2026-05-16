@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .events import load_runtime_events
+from .lineage import load_lineage
 
 
 @dataclass(slots=True)
@@ -29,6 +30,7 @@ class RuntimeReplaySnapshot:
     latest_decision: dict[str, str]
     artifacts: dict[str, object]
     blockers: list[str]
+    lineage_entries: list[dict[str, Any]]
 
 
 @dataclass(slots=True)
@@ -123,6 +125,7 @@ def load_replay_snapshot(run_id: str, state_dir: str | None = None) -> RuntimeRe
         "summary_json": False,
         "approvals_dir": False,
         "approval_count": 0,
+        "lineage_json": False,
     }
 
     if not run_dir.exists():
@@ -254,6 +257,20 @@ def load_replay_snapshot(run_id: str, state_dir: str | None = None) -> RuntimeRe
                 }
             )
 
+    lineage_entries: list[dict[str, Any]] = []
+    lineage = load_lineage(run_dir)
+    if lineage is not None:
+        artifacts["lineage_json"] = True
+        lineage_entries = [
+            {
+                "artifact": item.artifact,
+                "depends_on": list(item.depends_on),
+                "generated_by": item.generated_by,
+                "invalidated_by": list(item.invalidated_by),
+            }
+            for item in lineage.entries
+        ]
+
     return RuntimeReplaySnapshot(
         run_id=str(payload.get("run_id", safe_run_id)).strip() or safe_run_id,
         final_stage=final_stage,
@@ -262,6 +279,7 @@ def load_replay_snapshot(run_id: str, state_dir: str | None = None) -> RuntimeRe
         latest_decision=latest_decision,
         artifacts=artifacts,
         blockers=_collect_blockers(steps),
+        lineage_entries=lineage_entries,
     )
 
 
@@ -304,7 +322,23 @@ def render_replay(snapshot: RuntimeReplaySnapshot) -> str:
         lines.append("- None")
 
     lines.append("Artifacts:")
-    for key in ["run_dir_exists", "summary_json", "approvals_dir", "approval_count"]:
+    for key in [
+        "run_dir_exists",
+        "summary_json",
+        "approvals_dir",
+        "approval_count",
+        "lineage_json",
+    ]:
         lines.append(f"- {key}: {snapshot.artifacts.get(key)}")
+
+    if snapshot.lineage_entries:
+        lines.append("Lineage:")
+        for item in snapshot.lineage_entries:
+            artifact = str(item.get("artifact", "")).strip() or "unknown"
+            depends_on = item.get("depends_on", [])
+            if not isinstance(depends_on, list):
+                depends_on = []
+            generated_by = str(item.get("generated_by", "")).strip() or "unknown"
+            lines.append(f"- {artifact}: depends_on={depends_on} generated_by={generated_by}")
 
     return "\n".join(lines)

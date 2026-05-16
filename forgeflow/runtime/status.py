@@ -18,6 +18,12 @@ from forgeflow.runtime.pause import load_runtime_pause_state
 from forgeflow.runtime.run_index import load_run_index
 from forgeflow.runtime.lineage import load_lineage
 from forgeflow.runtime.approval_queue import materialize_pending_reviews
+def _load_json_object(path: Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
 
 
 @dataclass(slots=True)
@@ -34,6 +40,7 @@ class RuntimeStatus:
     pending_reviews: list[dict[str, Any]] = field(default_factory=list)
     runtime_paused: bool = False
     pause_reason: str = ""
+    approval_artifacts: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _default_runs_root(state_dir: str | Path | None) -> Path:
@@ -290,6 +297,23 @@ def build_status_snapshot(state_dir: str | None = None) -> RuntimeStatus:
     pending = materialize_pending_reviews(runs_root)
     pending_reviews = [{"run_id": item.run_id, "artifact": item.artifact} for item in pending[:50]]
 
+    approval_artifacts: list[dict[str, Any]] = []
+    if summary_path is not None:
+        approvals_dir = summary_path.parent / "approvals"
+        if approvals_dir.exists() and approvals_dir.is_dir():
+            for path in sorted(approvals_dir.glob("*.json"))[:50]:
+                approval = _load_json_object(path)
+                if not approval:
+                    continue
+                approval_artifacts.append(
+                    {
+                        "contract_hash": str(approval.get("contract_hash", "")).strip(),
+                        "approval_status": str(approval.get("approval_status", "")).strip(),
+                        "target_module": str(approval.get("target_module", "")).strip(),
+                        "stale": bool(approval.get("stale", False)),
+                    }
+                )
+
     return RuntimeStatus(
         current_stage=str(decision.final_stage),
         executed_stage=executed_stage,
@@ -305,4 +329,5 @@ def build_status_snapshot(state_dir: str | None = None) -> RuntimeStatus:
         pending_reviews=pending_reviews,
         runtime_paused=pause_state.paused,
         pause_reason=pause_state.reason,
+        approval_artifacts=approval_artifacts,
     )

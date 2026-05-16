@@ -46,6 +46,18 @@ def render_status(status: RuntimeStatus) -> str:
             artifact = str(item.get("artifact", "")).strip()
             lines.append(f"- pending_review: run_id={run_id} artifact={artifact}")
 
+    if status.approval_artifacts:
+        lines.append("Approvals")
+        for item in status.approval_artifacts:
+            contract_hash = str(item.get("contract_hash", "")).strip()
+            approval_status = str(item.get("approval_status", "")).strip() or "unknown"
+            target_module = str(item.get("target_module", "")).strip()
+            stale = bool(item.get("stale", False))
+            suffix = " stale=true" if stale else ""
+            lines.append(
+                f"- approval: status={approval_status} target_module={target_module} contract_hash={contract_hash}{suffix}"
+            )
+
     if status.last_decision:
         lines.append("Last Decision")
         action = status.last_decision.get("action", "").strip() or "unknown"

@@ -288,6 +288,11 @@ def main() -> int:
         help="Optional human review reason for review decisions.",
     )
     parser.add_argument(
+        "--execution-gate",
+        action="store_true",
+        help="Print read-only controlled-execution gate diagnostics and exit.",
+    )
+    parser.add_argument(
         "--tui",
         action="store_true",
         help="Start the minimal ForgeShell TUI wrapper.",
@@ -334,6 +339,18 @@ def main() -> int:
         print(
             f"Review decision written: run_id={result.run_id} artifact={result.artifact} status={result.review_status}"
         )
+        return 0
+
+    if args.execution_gate:
+        from forgeflow.runtime.execution_gate import build_execution_gate_snapshot, render_execution_gate
+
+        state_manager = (
+            StateManager(state_dir=args.state_dir)
+            if args.state_dir is not None
+            else StateManager()
+        )
+        snapshot = build_execution_gate_snapshot(state_dir=Path(state_manager.state_dir))
+        print(render_execution_gate(snapshot))
         return 0
 
     if args.status:

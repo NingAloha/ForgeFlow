@@ -254,6 +254,40 @@ def main() -> int:
         help="Rebuild runs/index.json from run directories and exit.",
     )
     parser.add_argument(
+        "--review-run",
+        dest="review_run",
+        default=None,
+        help="Target run_id for writing an explicit review decision (write-path).",
+    )
+    parser.add_argument(
+        "--review-artifact",
+        dest="review_artifact",
+        default=None,
+        help="Target artifact name for --review-run (e.g. spec/solution/system_design/implementation_status/test_report).",
+    )
+    parser.add_argument(
+        "--review-approve",
+        action="store_true",
+        help="Mark the target artifact as approved in review_state.json.",
+    )
+    parser.add_argument(
+        "--review-reject",
+        action="store_true",
+        help="Mark the target artifact as rejected in review_state.json.",
+    )
+    parser.add_argument(
+        "--review-by",
+        dest="review_by",
+        default="",
+        help="Optional reviewer identifier for review decisions.",
+    )
+    parser.add_argument(
+        "--review-reason",
+        dest="review_reason",
+        default="",
+        help="Optional human review reason for review decisions.",
+    )
+    parser.add_argument(
         "--tui",
         action="store_true",
         help="Start the minimal ForgeShell TUI wrapper.",
@@ -267,6 +301,39 @@ def main() -> int:
         runs_root = Path(state_manager.state_dir).parent / "runs"
         result = repair_run_index(runs_root)
         print(f"Repaired runs index: runs_written={result.runs_written}")
+        return 0
+
+    if args.review_run or args.review_artifact or args.review_approve or args.review_reject:
+        from forgeflow.runtime.review_decision import write_review_decision
+
+        if not args.review_run or not args.review_artifact:
+            print("Review error: --review-run and --review-artifact are required.", file=sys.stderr)
+            return 2
+        if args.review_approve and args.review_reject:
+            print("Review error: choose exactly one of --review-approve or --review-reject.", file=sys.stderr)
+            return 2
+        if not args.review_approve and not args.review_reject:
+            print("Review error: missing --review-approve/--review-reject.", file=sys.stderr)
+            return 2
+        status = "approved" if args.review_approve else "rejected"
+
+        state_manager = StateManager(state_dir=args.state_dir) if args.state_dir is not None else StateManager()
+        runs_root = Path(state_manager.state_dir).parent / "runs"
+        try:
+            result = write_review_decision(
+                runs_root=runs_root,
+                run_id=args.review_run,
+                artifact=args.review_artifact,
+                review_status=status,
+                reviewed_by=args.review_by,
+                review_reason=args.review_reason,
+            )
+        except Exception as exc:
+            print(f"Review error: {exc}", file=sys.stderr)
+            return 1
+        print(
+            f"Review decision written: run_id={result.run_id} artifact={result.artifact} status={result.review_status}"
+        )
         return 0
 
     if args.status:

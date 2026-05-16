@@ -121,6 +121,20 @@
   - `schemas/**`
   - `tests/unit/agents/**`
 
+### `track/review-decision-artifacts`
+- 允许改动：
+  - `main.py`（仅写入 review_state.json 的显式命令入口）
+  - `forgeflow/runtime/**`
+  - `tests/unit/runtime/**`
+  - `docs/**`
+  - `.github/workflows/**`
+  - `scripts/branch_path_guard.sh`
+- 禁止改动：
+  - `agents/**`
+  - `tui/**`
+  - `schemas/**`
+  - `tests/unit/agents/**`
+
 ### `track/docs-review`
 - 允许改动：
   - `README.md`

@@ -104,7 +104,7 @@ class OrchestratorCoreTests(unittest.TestCase):
             state_dir.mkdir(parents=True, exist_ok=True)
             manager = StateManager(state_dir=str(state_dir))
             with patch(
-                "agents.orchestrator.core.update_run_index",
+                "agents.orchestrator.core.update_index_on_run_event",
                 side_effect=RuntimeError("index write failed"),
             ):
                 orchestrator = Orchestrator(state_manager=manager)

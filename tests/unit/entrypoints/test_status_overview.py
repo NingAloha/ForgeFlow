@@ -678,10 +678,13 @@ class RuntimeStatusOverviewTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            (runs_root / "index.json").write_text("{bad json", encoding="utf-8")
+            index_path = runs_root / "index.json"
+            index_path.write_text("{bad json", encoding="utf-8")
             status = build_status_snapshot(str(state_dir))
             self.assertEqual(status.executed_stage, "REQUIREMENTS")
             self.assertEqual(status.last_decision["final_stage"], "SOLUTION")
+            # status is read-only: it must not "repair" or rewrite index.json.
+            self.assertEqual(index_path.read_text(encoding="utf-8"), "{bad json")
 
 
 if __name__ == "__main__":

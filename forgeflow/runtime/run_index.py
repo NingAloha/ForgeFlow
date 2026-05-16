@@ -9,6 +9,7 @@ from typing import Literal
 
 
 RunIndexStatus = Literal["running", "finished", "unknown"]
+RunIndexLoadStatus = Literal["ok", "missing", "invalid"]
 
 
 @dataclass(slots=True)
@@ -25,6 +26,13 @@ class RunIndexEntry:
 @dataclass(slots=True)
 class RunIndex:
     runs: list[RunIndexEntry]
+
+
+@dataclass(slots=True)
+class RunIndexLoadResult:
+    status: RunIndexLoadStatus
+    index: RunIndex | None
+    error: str | None = None
 
 
 def _index_path(runs_root: Path) -> Path:
@@ -67,23 +75,28 @@ def build_index_entry(
 
 
 def load_run_index(runs_root: Path) -> RunIndex | None:
+    result = load_run_index_result(runs_root)
+    return result.index
+
+
+def load_run_index_result(runs_root: Path) -> RunIndexLoadResult:
     path = _index_path(runs_root)
     if not path.exists():
-        return None
+        return RunIndexLoadResult(status="missing", index=None)
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return None
+        return RunIndexLoadResult(status="invalid", index=None, error="invalid_json")
     if not isinstance(payload, dict):
-        return None
+        return RunIndexLoadResult(status="invalid", index=None, error="not_a_dict")
     runs = payload.get("runs")
     if not isinstance(runs, list):
-        return None
+        return RunIndexLoadResult(status="invalid", index=None, error="runs_not_a_list")
 
     entries: list[RunIndexEntry] = []
     for item in runs:
         if not isinstance(item, dict):
-            return None
+            return RunIndexLoadResult(status="invalid", index=None, error="run_entry_not_a_dict")
         try:
             entry = RunIndexEntry(
                 run_id=str(item.get("run_id", "")).strip(),
@@ -95,13 +108,75 @@ def load_run_index(runs_root: Path) -> RunIndex | None:
                 status=str(item.get("status", "")).strip(),  # type: ignore[arg-type]
             )
         except Exception:
-            return None
+            return RunIndexLoadResult(status="invalid", index=None, error="run_entry_invalid_shape")
         if entry.status not in {"running", "finished", "unknown"}:
-            return None
+            return RunIndexLoadResult(status="invalid", index=None, error="run_entry_invalid_status")
         if not entry.run_id or not entry.summary_path:
-            return None
+            return RunIndexLoadResult(status="invalid", index=None, error="run_entry_missing_required_fields")
         entries.append(entry)
 
+    return RunIndexLoadResult(status="ok", index=RunIndex(runs=entries))
+
+
+def update_index_on_run_event(
+    *,
+    runs_root: Path,
+    event_type: Literal["run_started", "run_finished", "stage_executed"],
+    run_id: str,
+    final_stage: str = "",
+    finished_at: str = "",
+) -> None:
+    if event_type == "run_started":
+        entry = build_index_entry(run_id=run_id, status="running", final_stage="", finished_at="")
+    elif event_type == "run_finished":
+        entry = build_index_entry(
+            run_id=run_id,
+            status="finished",
+            final_stage=final_stage,
+            finished_at=finished_at,
+        )
+    else:
+        # Keep stage-executed updates minimal for v1: do not attempt to infer
+        # completion or rewrite finished timestamps. The index is a cache and may
+        # lag behind; status/replay must remain correct via fallback scan.
+        entry = build_index_entry(run_id=run_id, status="running", final_stage=final_stage, finished_at="")
+    update_run_index(runs_root, entry)
+
+
+def materialize_run_index_from_runs_root(runs_root: Path) -> RunIndex:
+    """
+    Build a best-effort index from the filesystem (source of truth: run dirs).
+
+    This function is intentionally read-only: it does not write index.json.
+    """
+    entries: list[RunIndexEntry] = []
+    if not runs_root.exists():
+        return RunIndex(runs=[])
+
+    for summary_path in runs_root.glob("*/summary.json"):
+        run_id = summary_path.parent.name
+        final_stage = ""
+        finished_at = ""
+        try:
+            payload = json.loads(summary_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            payload = None
+        if isinstance(payload, dict):
+            final_stage = str(payload.get("latest_final_stage", "")).strip()
+            steps = payload.get("steps", [])
+            if isinstance(steps, list) and steps and isinstance(steps[-1], dict):
+                finished_at = str(steps[-1].get("timestamp", "")).strip()
+
+        entries.append(
+            build_index_entry(
+                run_id=run_id,
+                status="unknown",
+                final_stage=final_stage,
+                finished_at=finished_at,
+            )
+        )
+
+    entries.sort(key=_sort_key, reverse=True)
     return RunIndex(runs=entries)
 
 

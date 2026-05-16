@@ -129,6 +129,27 @@ class OrchestratorCoreTests(unittest.TestCase):
             self.assertIsInstance(warnings, list)
             self.assertTrue(warnings)
 
+    def test_orchestrator_writes_lineage_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            state_dir = Path(tmp_dir) / "state"
+            state_dir.mkdir(parents=True, exist_ok=True)
+            manager = StateManager(state_dir=str(state_dir))
+            orchestrator = Orchestrator(state_manager=manager)
+            _ = orchestrator.orchestrate("x", original_request="x")
+
+            lineage_path = (
+                Path(manager.state_dir).parent
+                / "runs"
+                / orchestrator.run_id
+                / "lineage.json"
+            )
+            self.assertTrue(lineage_path.exists())
+            payload = json.loads(lineage_path.read_text(encoding="utf-8"))
+            self.assertIsInstance(payload, dict)
+            entries = payload.get("entries", [])
+            self.assertIsInstance(entries, list)
+            self.assertTrue(entries)
+
     def test_determine_execution_stage_respects_wait_backflow_forward_and_bootstrap(
         self,
     ) -> None:

@@ -93,6 +93,13 @@ is_allowed_for_branch() {
       [[ "${file}" == tests/unit/entrypoints/test_status_overview.py ]] && return 0
       [[ "${file}" == docs/* ]] && return 0
       ;;
+    track/artifact-lineage-foundation)
+      [[ "${file}" == agents/orchestrator/* ]] && return 0
+      [[ "${file}" == forgeflow/runtime/* ]] && return 0
+      [[ "${file}" == tests/unit/runtime/* ]] && return 0
+      [[ "${file}" == tests/unit/orchestrator/test_core.py ]] && return 0
+      [[ "${file}" == docs/* ]] && return 0
+      ;;
     track/docs-review)
       [[ "${file}" == docs/* ]] && return 0
       [[ "${file}" == runs/manual_reviews/* ]] && return 0

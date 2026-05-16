@@ -19,6 +19,7 @@ from .run_manifest import RunManifestWriter
 from .stage_evaluator import StageEvaluator
 from schemas.run_summary import RunSummaryModel
 from forgeflow.runtime.events import append_runtime_event
+from forgeflow.runtime.lineage import upsert_lineage_entry
 from forgeflow.runtime.run_index import update_index_on_run_event
 
 
@@ -531,6 +532,26 @@ class Orchestrator:
                 user_input=user_input,
                 original_request=original_request or user_input,
             )
+            try:
+                artifact_by_stage = {
+                    Stage.REQUIREMENTS: "spec",
+                    Stage.SOLUTION: "solution",
+                    Stage.DESIGN: "system_design",
+                    Stage.IMPLEMENTATION: "implementation_status",
+                    Stage.TESTING: "test_report",
+                }
+                artifact = artifact_by_stage.get(Stage(executed_stage))
+                if artifact:
+                    upsert_lineage_entry(
+                        run_dir=self.runs_dir,
+                        run_id=self.run_id,
+                        artifact=artifact,  # type: ignore[arg-type]
+                        generated_by=str(agent_result.agent_name).strip() or "unknown",
+                    )
+            except Exception as exc:
+                self._event_log_warnings.append(
+                    {"event_type": "lineage_write", "error": str(exc)}
+                )
             try:
                 append_runtime_event(
                     self.runs_dir,

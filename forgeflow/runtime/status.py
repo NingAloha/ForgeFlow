@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -15,6 +15,7 @@ from agents.orchestrator.stage_evaluator import StageEvaluator
 from agents.state_manager import StateManager
 from schemas.run_summary import RunSummaryModel
 from forgeflow.runtime.run_index import load_run_index
+from forgeflow.runtime.lineage import load_lineage
 
 
 @dataclass(slots=True)
@@ -27,6 +28,7 @@ class RuntimeStatus:
     execution_mode: str
     blockers: list[str]
     last_decision: dict[str, str] | None = None
+    lineage_entries: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _default_runs_root(state_dir: str | Path | None) -> Path:
@@ -135,16 +137,23 @@ def _load_summary_payload(summary_path: Path) -> dict[str, Any] | None:
 
 
 def _load_latest_run_summary(runs_root: Path) -> dict[str, Any] | None:
+    payload, _ = _load_latest_run_summary_with_path(runs_root)
+    return payload
+
+
+def _load_latest_run_summary_with_path(
+    runs_root: Path,
+) -> tuple[dict[str, Any] | None, Path | None]:
     index_path = _find_latest_summary_path_from_index(runs_root)
     if index_path is not None:
         loaded = _load_summary_payload(index_path)
         if loaded is not None:
-            return loaded
+            return loaded, index_path
 
     scan_path = _find_latest_summary_path_by_scan(runs_root)
     if scan_path is None:
-        return None
-    return _load_summary_payload(scan_path)
+        return None, None
+    return _load_summary_payload(scan_path), scan_path
 
 
 def _build_orchestrator_shell() -> Orchestrator:
@@ -238,7 +247,7 @@ def build_status_snapshot(state_dir: str | None = None) -> RuntimeStatus:
     # status reads a consistent runtime snapshot even when invoked from another
     # working directory.
     runs_root = Path(state_manager.state_dir).parent / "runs"
-    summary = _load_latest_run_summary(runs_root)
+    summary, summary_path = _load_latest_run_summary_with_path(runs_root)
 
     executed_stage = ""
     last_decision: dict[str, str] | None = None
@@ -255,6 +264,20 @@ def build_status_snapshot(state_dir: str | None = None) -> RuntimeStatus:
 
     blockers = _collect_blockers(states, getattr(state_manager, "validation_errors", {}))
 
+    lineage_entries: list[dict[str, Any]] = []
+    if summary_path is not None:
+        lineage = load_lineage(summary_path.parent)
+        if lineage is not None:
+            lineage_entries = [
+                {
+                    "artifact": item.artifact,
+                    "depends_on": list(item.depends_on),
+                    "generated_by": item.generated_by,
+                    "invalidated_by": list(item.invalidated_by),
+                }
+                for item in lineage.entries
+            ]
+
     return RuntimeStatus(
         current_stage=str(decision.final_stage),
         executed_stage=executed_stage,
@@ -266,4 +289,5 @@ def build_status_snapshot(state_dir: str | None = None) -> RuntimeStatus:
         execution_mode="preview-only",
         blockers=blockers,
         last_decision=last_decision,
+        lineage_entries=lineage_entries,
     )

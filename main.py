@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from pathlib import Path
 from typing import Any
 
 from agents.orchestrator import OrchestrationResult, Orchestrator
@@ -248,11 +249,25 @@ def main() -> int:
         help="Print a read-only runtime status overview and exit.",
     )
     parser.add_argument(
+        "--repair-run-index",
+        action="store_true",
+        help="Rebuild runs/index.json from run directories and exit.",
+    )
+    parser.add_argument(
         "--tui",
         action="store_true",
         help="Start the minimal ForgeShell TUI wrapper.",
     )
     args = parser.parse_args()
+
+    if args.repair_run_index:
+        from forgeflow.runtime.run_index_repair import repair_run_index
+
+        state_manager = StateManager(state_dir=args.state_dir) if args.state_dir is not None else StateManager()
+        runs_root = Path(state_manager.state_dir).parent / "runs"
+        result = repair_run_index(runs_root)
+        print(f"Repaired runs index: runs_written={result.runs_written}")
+        return 0
 
     if args.status:
         from forgeflow.runtime.render import render_status

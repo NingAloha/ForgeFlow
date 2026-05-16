@@ -533,26 +533,6 @@ class Orchestrator:
                 original_request=original_request or user_input,
             )
             try:
-                artifact_by_stage = {
-                    Stage.REQUIREMENTS: "spec",
-                    Stage.SOLUTION: "solution",
-                    Stage.DESIGN: "system_design",
-                    Stage.IMPLEMENTATION: "implementation_status",
-                    Stage.TESTING: "test_report",
-                }
-                artifact = artifact_by_stage.get(Stage(executed_stage))
-                if artifact:
-                    upsert_lineage_entry(
-                        run_dir=self.runs_dir,
-                        run_id=self.run_id,
-                        artifact=artifact,  # type: ignore[arg-type]
-                        generated_by=str(agent_result.agent_name).strip() or "unknown",
-                    )
-            except Exception as exc:
-                self._event_log_warnings.append(
-                    {"event_type": "lineage_write", "error": str(exc)}
-                )
-            try:
                 append_runtime_event(
                     self.runs_dir,
                     event_type="stage_executed",
@@ -571,6 +551,35 @@ class Orchestrator:
                 )
 
         states_after = self.state_manager.load_all_states()
+        if executed_stage is not None and agent_result is not None:
+            try:
+                # Only record lineage after confirming the stage output was persisted.
+                # run_stage() may return a fallback AgentResult when save_state() fails
+                # schema validation, leaving the prior state in place.
+                state_key = str(agent_result.state_key).strip()
+                before = states_before.get(state_key)
+                after = states_after.get(state_key)
+                persisted = before != after
+                if persisted:
+                    artifact_by_stage = {
+                        Stage.REQUIREMENTS: "spec",
+                        Stage.SOLUTION: "solution",
+                        Stage.DESIGN: "system_design",
+                        Stage.IMPLEMENTATION: "implementation_status",
+                        Stage.TESTING: "test_report",
+                    }
+                    artifact = artifact_by_stage.get(Stage(executed_stage))
+                    if artifact:
+                        upsert_lineage_entry(
+                            run_dir=self.runs_dir,
+                            run_id=self.run_id,
+                            artifact=artifact,  # type: ignore[arg-type]
+                            generated_by=str(agent_result.agent_name).strip() or "unknown",
+                        )
+            except Exception as exc:
+                self._event_log_warnings.append(
+                    {"event_type": "lineage_write", "error": str(exc)}
+                )
         summary = self.build_result_summary(
             decision=decision,
             executed_stage=executed_stage,

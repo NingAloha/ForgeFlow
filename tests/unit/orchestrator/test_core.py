@@ -150,6 +150,33 @@ class OrchestratorCoreTests(unittest.TestCase):
             self.assertIsInstance(entries, list)
             self.assertTrue(entries)
 
+    def test_orchestrator_skips_lineage_update_when_schema_validation_blocks_stage_output(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            state_dir = Path(tmp_dir) / "state"
+            state_dir.mkdir(parents=True, exist_ok=True)
+            manager = StateManager(state_dir=str(state_dir))
+
+            original_save_state = manager.save_state
+
+            def _save_state_side_effect(state_key: str, payload: object) -> None:
+                if state_key != "question_state":
+                    raise ValueError("forced schema validation error")
+                return original_save_state(state_key, payload)  # type: ignore[arg-type]
+
+            with patch.object(manager, "save_state", side_effect=_save_state_side_effect):
+                orchestrator = Orchestrator(state_manager=manager)
+                _ = orchestrator.orchestrate("x", original_request="x")
+
+            lineage_path = (
+                Path(manager.state_dir).parent
+                / "runs"
+                / orchestrator.run_id
+                / "lineage.json"
+            )
+            self.assertFalse(lineage_path.exists())
+
     def test_determine_execution_stage_respects_wait_backflow_forward_and_bootstrap(
         self,
     ) -> None:

@@ -14,8 +14,10 @@ from agents.orchestrator.question_flow import QuestionFlow
 from agents.orchestrator.stage_evaluator import StageEvaluator
 from agents.state_manager import StateManager
 from schemas.run_summary import RunSummaryModel
+from forgeflow.runtime.pause import load_runtime_pause_state
 from forgeflow.runtime.run_index import load_run_index
 from forgeflow.runtime.lineage import load_lineage
+from forgeflow.runtime.approval_queue import materialize_pending_reviews
 
 
 @dataclass(slots=True)
@@ -29,6 +31,9 @@ class RuntimeStatus:
     blockers: list[str]
     last_decision: dict[str, str] | None = None
     lineage_entries: list[dict[str, Any]] = field(default_factory=list)
+    pending_reviews: list[dict[str, Any]] = field(default_factory=list)
+    runtime_paused: bool = False
+    pause_reason: str = ""
 
 
 def _default_runs_root(state_dir: str | Path | None) -> Path:
@@ -239,6 +244,7 @@ def _collect_blockers(
 def build_status_snapshot(state_dir: str | None = None) -> RuntimeStatus:
     state_manager = StateManager(state_dir=state_dir)
     states = state_manager.load_all_states()
+    pause_state = load_runtime_pause_state(state_dir=state_manager.state_dir)
 
     orchestrator_shell = _build_orchestrator_shell()
     decision = Orchestrator.resolve_transition(orchestrator_shell, states)
@@ -263,6 +269,8 @@ def build_status_snapshot(state_dir: str | None = None) -> RuntimeStatus:
         }
 
     blockers = _collect_blockers(states, getattr(state_manager, "validation_errors", {}))
+    if pause_state.paused:
+        blockers = list(blockers) + ["runtime_paused"]
 
     lineage_entries: list[dict[str, Any]] = []
     if summary_path is not None:
@@ -278,6 +286,10 @@ def build_status_snapshot(state_dir: str | None = None) -> RuntimeStatus:
                 for item in lineage.entries
             ]
 
+    pending_reviews: list[dict[str, Any]] = []
+    pending = materialize_pending_reviews(runs_root)
+    pending_reviews = [{"run_id": item.run_id, "artifact": item.artifact} for item in pending[:50]]
+
     return RuntimeStatus(
         current_stage=str(decision.final_stage),
         executed_stage=executed_stage,
@@ -290,4 +302,7 @@ def build_status_snapshot(state_dir: str | None = None) -> RuntimeStatus:
         blockers=blockers,
         last_decision=last_decision,
         lineage_entries=lineage_entries,
+        pending_reviews=pending_reviews,
+        runtime_paused=pause_state.paused,
+        pause_reason=pause_state.reason,
     )

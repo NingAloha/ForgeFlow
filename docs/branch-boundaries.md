@@ -135,6 +135,20 @@
   - `schemas/**`
   - `tests/unit/agents/**`
 
+### `track/review-approval-bridge`
+- 允许改动：
+  - `forgeflow/runtime/**`（只读展示：review queue + approvals 聚合）
+  - `tests/unit/runtime/**`
+  - `tests/unit/entrypoints/**`
+  - `docs/**`
+  - `.github/workflows/**`
+  - `scripts/branch_path_guard.sh`
+- 禁止改动：
+  - `agents/**`
+  - `tui/**`
+  - `schemas/**`
+  - `main.py`
+
 ### `track/docs-review`
 - 允许改动：
   - `README.md`

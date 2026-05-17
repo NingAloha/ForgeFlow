@@ -326,6 +326,11 @@ def main() -> int:
         help="Materialize an approval-aware rerun plan under runs/<run_id>/ and exit (write-path; no rerun).",
     )
     parser.add_argument(
+        "--materialize-preview",
+        action="store_true",
+        help="Materialize governed sandbox preview artifacts under .forgeflow/generated/<run_id>/ (write-path; no mutation).",
+    )
+    parser.add_argument(
         "--tui",
         action="store_true",
         help="Start the minimal ForgeShell TUI wrapper.",
@@ -458,6 +463,30 @@ def main() -> int:
             return 1
         print(f"Wrote rerun plan: {result.path}")
         print(f"Plan status: {result.plan_status}")
+        return 0
+
+    if args.materialize_preview:
+        from forgeflow.runtime.materialization_preview import materialize_sandbox_preview
+
+        if not args.run_id:
+            print("Materialization error: --run-id is required.", file=sys.stderr)
+            return 1
+        state_manager = (
+            StateManager(state_dir=args.state_dir)
+            if args.state_dir is not None
+            else StateManager()
+        )
+        try:
+            result = materialize_sandbox_preview(
+                state_dir=Path(state_manager.state_dir),
+                run_id=args.run_id,
+            )
+        except Exception as exc:
+            print(f"Materialization error: {exc}", file=sys.stderr)
+            return 1
+        print("Materialization preview completed.")
+        print(f"Wrote execution preview: .forgeflow/runs/{result.get('run_id')}/execution_preview.json")
+        print(f"Wrote generated README: .forgeflow/generated/{result.get('run_id')}/README.md")
         return 0
 
     if args.status:

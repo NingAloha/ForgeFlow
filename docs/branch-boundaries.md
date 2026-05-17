@@ -191,6 +191,21 @@
   - `schemas/**`
   - `tests/unit/agents/**`
 
+### `track/sandbox-preview-materialization`
+- 允许改动：
+  - `main.py`（sandbox preview materialization entrypoint）
+  - `forgeflow/runtime/**`（governed writes limited to `.forgeflow/generated/<run_id>/`）
+  - `tests/unit/runtime/**`
+  - `tests/unit/entrypoints/**`
+  - `docs/**`
+  - `.github/workflows/**`
+  - `scripts/branch_path_guard.sh`
+- 禁止改动：
+  - `agents/**`
+  - `tui/**`
+  - `schemas/**`
+  - `tests/unit/agents/**`
+
 ### `track/lineage-invalidation-metadata`
 - 允许改动：
   - `agents/orchestrator/**`（仅 lineage invalidation metadata 写入）

@@ -416,11 +416,6 @@ def main() -> int:
 
         if not args.run_id:
             print("Execution toggle error: --run-id is required.", file=sys.stderr)
-    if args.rerun_plan:
-        from forgeflow.runtime.rerun_plan import write_rerun_plan
-
-        if not args.run_id:
-            print("Rerun plan error: --run-id is required.", file=sys.stderr)
             return 1
         state_manager = (
             StateManager(state_dir=args.state_dir)

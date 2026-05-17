@@ -316,6 +316,11 @@ def main() -> int:
         help="Optional notes for --request-execution.",
     )
     parser.add_argument(
+        "--rerun-plan",
+        action="store_true",
+        help="Materialize an approval-aware rerun plan under runs/<run_id>/ and exit (write-path; no rerun).",
+    )
+    parser.add_argument(
         "--tui",
         action="store_true",
         help="Start the minimal ForgeShell TUI wrapper.",
@@ -399,6 +404,29 @@ def main() -> int:
             print(f"Execution request error: {exc}", file=sys.stderr)
             return 1
         print(f"Wrote execution request: {path}")
+        return 0
+
+    if args.rerun_plan:
+        from forgeflow.runtime.rerun_plan import write_rerun_plan
+
+        if not args.run_id:
+            print("Rerun plan error: --run-id is required.", file=sys.stderr)
+            return 1
+        state_manager = (
+            StateManager(state_dir=args.state_dir)
+            if args.state_dir is not None
+            else StateManager()
+        )
+        try:
+            result = write_rerun_plan(
+                state_dir=Path(state_manager.state_dir),
+                run_id=args.run_id,
+            )
+        except Exception as exc:
+            print(f"Rerun plan error: {exc}", file=sys.stderr)
+            return 1
+        print(f"Wrote rerun plan: {result.path}")
+        print(f"Plan status: {result.plan_status}")
         return 0
 
     if args.status:

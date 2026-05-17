@@ -1,21 +1,22 @@
-# Contributing
+# 贡献指南（Contributing）
 
-## What ForgeFlow currently is
+English: `CONTRIBUTING.en.md`
+
+## 当前 ForgeFlow 是什么
 
 ForgeFlow is a structured AI workflow runtime. ForgeFlow SE is its first target profile.
 
-ForgeFlow Runtime v0 stabilizes the control-plane semantics; the execution engine is intentionally absent
-(mutation disabled by design).
+ForgeFlow Runtime v0 已稳定 control-plane 语义；execution engine 刻意缺席（mutation disabled by design）。
 
-## Development workflow
+## 开发工作流
 
-Install (editable):
+安装（editable）：
 
 ```bash
 python3.11 -m pip install -e ".[dev]"
 ```
 
-Common commands:
+常用命令：
 
 ```bash
 python3.11 main.py --auto-run "<requirement>"
@@ -23,36 +24,33 @@ python3.11 main.py --status
 python3.11 main.py --replay --run-id <run_id>
 ```
 
-## Branch contract model
+## 分支契约模型
 
-- `main` is updated via PRs only.
-- `track/*` is the primary development branch model: one branch = one runtime contract.
-- Keep PR scope small and explicit. Do not mix unrelated contracts.
-- Branch scope is enforced by CI. See `docs/branch-boundaries.md`.
+- `main` 只通过 PR 更新。
+- `track/*` 是主要开发模型：一个分支 = 一个 runtime contract。
+- PR scope 保持小且明确；不要混入不相关的 contract。
+- 分支允许改动范围由 CI 强制；见 `docs/branch-boundaries.md`。
 
-## Quality checks
+## 质量检查
 
-Run these locally before opening a PR:
+在开 PR 前本地运行：
 
 ```bash
 ruff check .
 pytest -q
 ```
 
-## PR expectations
+## PR 期望
 
-- Use a contract-centric title (e.g., `docs: ...`, `runtime: ...`, `ci: ...`).
-- State the invariant(s) you are introducing or strengthening.
-- Add or update tests when behavior changes.
-- For docs changes, keep vocabulary stable and do not blur the truth vs intent boundary.
-- Merge, then delete the branch.
+- 使用 contract-centric 标题（例如 `docs: ...`, `runtime: ...`, `ci: ...`）。
+- 写清本次引入/强化的不变量（invariants）。
+- 行为变化必须配套 tests；docs 变化必须保持 vocabulary 稳定。
+- 不得模糊 truth artifacts 与 intent artifacts 的边界。
+- 合并后删除分支。
 
-## Current runtime boundary (v0)
+## 当前 runtime 边界（v0）
 
-Keep this section short: it exists to avoid accidental scope expansion.
-
-- Source-of-truth artifacts: `summary.json`, `events.jsonl`, `lineage.json`, `review_state.json`,
-  `approvals/*.json`.
-- Intent artifacts: `execution_request.json`, `rerun_plan.json` (intent is not factual truth).
-- `--enable-mutation` is gate diagnostics only (blocked / not implemented).
-- Mutation is disabled by design; do not add workspace mutation in v0 PRs.
+- Truth artifacts：`summary.json`, `events.jsonl`, `lineage.json`, `review_state.json`, `approvals/*.json`。
+- Intent artifacts：`execution_request.json`, `rerun_plan.json`（intent ≠ factual truth）。
+- `--enable-mutation` 只是 gate diagnostics（blocked / not implemented）。
+- Mutation disabled by design：v0 PR 不得引入 workspace mutation。

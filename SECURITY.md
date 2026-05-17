@@ -1,16 +1,17 @@
-# Security Policy
+# 安全策略（Security Policy）
 
-ForgeFlow is a research/runtime prototype. Do not assume ForgeFlow is suitable for production-critical
-workloads.
+English: `SECURITY.en.md`
 
-Security reports are handled on a best-effort basis:
+ForgeFlow 是一个 research/runtime prototype。请不要假设 ForgeFlow 适用于生产关键（production-critical）
+工作负载。
 
-- No SLA.
-- No guarantee of response time or fix availability.
+安全问题报告以 best-effort 方式处理：
 
-## Reporting a vulnerability
+- 不提供 SLA。
+- 不保证响应时间或修复可用性。
 
-Preferred: use GitHub Security Advisories (repo "Security" tab) so the discussion can stay private.
+## 如何报告安全问题
 
-If you are not able to use Security Advisories, you may open an issue, but do not include secrets,
-credentials, private datasets, or sensitive details that could be abused.
+首选：使用 GitHub Security Advisories（repo 的 **Security** tab），以便私密沟通与跟进。
+
+如果无法使用 Security Advisories，也可以开 issue，但请勿包含 secrets、凭据、私有数据集或可能被滥用的敏感细节。

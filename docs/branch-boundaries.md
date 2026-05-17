@@ -282,8 +282,11 @@
 ### `track/community-standards-v0`
 - 允许改动：
   - `CODE_OF_CONDUCT.md`
+  - `CODE_OF_CONDUCT.en.md`
   - `CONTRIBUTING.md`
+  - `CONTRIBUTING.en.md`
   - `SECURITY.md`
+  - `SECURITY.en.md`
   - `docs/branch-boundaries.md`
   - `.github/workflows/**`
   - `scripts/branch_path_guard.sh`

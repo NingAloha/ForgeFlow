@@ -319,11 +319,17 @@ def render_replay(snapshot: RuntimeReplaySnapshot) -> str:
     lines.append(f"Final Stage: {snapshot.final_stage}")
 
     if snapshot.timeline:
+        has_step_finished = any(item.get("event_type") == "step_finished" for item in snapshot.timeline)
+        run_finished_count = sum(1 for item in snapshot.timeline if item.get("event_type") == "run_finished")
+        alias_legacy_run_finished = (not has_step_finished) and run_finished_count > 1
+
         lines.append("Timeline:")
         for item in snapshot.timeline:
             seq = item.get("sequence", "")
             ts = item.get("timestamp", "")
             et = item.get("event_type", "")
+            if alias_legacy_run_finished and et == "run_finished":
+                et = "step_finished"
             lines.append(f"- {seq}. {ts} {et}")
 
     lines.append("Stages:")

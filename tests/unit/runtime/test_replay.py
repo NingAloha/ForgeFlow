@@ -31,6 +31,29 @@ class RuntimeReplayInvariantTests(unittest.TestCase):
             self.assertTrue(snapshot.timeline)
             self.assertEqual(snapshot.timeline[0].get("event_type"), "run_started")
 
+    def test_replay_aliases_legacy_multiple_run_finished_as_step_finished(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_dir = Path(temp_dir) / "state"
+            run_id = "20260101T000000Z-demo"
+            run_dir = Path(temp_dir) / "runs" / run_id
+            run_dir.mkdir(parents=True, exist_ok=True)
+            (run_dir / "events.jsonl").write_text(
+                (
+                    '{"timestamp":"t1","event_type":"run_started","run_id":"20260101T000000Z-demo","sequence":1,"payload":{}}\n'
+                    '{"timestamp":"t2","event_type":"run_finished","run_id":"20260101T000000Z-demo","sequence":2,"payload":{}}\n'
+                    '{"timestamp":"t3","event_type":"run_finished","run_id":"20260101T000000Z-demo","sequence":3,"payload":{}}\n'
+                ),
+                encoding="utf-8",
+            )
+            (run_dir / "summary.json").write_text(
+                '{"schema_version":"1","run_id":"20260101T000000Z-demo","steps":[]}\n',
+                encoding="utf-8",
+            )
+            snapshot = load_replay_snapshot(run_id, str(state_dir))
+            output = render_replay(snapshot)
+            self.assertIn("step_finished", output)
+            self.assertNotIn(" t2 run_finished", output)
+
     def test_replay_renders_execution_preview_when_present(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             state_dir = Path(temp_dir) / "state"

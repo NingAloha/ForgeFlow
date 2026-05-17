@@ -193,6 +193,20 @@
   - `tui/**`
   - `schemas/**`
 
+### `track/needs-rerun-diagnostics`
+- 允许改动：
+  - `forgeflow/runtime/**`（needs_rerun 只读诊断）
+  - `tests/unit/runtime/**`
+  - `tests/unit/entrypoints/**`
+  - `docs/**`
+  - `.github/workflows/**`
+  - `scripts/branch_path_guard.sh`
+- 禁止改动：
+  - `agents/**`
+  - `tui/**`
+  - `schemas/**`
+  - `main.py`
+
 ### `track/docs-review`
 - 允许改动：
   - `README.md`

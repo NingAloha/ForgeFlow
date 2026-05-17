@@ -44,6 +44,18 @@ def render_status(status: RuntimeStatus) -> str:
         for artifact in status.invalidated_artifacts:
             lines.append(f"- invalidated: {artifact}")
 
+    if status.rejected_review_artifacts:
+        lines.append("Rejected Reviews")
+        for artifact in status.rejected_review_artifacts:
+            lines.append(f"- rejected: {artifact}")
+
+    if status.needs_rerun:
+        lines.append("Needs Rerun")
+        artifacts = status.needs_rerun.get("artifacts", [])
+        stages = status.needs_rerun.get("stages", [])
+        lines.append(f"- artifacts: {artifacts}")
+        lines.append(f"- stages: {stages}")
+
     if status.pending_reviews:
         lines.append("Approval Queue")
         for item in status.pending_reviews:

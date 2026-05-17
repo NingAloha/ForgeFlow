@@ -18,6 +18,8 @@ from forgeflow.runtime.pause import load_runtime_pause_state
 from forgeflow.runtime.run_index import load_run_index
 from forgeflow.runtime.lineage import invalidated_artifacts, load_lineage
 from forgeflow.runtime.approval_queue import materialize_pending_reviews
+from forgeflow.runtime.review_state import load_review_state
+from forgeflow.runtime.needs_rerun import compute_needs_rerun
 def _load_json_object(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -38,6 +40,8 @@ class RuntimeStatus:
     last_decision: dict[str, str] | None = None
     lineage_entries: list[dict[str, Any]] = field(default_factory=list)
     invalidated_artifacts: list[str] = field(default_factory=list)
+    rejected_review_artifacts: list[str] = field(default_factory=list)
+    needs_rerun: dict[str, Any] = field(default_factory=dict)
     pending_reviews: list[dict[str, Any]] = field(default_factory=list)
     runtime_paused: bool = False
     pause_reason: str = ""
@@ -300,6 +304,24 @@ def build_status_snapshot(state_dir: str | None = None) -> RuntimeStatus:
     pending = materialize_pending_reviews(runs_root)
     pending_reviews = [{"run_id": item.run_id, "artifact": item.artifact} for item in pending[:50]]
 
+    rejected_review_artifacts: list[str] = []
+    if summary_path is not None:
+        review_state = load_review_state(summary_path.parent)
+        if review_state is not None:
+            rejected_review_artifacts = sorted(
+                {
+                    item.artifact
+                    for item in review_state.items
+                    if item.review_status == "rejected" and item.artifact
+                }
+            )
+
+    needs = compute_needs_rerun(
+        invalidated_artifacts=invalidated,
+        pending_review_artifacts=[item["artifact"] for item in pending_reviews if item.get("artifact")],
+        rejected_review_artifacts=rejected_review_artifacts,
+    )
+
     approval_artifacts: list[dict[str, Any]] = []
     if summary_path is not None:
         approvals_dir = summary_path.parent / "approvals"
@@ -330,6 +352,8 @@ def build_status_snapshot(state_dir: str | None = None) -> RuntimeStatus:
         last_decision=last_decision,
         lineage_entries=lineage_entries,
         invalidated_artifacts=invalidated,
+        rejected_review_artifacts=rejected_review_artifacts,
+        needs_rerun={"artifacts": needs.artifacts, "stages": needs.stages},
         pending_reviews=pending_reviews,
         runtime_paused=pause_state.paused,
         pause_reason=pause_state.reason,

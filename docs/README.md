@@ -9,6 +9,7 @@
 3. [agents/README.md](./agents/README.md)
 4. [entrypoints/README.md](./entrypoints/README.md)
 5. [git-workflow.md](./git-workflow.md)
+6. [runtime-v0-architecture.md](./runtime-v0-architecture.md)
 
 如果你想从代码目录职责入手，再看：
 

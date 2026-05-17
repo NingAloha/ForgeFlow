@@ -181,6 +181,14 @@ is_allowed_for_branch() {
     track/repo-metadata-mit)
       [[ "${file}" == LICENSE ]] && return 0
       ;;
+    track/community-standards-v0)
+      [[ "${file}" == CODE_OF_CONDUCT.md ]] && return 0
+      [[ "${file}" == CONTRIBUTING.md ]] && return 0
+      [[ "${file}" == SECURITY.md ]] && return 0
+      [[ "${file}" == docs/branch-boundaries.md ]] && return 0
+      [[ "${file}" == scripts/branch_path_guard.sh ]] && return 0
+      [[ "${file}" == .github/workflows/* ]] && return 0
+      ;;
   esac
 
   [[ "${file}" == docs/* ]] && return 0

@@ -9,6 +9,8 @@ from .approval_queue import materialize_pending_reviews
 from .lineage import invalidated_artifacts, load_lineage
 from .pause import load_runtime_pause_state
 from .run_index import load_run_index
+from .review_state import load_review_state
+from .needs_rerun import compute_needs_rerun
 
 
 @dataclass(slots=True)
@@ -21,6 +23,8 @@ class ExecutionGateSnapshot:
     approval_summary: dict[str, int]
     lineage_missing: list[str]
     invalidated_artifacts: list[str]
+    rejected_review_artifacts: list[str]
+    needs_rerun: dict[str, Any]
     latest_run_id: str
 
 
@@ -123,6 +127,7 @@ def build_execution_gate_snapshot(
 
     lineage_missing: list[str] = []
     invalidated: list[str] = []
+    rejected_review_artifacts: list[str] = []
     if latest_run_dir is not None:
         lineage = load_lineage(latest_run_dir)
         present = set()
@@ -134,9 +139,29 @@ def build_execution_gate_snapshot(
             reasons.append("lineage_incomplete")
         if invalidated:
             reasons.append("artifacts_invalidated")
+
+        review_state = load_review_state(latest_run_dir)
+        if review_state is not None:
+            rejected_review_artifacts = sorted(
+                {
+                    item.artifact
+                    for item in review_state.items
+                    if item.review_status == "rejected" and item.artifact
+                }
+            )
+            if rejected_review_artifacts:
+                reasons.append("rejected_reviews")
     else:
         reasons.append("no_runs")
         lineage_missing = list(EXPECTED_LINEAGE_ARTIFACTS)
+
+    needs = compute_needs_rerun(
+        invalidated_artifacts=invalidated,
+        pending_review_artifacts=[item["artifact"] for item in pending_review_samples if item.get("artifact")],
+        rejected_review_artifacts=rejected_review_artifacts,
+    )
+    if needs.stages:
+        reasons.append("needs_rerun")
 
     gate_status = "blocked" if reasons else "ready"
     return ExecutionGateSnapshot(
@@ -148,6 +173,8 @@ def build_execution_gate_snapshot(
         approval_summary=approval_summary,
         lineage_missing=lineage_missing,
         invalidated_artifacts=invalidated,
+        rejected_review_artifacts=rejected_review_artifacts,
+        needs_rerun={"artifacts": needs.artifacts, "stages": needs.stages},
         latest_run_id=latest_run_id,
     )
 
@@ -176,6 +203,11 @@ def render_execution_gate(snapshot: ExecutionGateSnapshot) -> str:
         lines.append(f"- invalidated_artifacts: {snapshot.invalidated_artifacts}")
     else:
         lines.append("- invalidated_artifacts: []")
+    if snapshot.rejected_review_artifacts:
+        lines.append(f"- rejected_review_artifacts: {snapshot.rejected_review_artifacts}")
+    else:
+        lines.append("- rejected_review_artifacts: []")
+    lines.append(f"- needs_rerun: {snapshot.needs_rerun}")
     lines.append("Reasons")
     if snapshot.reasons:
         for reason in snapshot.reasons:

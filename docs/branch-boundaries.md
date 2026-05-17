@@ -279,6 +279,21 @@
   - `tests/**`
   - `main.py`
 
+### `track/community-standards-v0`
+- 允许改动：
+  - `CODE_OF_CONDUCT.md`
+  - `CONTRIBUTING.md`
+  - `SECURITY.md`
+  - `docs/branch-boundaries.md`
+  - `.github/workflows/**`
+  - `scripts/branch_path_guard.sh`
+- 禁止改动：
+  - `agents/**`
+  - `tui/**`
+  - `schemas/**`
+  - `tests/**`
+  - `main.py`
+
 ## 通用规则
 - `main` 仅通过 PR 合并，不直接开发。
 - CI 需通过 `ruff check .`、`pytest -q`、分支路径守卫。

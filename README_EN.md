@@ -6,7 +6,8 @@
 
 ## Overview
 ForgeFlow is a structured AI workflow runtime.
-It provides an auditable runtime control plane (state, events, replay, governance, approvals) to drive an explicit, explainable, replayable workflow.
+It provides an auditable runtime control plane (state, events, replay, governance, approvals) to drive an
+explicit, explainable, replayable workflow.
 
 ForgeFlow SE is ForgeFlow's first target profile: a Software Engineering pipeline profile, with staged progression:
 `Requirements -> Solution -> Design -> Implementation -> Testing`.
@@ -153,9 +154,13 @@ The default runtime root is `.forgeflow/`:
 └── generated/
 ```
 
-### Planned runtime artifacts
+### Materialized runtime artifacts
+
+These artifacts are already present in Runtime v0 (materialized cache; may lag behind truth;
+index is cache, not source of truth):
+
 ```text
-.forgeflow/runs/index.json  (planned in Phase B)
+.forgeflow/runs/index.json
 ```
 
 ## Repo metadata suggestions (not applied in this PR)
@@ -169,7 +174,7 @@ The default runtime root is `.forgeflow/`:
   - agentic-workflow
   - runtime-governance
 - LICENSE:
-  - MIT (suggested via a separate small PR)
+  - MIT (present)
 
 ## Installation
 

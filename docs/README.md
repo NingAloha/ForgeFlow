@@ -21,7 +21,8 @@
 
 ## ForgeFlow Runtime v0: Control Plane Closed Loop
 
-ForgeFlow Runtime v0 已形成 **runtime control plane 的闭环**，但 **execution engine 刻意缺席**（mutation disabled by design）。
+ForgeFlow Runtime v0 已形成 **runtime control plane 的闭环**，
+但 **execution engine 刻意缺席**（mutation disabled by design）。
 
 闭环链路：
 
@@ -30,10 +31,12 @@ ForgeFlow Runtime v0 已形成 **runtime control plane 的闭环**，但 **execu
 ### What Phase A–E Completed
 
 - **Phase A**: narrative convergence（将 ForgeFlow 统一为 “AI workflow runtime”，ForgeFlow SE 作为第一个 profile）
-- **Phase B**: `.forgeflow/runs/index.json`（materialized cache index；index is cache, not source of truth；status 优先读 index，必要时 fallback scan）
+- **Phase B**: `.forgeflow/runs/index.json`（materialized cache index；index is cache, not source of
+  truth；status 优先读 index，必要时 fallback scan）
 - **Phase C**: `.forgeflow/runs/<run_id>/lineage.json`（lineage metadata foundation）
 - **Phase D**: review/approval semantics（run-scoped `review_state.json` + read-only queue / aggregation）
-- **Phase E**: intent artifacts + gate diagnostics（`execution_request.json` / `rerun_plan.json` + mutation gate / `--enable-mutation` 仍 blocked / not implemented）
+- **Phase E**: intent artifacts + gate diagnostics（`execution_request.json` / `rerun_plan.json` +
+  mutation gate / `--enable-mutation` 仍 blocked / not implemented）
 
 ### Mutation Status
 
@@ -43,7 +46,8 @@ ForgeFlow Runtime v0 已形成 **runtime control plane 的闭环**，但 **execu
 
 ### Runtime Artifacts (v0)
 
-本节将 runtime artifacts 分为两类：**Source-of-truth artifacts** 与 **Materialized cache / intent artifacts**。其中 intent artifacts 只表达 “意图/计划”，不是事实真相。
+本节将 runtime artifacts 分为两类：**Source-of-truth artifacts** 与
+**Materialized cache / intent artifacts**。其中 intent artifacts 只表达 “意图/计划”，不是事实真相。
 
 **Source-of-truth artifacts**
 

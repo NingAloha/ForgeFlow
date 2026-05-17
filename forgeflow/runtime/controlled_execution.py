@@ -39,7 +39,7 @@ def render_controlled_execution_blocked(
         raise FileNotFoundError(f"execution request not found: {request_path}")
     _ = load_execution_request(request_path) if request_present else {}
 
-    gate = build_execution_gate_snapshot(state_dir=state_dir)
+    gate = build_execution_gate_snapshot(state_dir=state_dir, run_id=run_id)
     lines: list[str] = []
     lines.append("ForgeFlow Controlled Execution")
     lines.append("Status: blocked (not implemented)")
@@ -53,4 +53,3 @@ def render_controlled_execution_blocked(
         lines.append(f"- {item}")
 
     return ControlledExecutionResult(output="\n".join(lines))
-

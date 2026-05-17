@@ -382,7 +382,10 @@ def main() -> int:
             if args.state_dir is not None
             else StateManager()
         )
-        snapshot = build_execution_gate_snapshot(state_dir=Path(state_manager.state_dir))
+        snapshot = build_execution_gate_snapshot(
+            state_dir=Path(state_manager.state_dir),
+            run_id=args.run_id,
+        )
         print(render_execution_gate(snapshot))
         return 0
 

@@ -227,6 +227,12 @@ def main() -> int:
         help="Optional state directory for isolated runs.",
     )
     parser.add_argument(
+        "--run-id",
+        dest="run_id",
+        default=None,
+        help="Target run_id for run-scoped write commands.",
+    )
+    parser.add_argument(
         "--auto-run",
         action="store_true",
         help="Continuously run until DONE or WAIT.",
@@ -293,6 +299,23 @@ def main() -> int:
         help="Print read-only controlled-execution gate diagnostics and exit.",
     )
     parser.add_argument(
+        "--request-execution",
+        action="store_true",
+        help="Materialize an execution intent artifact under runs/<run_id>/ (write-path; no execution).",
+    )
+    parser.add_argument(
+        "--requested-by",
+        dest="requested_by",
+        default="",
+        help="Optional requester identifier for --request-execution.",
+    )
+    parser.add_argument(
+        "--notes",
+        dest="notes",
+        default="",
+        help="Optional notes for --request-execution.",
+    )
+    parser.add_argument(
         "--tui",
         action="store_true",
         help="Start the minimal ForgeShell TUI wrapper.",
@@ -351,6 +374,31 @@ def main() -> int:
         )
         snapshot = build_execution_gate_snapshot(state_dir=Path(state_manager.state_dir))
         print(render_execution_gate(snapshot))
+        return 0
+
+    if args.request_execution:
+        from forgeflow.runtime.execution_request import write_execution_request
+
+        if not args.run_id:
+            print("Execution request error: --run-id is required.", file=sys.stderr)
+            return 1
+        state_manager = (
+            StateManager(state_dir=args.state_dir)
+            if args.state_dir is not None
+            else StateManager()
+        )
+        runs_root = Path(state_manager.state_dir).parent / "runs"
+        try:
+            path = write_execution_request(
+                runs_root=runs_root,
+                run_id=args.run_id,
+                requested_by=args.requested_by,
+                notes=args.notes,
+            )
+        except Exception as exc:
+            print(f"Execution request error: {exc}", file=sys.stderr)
+            return 1
+        print(f"Wrote execution request: {path}")
         return 0
 
     if args.status:

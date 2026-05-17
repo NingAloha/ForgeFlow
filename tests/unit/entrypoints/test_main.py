@@ -64,6 +64,43 @@ class MainDiagnosticViewTests(unittest.TestCase):
             self.assertFalse((runs_dir / "events.jsonl").exists())
             mock_orchestrator_cls.assert_not_called()
 
+    @patch("main.print")
+    @patch("main.Orchestrator")
+    def test_rerun_plan_mode_writes_run_scoped_plan_and_prints_summary(
+        self,
+        mock_orchestrator_cls: MagicMock,
+        mock_print: MagicMock,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            runtime_root = Path(temp_dir)
+            state_dir = runtime_root / "state"
+            state_dir.mkdir(parents=True, exist_ok=True)
+            runs_root = runtime_root / "runs"
+            run_id = "20260101T000000Z-demo0000"
+            run_dir = runs_root / run_id
+            run_dir.mkdir(parents=True, exist_ok=True)
+
+            with patch(
+                "sys.argv",
+                [
+                    "main.py",
+                    "--state-dir",
+                    str(state_dir),
+                    "--run-id",
+                    run_id,
+                    "--rerun-plan",
+                ],
+            ):
+                exit_code = main()
+
+            plan_path = run_dir / "rerun_plan.json"
+            self.assertEqual(exit_code, 0)
+            self.assertTrue(plan_path.exists())
+            printed = "\n".join(str(call.args[0]) for call in mock_print.call_args_list if call.args)
+            self.assertIn(f"Wrote rerun plan: {plan_path}", printed)
+            self.assertIn("Plan status: blocked", printed)
+            mock_orchestrator_cls.assert_not_called()
+
     def test_classify_decision_marks_bootstrap_runs(self) -> None:
         result = OrchestrationResult(
             decision=TransitionDecision(

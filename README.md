@@ -95,11 +95,11 @@ ForgeFlow 的默认 runtime root 为 `.forgeflow/`：
 └── generated/
 ```
 
-### Planned runtime artifacts
-以下 runtime artifacts 会在后续阶段引入：
+### Materialized runtime artifacts
+以下 artifacts 已在 Runtime v0 中引入（materialized cache；may lag behind truth；index is cache, not source of truth）：
 
 ```text
-.forgeflow/runs/index.json  (planned in Phase B)
+.forgeflow/runs/index.json
 ```
 
 ### 当前能力边界矩阵
@@ -260,7 +260,7 @@ forgeflow --tui
 - 保持 Orchestrator 单控制面，不把 TUI 扩成第二控制面。
 
 ## Repo metadata suggestions（not applied in this PR）
-以下是建议的 GitHub repo 元信息（本 PR 不修改 repo settings，也不修改 `LICENSE` 文件）：
+以下是建议的 GitHub repo 元信息（不修改 repo settings；Description/Topics 需手动设置）：
 
 - GitHub Description：
   - A structured AI workflow runtime. First profile: Software Engineering Pipeline.
@@ -272,7 +272,7 @@ forgeflow --tui
   - agentic-workflow
   - runtime-governance
 - LICENSE：
-  - MIT（建议另开极小 PR 初始化）
+  - MIT（已设置）
 
 ## 英文版本
 英文开发者概览见 [README_EN.md](./README_EN.md)。

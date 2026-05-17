@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +33,7 @@ class RuntimeReplaySnapshot:
     blockers: list[str]
     lineage_entries: list[dict[str, Any]]
     review_items: list[dict[str, Any]]
+    execution_preview: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -289,6 +290,15 @@ def load_replay_snapshot(run_id: str, state_dir: str | None = None) -> RuntimeRe
             for item in review_state.items
         ]
 
+    execution_preview: dict[str, Any] = {}
+    preview_path = run_dir / "execution_preview.json"
+    if preview_path.exists() and preview_path.is_file():
+        try:
+            preview_payload = json.loads(preview_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            preview_payload = {}
+        execution_preview = preview_payload if isinstance(preview_payload, dict) else {}
+
     return RuntimeReplaySnapshot(
         run_id=str(payload.get("run_id", safe_run_id)).strip() or safe_run_id,
         final_stage=final_stage,
@@ -299,6 +309,7 @@ def load_replay_snapshot(run_id: str, state_dir: str | None = None) -> RuntimeRe
         blockers=_collect_blockers(steps),
         lineage_entries=lineage_entries,
         review_items=review_items,
+        execution_preview=execution_preview,
     )
 
 
@@ -367,5 +378,25 @@ def render_replay(snapshot: RuntimeReplaySnapshot) -> str:
             artifact = str(item.get("artifact", "")).strip() or "unknown"
             status = str(item.get("review_status", "")).strip() or "unknown"
             lines.append(f"- {artifact}: {status}")
+
+    if snapshot.execution_preview:
+        lines.append("Materialization:")
+        generated_root = str(snapshot.execution_preview.get("generated_root", "")).strip()
+        status = str(snapshot.execution_preview.get("status", "")).strip() or "unknown"
+        lines.append(f"- generated_root: {generated_root or '(missing)'}")
+        lines.append(f"- status: {status}")
+
+        writes = snapshot.execution_preview.get("writes", [])
+        if isinstance(writes, list) and writes:
+            lines.append("- writes:")
+            for item in writes:
+                if not isinstance(item, dict):
+                    continue
+                path = str(item.get("path", "")).strip()
+                op = str(item.get("type", "")).strip() or "write"
+                if path:
+                    lines.append(f"  - {op}: {path}")
+        else:
+            lines.append("- writes: []")
 
     return "\n".join(lines)

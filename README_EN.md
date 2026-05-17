@@ -14,7 +14,7 @@ ForgeFlow SE is ForgeFlow's first target profile: a Software Engineering pipelin
 
 ForgeShell is the primary UI target, while the CLI runner is the current development/debug entrypoint.
 
-## Three Layers (Core / Profile / Shell)
+## Four Concepts (Core / Profile / Skill / Shell)
 
 ### ForgeFlow Core
 Owns runtime convergence and control-plane semantics:
@@ -34,8 +34,11 @@ Owns staged software engineering artifacts:
 - Implementation
 - Testing
 
+### ForgeFlow Skills
+Owns localized, swappable operational capabilities that profiles rely on for concrete actions.
+
 ### ForgeShell
-Owns human-in-the-loop interaction and inspection:
+As the human interface (entrypoint) layer, owns human-in-the-loop interaction and inspection:
 - human-in-the-loop interaction
 - runtime inspection
 - approvals

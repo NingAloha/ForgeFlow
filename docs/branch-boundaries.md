@@ -177,6 +177,20 @@
   - `schemas/**`
   - `tests/unit/agents/**`
 
+### `track/execution-eligibility-split`
+- 允许改动：
+  - `main.py`（execution gate eligibility split / diagnostics）
+  - `forgeflow/runtime/**`
+  - `tests/unit/runtime/**`
+  - `docs/**`
+  - `.github/workflows/**`
+  - `scripts/branch_path_guard.sh`
+- 禁止改动：
+  - `agents/**`
+  - `tui/**`
+  - `schemas/**`
+  - `tests/unit/agents/**`
+
 ### `track/lineage-invalidation-metadata`
 - 允许改动：
   - `agents/orchestrator/**`（仅 lineage invalidation metadata 写入）

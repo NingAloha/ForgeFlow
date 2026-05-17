@@ -387,10 +387,14 @@ def main() -> int:
             if args.state_dir is not None
             else StateManager()
         )
-        snapshot = build_execution_gate_snapshot(
-            state_dir=Path(state_manager.state_dir),
-            run_id=args.run_id,
-        )
+        try:
+            snapshot = build_execution_gate_snapshot(
+                state_dir=Path(state_manager.state_dir),
+                run_id=args.run_id,
+            )
+        except Exception as exc:
+            print(f"Execution gate error: {exc}", file=sys.stderr)
+            return 1
         print(render_execution_gate(snapshot))
         return 0
 

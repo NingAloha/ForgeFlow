@@ -177,6 +177,22 @@
   - `schemas/**`
   - `tests/unit/agents/**`
 
+### `track/lineage-invalidation-metadata`
+- 允许改动：
+  - `agents/orchestrator/**`（仅 lineage invalidation metadata 写入）
+  - `forgeflow/runtime/**`
+  - `tests/unit/runtime/**`
+  - `tests/unit/orchestrator/**`
+  - `tests/unit/entrypoints/**`
+  - `docs/**`
+  - `.github/workflows/**`
+  - `scripts/branch_path_guard.sh`
+- 禁止改动：
+  - `agents/implementation_engineer/**`
+  - `agents/test_validation_engineer/**`
+  - `tui/**`
+  - `schemas/**`
+
 ### `track/docs-review`
 - 允许改动：
   - `README.md`

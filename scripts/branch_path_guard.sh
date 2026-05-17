@@ -123,6 +123,14 @@ is_allowed_for_branch() {
       [[ "${file}" == tests/unit/runtime/* ]] && return 0
       [[ "${file}" == docs/* ]] && return 0
       ;;
+    track/lineage-invalidation-metadata)
+      [[ "${file}" == agents/orchestrator/* ]] && return 0
+      [[ "${file}" == forgeflow/runtime/* ]] && return 0
+      [[ "${file}" == tests/unit/runtime/* ]] && return 0
+      [[ "${file}" == tests/unit/orchestrator/* ]] && return 0
+      [[ "${file}" == tests/unit/entrypoints/* ]] && return 0
+      [[ "${file}" == docs/* ]] && return 0
+      ;;
     track/artifact-lineage-foundation)
       [[ "${file}" == agents/orchestrator/* ]] && return 0
       [[ "${file}" == forgeflow/runtime/* ]] && return 0

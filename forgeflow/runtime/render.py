@@ -39,6 +39,11 @@ def render_status(status: RuntimeStatus) -> str:
             generated_by = str(item.get("generated_by", "")).strip() or "unknown"
             lines.append(f"- {artifact}: depends_on={depends_on} generated_by={generated_by}")
 
+    if status.invalidated_artifacts:
+        lines.append("Invalidations")
+        for artifact in status.invalidated_artifacts:
+            lines.append(f"- invalidated: {artifact}")
+
     if status.pending_reviews:
         lines.append("Approval Queue")
         for item in status.pending_reviews:

@@ -8,6 +8,7 @@ from pathlib import Path
 from forgeflow.runtime.execution_gate import build_execution_gate_snapshot
 from forgeflow.runtime.review_state import upsert_pending_review
 from forgeflow.runtime.run_index import update_run_index, build_index_entry
+from forgeflow.runtime.lineage import upsert_lineage_entry
 
 
 class ExecutionGateTests(unittest.TestCase):
@@ -109,6 +110,42 @@ class ExecutionGateTests(unittest.TestCase):
             snapshot = build_execution_gate_snapshot(state_dir=state_dir)
             self.assertEqual(snapshot.latest_run_id, new_run)
             self.assertNotIn("no_approvals", snapshot.reasons)
+
+    def test_gate_reports_invalidations_from_lineage(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            runtime_root = Path(tmp_dir)
+            state_dir = runtime_root / "state"
+            state_dir.mkdir(parents=True, exist_ok=True)
+            runs_root = runtime_root / "runs"
+            runs_root.mkdir(parents=True, exist_ok=True)
+
+            run_id = "20260101T000000Z-demo0000"
+            run_dir = runs_root / run_id
+            run_dir.mkdir(parents=True, exist_ok=True)
+            (run_dir / "summary.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": "1",
+                        "run_id": run_id,
+                        "original_request": "x",
+                        "generated_project_dir": str(runtime_root / "generated" / "x"),
+                        "state_dir": str(state_dir),
+                        "latest_summary": "ok",
+                        "latest_final_stage": "SOLUTION",
+                        "latest_decision_type": "FORWARD",
+                        "steps": [{"timestamp": "2026-01-01T00:00:00Z"}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            # Populate downstream so invalidation has an effect.
+            upsert_lineage_entry(run_dir=run_dir, run_id=run_id, artifact="solution", generated_by="S")
+            upsert_lineage_entry(run_dir=run_dir, run_id=run_id, artifact="system_design", generated_by="D")
+            upsert_lineage_entry(run_dir=run_dir, run_id=run_id, artifact="spec", generated_by="R2")
+
+            snapshot = build_execution_gate_snapshot(state_dir=state_dir)
+            self.assertIn("artifacts_invalidated", snapshot.reasons)
 
 
 if __name__ == "__main__":

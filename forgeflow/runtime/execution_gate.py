@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .approval_queue import materialize_pending_reviews
-from .lineage import load_lineage
+from .lineage import invalidated_artifacts, load_lineage
 from .pause import load_runtime_pause_state
 from .run_index import load_run_index
 
@@ -20,6 +20,7 @@ class ExecutionGateSnapshot:
     pending_review_samples: list[dict[str, str]]
     approval_summary: dict[str, int]
     lineage_missing: list[str]
+    invalidated_artifacts: list[str]
     latest_run_id: str
 
 
@@ -121,14 +122,18 @@ def build_execution_gate_snapshot(
         reasons.append("no_approvals")
 
     lineage_missing: list[str] = []
+    invalidated: list[str] = []
     if latest_run_dir is not None:
         lineage = load_lineage(latest_run_dir)
         present = set()
         if lineage is not None:
             present = {str(item.artifact).strip() for item in lineage.entries}
+            invalidated = invalidated_artifacts(lineage)
         lineage_missing = [item for item in EXPECTED_LINEAGE_ARTIFACTS if item not in present]
         if lineage_missing:
             reasons.append("lineage_incomplete")
+        if invalidated:
+            reasons.append("artifacts_invalidated")
     else:
         reasons.append("no_runs")
         lineage_missing = list(EXPECTED_LINEAGE_ARTIFACTS)
@@ -142,6 +147,7 @@ def build_execution_gate_snapshot(
         pending_review_samples=pending_review_samples,
         approval_summary=approval_summary,
         lineage_missing=lineage_missing,
+        invalidated_artifacts=invalidated,
         latest_run_id=latest_run_id,
     )
 
@@ -166,6 +172,10 @@ def render_execution_gate(snapshot: ExecutionGateSnapshot) -> str:
         lines.append(f"- lineage_missing: {snapshot.lineage_missing}")
     else:
         lines.append("- lineage_missing: []")
+    if snapshot.invalidated_artifacts:
+        lines.append(f"- invalidated_artifacts: {snapshot.invalidated_artifacts}")
+    else:
+        lines.append("- invalidated_artifacts: []")
     lines.append("Reasons")
     if snapshot.reasons:
         for reason in snapshot.reasons:

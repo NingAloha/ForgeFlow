@@ -206,6 +206,20 @@
   - `schemas/**`
   - `tests/unit/agents/**`
 
+### `track/replay-materialization-rendering`
+- 允许改动：
+  - `main.py`（replay CLI rendering; read-only）
+  - `forgeflow/runtime/**`（replay rendering of execution_preview + timeline）
+  - `tests/unit/runtime/**`
+  - `docs/**`
+  - `.github/workflows/**`
+  - `scripts/branch_path_guard.sh`
+- 禁止改动：
+  - `agents/**`
+  - `tui/**`
+  - `schemas/**`
+  - `tests/unit/agents/**`
+
 ### `track/lineage-invalidation-metadata`
 - 允许改动：
   - `agents/orchestrator/**`（仅 lineage invalidation metadata 写入）

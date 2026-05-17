@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from forgeflow.runtime.replay import ReplayLoadError, load_replay_snapshot
+from forgeflow.runtime.replay import ReplayLoadError, load_replay_snapshot, render_replay
 
 
 class RuntimeReplayInvariantTests(unittest.TestCase):
@@ -30,6 +30,31 @@ class RuntimeReplayInvariantTests(unittest.TestCase):
             snapshot = load_replay_snapshot(run_id, str(state_dir))
             self.assertTrue(snapshot.timeline)
             self.assertEqual(snapshot.timeline[0].get("event_type"), "run_started")
+
+    def test_replay_renders_execution_preview_when_present(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_dir = Path(temp_dir) / "state"
+            run_id = "20260101T000000Z-demo"
+            run_dir = Path(temp_dir) / "runs" / run_id
+            run_dir.mkdir(parents=True, exist_ok=True)
+            (run_dir / "summary.json").write_text(
+                '{"schema_version":"1","run_id":"20260101T000000Z-demo","steps":[]}\n',
+                encoding="utf-8",
+            )
+            (run_dir / "execution_preview.json").write_text(
+                (
+                    '{"schema_version":"1","run_id":"20260101T000000Z-demo","mode":"sandbox_preview",'
+                    '"status":"completed","generated_root":".forgeflow/generated/20260101T000000Z-demo/",'
+                    '"writes":[{"path":".forgeflow/generated/20260101T000000Z-demo/README.md","type":"create_or_overwrite"}]}\n'
+                ),
+                encoding="utf-8",
+            )
+
+            snapshot = load_replay_snapshot(run_id, str(state_dir))
+            output = render_replay(snapshot)
+            self.assertIn("Materialization:", output)
+            self.assertIn("generated_root:", output)
+            self.assertIn("create_or_overwrite:", output)
 
     def test_replay_falls_back_to_summary_steps_when_events_missing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

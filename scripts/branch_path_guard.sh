@@ -178,6 +178,9 @@ is_allowed_for_branch() {
       [[ "${file}" == runs/manual_reviews/* ]] && return 0
       [[ "${file}" == README.md || "${file}" == README_EN.md ]] && return 0
       ;;
+    track/repo-metadata-mit)
+      [[ "${file}" == LICENSE ]] && return 0
+      ;;
   esac
 
   [[ "${file}" == docs/* ]] && return 0

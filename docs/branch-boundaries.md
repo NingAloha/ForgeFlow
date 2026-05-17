@@ -237,6 +237,21 @@
   - `schemas/**`
   - `tests/unit/agents/**`
 
+### `track/controlled-execution-toggle`
+- 允许改动：
+  - `main.py`（--enable-mutation 诊断入口，仍然 blocked）
+  - `forgeflow/runtime/**`
+  - `tests/unit/runtime/**`
+  - `tests/unit/entrypoints/**`
+  - `docs/**`
+  - `.github/workflows/**`
+  - `scripts/branch_path_guard.sh`
+- 禁止改动：
+  - `agents/**`
+  - `tui/**`
+  - `schemas/**`
+  - `tests/unit/agents/**`
+
 ### `track/docs-review`
 - 允许改动：
   - `README.md`

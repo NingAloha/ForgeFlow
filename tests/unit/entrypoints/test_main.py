@@ -101,6 +101,45 @@ class MainDiagnosticViewTests(unittest.TestCase):
             self.assertIn("Plan status: blocked", printed)
             mock_orchestrator_cls.assert_not_called()
 
+    @patch("main.print")
+    @patch("main.Orchestrator")
+    def test_enable_mutation_mode_is_blocked_and_prints_prerequisites(
+        self,
+        mock_orchestrator_cls: MagicMock,
+        mock_print: MagicMock,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            runtime_root = Path(temp_dir)
+            state_dir = runtime_root / "state"
+            state_dir.mkdir(parents=True, exist_ok=True)
+            runs_root = runtime_root / "runs"
+            run_id = "20260101T000000Z-demo0000"
+            run_dir = runs_root / run_id
+            run_dir.mkdir(parents=True, exist_ok=True)
+            (run_dir / "execution_request.json").write_text(
+                '{"schema_version":"1","run_id":"20260101T000000Z-demo0000","requested_capability":"controlled_execution"}\n',
+                encoding="utf-8",
+            )
+
+            with patch(
+                "sys.argv",
+                [
+                    "main.py",
+                    "--state-dir",
+                    str(state_dir),
+                    "--run-id",
+                    run_id,
+                    "--enable-mutation",
+                ],
+            ):
+                exit_code = main()
+
+            self.assertEqual(exit_code, 0)
+            printed = "\n".join(str(call.args[0]) for call in mock_print.call_args_list if call.args)
+            self.assertIn("blocked (not implemented)", printed)
+            self.assertIn("Phase F prerequisites:", printed)
+            mock_orchestrator_cls.assert_not_called()
+
     def test_classify_decision_marks_bootstrap_runs(self) -> None:
         result = OrchestrationResult(
             decision=TransitionDecision(

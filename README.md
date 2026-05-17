@@ -72,6 +72,18 @@ CLI Runner (Dev / Debug) ┘
 - requirements/solution/design/implementation/testing 均已接入主链路。
 - implementation 当前产出是交接信息与预览信息，不是实际代码落盘。
 
+## Runtime Model
+ForgeFlow 的架构方向是 runtime-first：优先把可治理、可回放、可审计的 runtime 语义收敛清楚，
+再在明确边界内逐步引入执行能力（governed execution）。
+
+- **Core Runtime**：收敛 replay、lineage、approvals 与执行边界等 runtime control plane 语义。
+- **Profiles**：定义领域工作流形态；ForgeFlow SE 是第一个 profile（软件工程 pipeline）。
+- **Skills**：提供局部、可替换的操作能力（工具化能力），用于支撑 profile 的具体运行需求。
+
+继续阅读：
+- [docs/runtime-theory.md](./docs/runtime-theory.md)
+- [docs/runtime-theory.en.md](./docs/runtime-theory.en.md)
+
 ## Runtime Principles
 - State is explicit.
 - Replay is read-only.

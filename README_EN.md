@@ -75,6 +75,18 @@ Unsupported control commands (not implemented):
 - `--tui` launches the minimal ForgeShell terminal shell.
 - Implementation currently produces handoff artifacts and execution previews, not real code mutation.
 
+## Runtime Model
+ForgeFlow is runtime-first: it prioritizes governed runtime semantics (replayability, auditability, boundaries)
+before enabling autonomous execution.
+
+- **Core Runtime**: converges control-plane semantics such as replay, lineage, approvals, and execution boundaries.
+- **Profiles**: define domain workflows; ForgeFlow SE is the first profile (software engineering pipeline).
+- **Skills**: localized, swappable operational capabilities that profiles rely on for concrete actions.
+
+Further reading:
+- [docs/runtime-theory.en.md](./docs/runtime-theory.en.md)
+- [docs/runtime-theory.md](./docs/runtime-theory.md)
+
 ### Capability Boundary Matrix
 | Capability | Status |
 | --- | --- |

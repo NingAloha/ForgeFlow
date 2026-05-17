@@ -12,6 +12,11 @@
 6. [runtime-v0-architecture.md](./runtime-v0-architecture.md)
 7. [runtime-v0.md](./runtime-v0.md)
 
+## Runtime Semantics Notes
+
+- [runtime-theory.md](./runtime-theory.md)
+- [runtime-theory.en.md](./runtime-theory.en.md)
+
 如果你想从代码目录职责入手，再看：
 
 * [../agents/README.md](../agents/README.md)

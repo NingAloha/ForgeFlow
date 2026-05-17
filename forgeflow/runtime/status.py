@@ -16,7 +16,7 @@ from agents.state_manager import StateManager
 from schemas.run_summary import RunSummaryModel
 from forgeflow.runtime.pause import load_runtime_pause_state
 from forgeflow.runtime.run_index import load_run_index
-from forgeflow.runtime.lineage import load_lineage
+from forgeflow.runtime.lineage import invalidated_artifacts, load_lineage
 from forgeflow.runtime.approval_queue import materialize_pending_reviews
 def _load_json_object(path: Path) -> dict[str, Any]:
     try:
@@ -37,6 +37,7 @@ class RuntimeStatus:
     blockers: list[str]
     last_decision: dict[str, str] | None = None
     lineage_entries: list[dict[str, Any]] = field(default_factory=list)
+    invalidated_artifacts: list[str] = field(default_factory=list)
     pending_reviews: list[dict[str, Any]] = field(default_factory=list)
     runtime_paused: bool = False
     pause_reason: str = ""
@@ -280,6 +281,7 @@ def build_status_snapshot(state_dir: str | None = None) -> RuntimeStatus:
         blockers = list(blockers) + ["runtime_paused"]
 
     lineage_entries: list[dict[str, Any]] = []
+    invalidated: list[str] = []
     if summary_path is not None:
         lineage = load_lineage(summary_path.parent)
         if lineage is not None:
@@ -292,6 +294,7 @@ def build_status_snapshot(state_dir: str | None = None) -> RuntimeStatus:
                 }
                 for item in lineage.entries
             ]
+            invalidated = invalidated_artifacts(lineage)
 
     pending_reviews: list[dict[str, Any]] = []
     pending = materialize_pending_reviews(runs_root)
@@ -326,6 +329,7 @@ def build_status_snapshot(state_dir: str | None = None) -> RuntimeStatus:
         blockers=blockers,
         last_decision=last_decision,
         lineage_entries=lineage_entries,
+        invalidated_artifacts=invalidated,
         pending_reviews=pending_reviews,
         runtime_paused=pause_state.paused,
         pause_reason=pause_state.reason,

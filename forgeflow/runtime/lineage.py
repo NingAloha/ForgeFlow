@@ -48,6 +48,50 @@ def depends_on_for_artifact(artifact: LineageArtifact) -> list[str]:
     return []
 
 
+def _dependency_closure(artifact: str) -> set[str]:
+    """
+    Return all downstream artifacts (transitive) that depend on `artifact`.
+    """
+    graph: dict[str, list[str]] = {
+        "spec": ["solution"],
+        "solution": ["system_design"],
+        "system_design": ["implementation_status"],
+        "implementation_status": ["test_report"],
+        "test_report": [],
+    }
+    visited: set[str] = set()
+    stack = list(graph.get(artifact, []))
+    while stack:
+        node = stack.pop()
+        if node in visited:
+            continue
+        visited.add(node)
+        stack.extend(graph.get(node, []))
+    return visited
+
+
+def _write_lineage(run_dir: Path, run_id: str, entries: list[LineageEntry]) -> None:
+    payload = {
+        "schema_version": "1",
+        "run_id": str(run_id).strip(),
+        "entries": [
+            {
+                "artifact": item.artifact,
+                "depends_on": item.depends_on,
+                "generated_by": item.generated_by,
+                "invalidated_by": item.invalidated_by,
+            }
+            for item in entries
+        ],
+    }
+
+    path = _lineage_path(run_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(".json.tmp")
+    tmp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    tmp_path.replace(path)
+
+
 def load_lineage(run_dir: Path) -> LineageMetadata | None:
     path = _lineage_path(run_dir)
     if not path.exists():
@@ -98,32 +142,33 @@ def upsert_lineage_entry(
     entries: list[LineageEntry] = [] if existing is None else list(existing.entries)
 
     by_artifact: dict[str, LineageEntry] = {item.artifact: item for item in entries if item.artifact}
+    # When an artifact is regenerated, it is no longer invalidated.
     by_artifact[str(artifact)] = LineageEntry(
         artifact=str(artifact),
         depends_on=depends_on_for_artifact(artifact),
         generated_by=str(generated_by).strip(),
         invalidated_by=[],
     )
+
+    # Mark downstream artifacts as invalidated by this artifact (metadata-only).
+    invalidates = _dependency_closure(str(artifact))
+    for downstream in invalidates:
+        current = by_artifact.get(downstream)
+        if current is None:
+            continue
+        markers = set(current.invalidated_by)
+        markers.add(str(artifact))
+        current.invalidated_by = sorted(markers)
+        by_artifact[downstream] = current
+
     merged = list(by_artifact.values())
     merged.sort(key=lambda item: item.artifact)
+    _write_lineage(run_dir, run_id, merged)
 
-    payload = {
-        "schema_version": "1",
-        "run_id": str(run_id).strip(),
-        "entries": [
-            {
-                "artifact": item.artifact,
-                "depends_on": item.depends_on,
-                "generated_by": item.generated_by,
-                "invalidated_by": item.invalidated_by,
-            }
-            for item in merged
-        ],
-    }
 
-    path = _lineage_path(run_dir)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(".json.tmp")
-    tmp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    tmp_path.replace(path)
-
+def invalidated_artifacts(lineage: LineageMetadata) -> list[str]:
+    invalidated: list[str] = []
+    for entry in lineage.entries:
+        if entry.invalidated_by:
+            invalidated.append(entry.artifact)
+    return sorted(invalidated)

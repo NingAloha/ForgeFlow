@@ -12,6 +12,9 @@ RuntimeEventType = Literal[
     "decision_computed",
     "stage_executed",
     "run_finished",
+    "materialization_preview_started",
+    "materialization_preview_written",
+    "materialization_preview_finished",
 ]
 
 
@@ -86,6 +89,9 @@ def load_runtime_events(run_dir: Path) -> RuntimeEventLog:
             "decision_computed",
             "stage_executed",
             "run_finished",
+            "materialization_preview_started",
+            "materialization_preview_written",
+            "materialization_preview_finished",
         }:
             errors.append(
                 {"line_no": idx, "raw": raw, "reason": "invalid_field: event_type"}
@@ -172,4 +178,3 @@ def append_runtime_event(
     with path.open("a", encoding="utf-8") as handle:
         handle.write(line + "\n")
     return event
-

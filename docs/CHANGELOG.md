@@ -2,6 +2,8 @@
 
 This changelog records notable changes for ForgeFlow runtime releases.
 
+Note: This file lives under `docs/` because `track/**` branches are path-guarded; repository-root docs files (other than `README*`) are intentionally restricted.
+
 ## v0.2.1 (2026-05-18)
 
 Stabilization release focused on governed materialization reliability, attempt lifecycle semantics, and replay/gate observability. No mutation semantics are introduced in this release.

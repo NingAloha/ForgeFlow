@@ -59,7 +59,20 @@ class RuntimeEventsTests(unittest.TestCase):
             self.assertEqual([e.sequence for e in log.events], [1, 2])
             self.assertTrue(log.errors)
 
+    def test_step_finished_is_accepted_by_event_loader(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir) / "runs" / "run-1"
+            run_dir.mkdir(parents=True, exist_ok=True)
+            (run_dir / "events.jsonl").write_text(
+                (
+                    '{"timestamp":"t1","event_type":"run_started","run_id":"run-1","sequence":1,"payload":{}}\n'
+                    '{"timestamp":"t2","event_type":"step_finished","run_id":"run-1","sequence":2,"payload":{}}\n'
+                ),
+                encoding="utf-8",
+            )
+            log = load_runtime_events(run_dir)
+            self.assertEqual([e.event_type for e in log.events], ["run_started", "step_finished"])
+
 
 if __name__ == "__main__":
     unittest.main()
-

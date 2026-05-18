@@ -622,7 +622,7 @@ class Orchestrator:
         try:
             append_runtime_event(
                 self.runs_dir,
-                event_type="run_finished",
+                event_type="step_finished",
                 run_id=self.run_id,
                 payload={
                     "latest_final_stage": str(decision.final_stage),
@@ -636,17 +636,41 @@ class Orchestrator:
 
         try:
             runs_root = self.runs_dir.parent
-            update_index_on_run_event(
-                runs_root=runs_root,
-                event_type="run_finished",
-                run_id=self.run_id,
-                final_stage=str(decision.final_stage),
-                finished_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            )
+            if decision.final_stage == Stage.DONE:
+                update_index_on_run_event(
+                    runs_root=runs_root,
+                    event_type="run_finished",
+                    run_id=self.run_id,
+                    final_stage=str(decision.final_stage),
+                    finished_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                )
+            else:
+                update_index_on_run_event(
+                    runs_root=runs_root,
+                    event_type="stage_executed",
+                    run_id=self.run_id,
+                    final_stage=str(decision.final_stage),
+                )
         except Exception as exc:
             self._run_index_warnings.append(
                 {"action": "run_finished", "error": str(exc)}
             )
+
+        if decision.final_stage == Stage.DONE:
+            try:
+                append_runtime_event(
+                    self.runs_dir,
+                    event_type="run_finished",
+                    run_id=self.run_id,
+                    payload={
+                        "latest_final_stage": str(decision.final_stage),
+                        "latest_decision_type": decision_type_for_event,
+                    },
+                )
+            except Exception as exc:
+                self._event_log_warnings.append(
+                    {"event_type": "run_finished", "error": str(exc)}
+                )
 
         result = OrchestrationResult(
             decision=decision,

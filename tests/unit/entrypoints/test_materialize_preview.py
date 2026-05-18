@@ -254,6 +254,66 @@ class MaterializePreviewEntrypointTests(unittest.TestCase):
             self.assertIn('"event_type": "materialization_preview_failed"', events_text)
             self.assertIn('"event_type": "materialization_preview_finished"', events_text)
 
+    def test_materialize_preview_preserves_completed_when_finish_event_append_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            runtime_root = Path(tmp_dir) / ".forgeflow"
+            state_dir = runtime_root / "state"
+            state_dir.mkdir(parents=True, exist_ok=True)
+            runs_root = runtime_root / "runs"
+            runs_root.mkdir(parents=True, exist_ok=True)
+
+            run_id = "20260102T000000Z-new00000"
+            run_dir = runs_root / run_id
+            run_dir.mkdir(parents=True, exist_ok=True)
+            (run_dir / "summary.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": "1",
+                        "run_id": run_id,
+                        "original_request": "x",
+                        "generated_project_dir": str(runtime_root / "generated" / "x"),
+                        "state_dir": str(state_dir),
+                        "latest_summary": "ok",
+                        "latest_final_stage": "SOLUTION",
+                        "latest_decision_type": "FORWARD",
+                        "steps": [{"timestamp": "2026-01-02T00:00:00Z"}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            for artifact in ["spec", "solution", "system_design", "implementation_status", "test_report"]:
+                upsert_lineage_entry(run_dir=run_dir, run_id=run_id, artifact=artifact, generated_by="x")  # type: ignore[arg-type]
+                set_review_decision(
+                    run_dir=run_dir,
+                    run_id=run_id,
+                    artifact=artifact,
+                    review_status="approved",
+                    reviewed_by="tester",
+                    review_reason="ok",
+                    reviewed_at="2026-01-02T00:00:00Z",
+                )
+
+            write_execution_request(runs_root=runs_root, run_id=run_id, requested_by="tester", notes="x")
+
+            from forgeflow.runtime import events as events_mod
+
+            real_append = events_mod.append_runtime_event
+
+            def guarded_append_runtime_event(run_dir: Path, event_type: str, run_id: str, payload=None):  # type: ignore[no-untyped-def]
+                if event_type == "materialization_preview_finished":
+                    raise OSError("simulated events append failure")
+                return real_append(run_dir, event_type=event_type, run_id=run_id, payload=payload)
+
+            with patch("forgeflow.runtime.materialization_preview.append_runtime_event", new=guarded_append_runtime_event):
+                result = materialize_sandbox_preview(state_dir=state_dir, run_id=run_id)
+                self.assertEqual(result.get("status"), "completed")
+                self.assertIn("warnings", result)
+
+            preview_payload = json.loads((run_dir / "execution_preview.json").read_text(encoding="utf-8"))
+            self.assertEqual(preview_payload.get("status"), "completed")
+            self.assertIn("warnings", preview_payload)
+
 
 if __name__ == "__main__":
     unittest.main()

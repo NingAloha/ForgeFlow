@@ -491,6 +491,12 @@ def main() -> int:
         if bool(result.get("no_op", False)):
             print("Materialization preview already completed; no-op.")
             return 0
+        warnings = result.get("warnings", [])
+        if isinstance(warnings, list):
+            for warning in warnings:
+                text = str(warning).strip()
+                if text:
+                    print(f"Materialization warning: {text}", file=sys.stderr)
         print("Materialization preview completed.")
         print(f"Wrote execution preview: .forgeflow/runs/{result.get('run_id')}/execution_preview.json")
         print(f"Wrote generated README: .forgeflow/generated/{result.get('run_id')}/README.md")

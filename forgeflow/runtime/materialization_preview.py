@@ -171,15 +171,20 @@ def materialize_sandbox_preview(
         preview_payload["status"] = "completed"
         _write_json_atomic(preview_path, preview_payload)
 
-        append_runtime_event(
-            run_dir=run_dir,
-            event_type="materialization_preview_finished",
-            run_id=rid,
-            payload={
-                "status": "completed",
-                "execution_preview_path": "execution_preview.json",
-            },
-        )
+        try:
+            append_runtime_event(
+                run_dir=run_dir,
+                event_type="materialization_preview_finished",
+                run_id=rid,
+                payload={
+                    "status": "completed",
+                    "execution_preview_path": "execution_preview.json",
+                },
+            )
+        except Exception as exc:
+            # Preserve completed status: failure to append the finish event does not mean the attempt failed.
+            preview_payload["warnings"] = [f"finish_event_append_failed: {exc}"]
+            _write_json_atomic(preview_path, preview_payload)
     except Exception as exc:
         # Record a failed attempt. This does not imply the run failed.
         preview_payload["status"] = "failed"

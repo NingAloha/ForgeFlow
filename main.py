@@ -488,6 +488,9 @@ def main() -> int:
         except Exception as exc:
             print(f"Materialization error: {exc}", file=sys.stderr)
             return 1
+        if bool(result.get("no_op", False)):
+            print("Materialization preview already completed; no-op.")
+            return 0
         print("Materialization preview completed.")
         print(f"Wrote execution preview: .forgeflow/runs/{result.get('run_id')}/execution_preview.json")
         print(f"Wrote generated README: .forgeflow/generated/{result.get('run_id')}/README.md")

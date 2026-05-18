@@ -249,6 +249,21 @@
   - `schemas/**`
   - `tests/unit/agents/**`
 
+### `track/materialization-idempotent-retry`
+- 允许改动：
+  - `main.py`（materialize-preview retry/no-op UX）
+  - `forgeflow/runtime/**`（materialization idempotent retry semantics）
+  - `tests/unit/runtime/**`
+  - `tests/unit/entrypoints/**`
+  - `docs/**`
+  - `.github/workflows/**`
+  - `scripts/branch_path_guard.sh`
+- 禁止改动：
+  - `agents/**`
+  - `tui/**`
+  - `schemas/**`
+  - `tests/unit/agents/**`
+
 ### `track/lineage-invalidation-metadata`
 - 允许改动：
   - `agents/orchestrator/**`（仅 lineage invalidation metadata 写入）

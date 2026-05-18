@@ -56,6 +56,16 @@ def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
     tmp_path.replace(path)
 
 
+def _load_json_object(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
 def materialize_sandbox_preview(
     *,
     state_dir: Path,
@@ -72,6 +82,18 @@ def materialize_sandbox_preview(
     run_dir = runs_root / rid
     if not run_dir.exists() or not run_dir.is_dir():
         raise MaterializationError(f"run directory not found: {run_dir}")
+
+    preview_path = run_dir / "execution_preview.json"
+    existing_preview = _load_json_object(preview_path)
+    existing_status = str(existing_preview.get("status", "")).strip()
+    # completed = terminal success (no-op on rerun)
+    if existing_status == "completed":
+        result = dict(existing_preview)
+        result["no_op"] = True
+        return result
+    # started = incomplete attempt (block rerun to avoid ambiguity)
+    if existing_status == "started":
+        raise MaterializationError("materialization attempt is incomplete (status=started)")
 
     review_state = load_review_state(run_dir)
     if review_state is None:
@@ -127,7 +149,6 @@ def materialize_sandbox_preview(
         "writes": writes,
         "generated_at": _utc_timestamp_z(),
     }
-    preview_path = run_dir / "execution_preview.json"
     _write_json_atomic(preview_path, preview_payload)
 
     try:

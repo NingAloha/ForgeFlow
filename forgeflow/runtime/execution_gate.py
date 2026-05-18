@@ -29,6 +29,8 @@ class ExecutionGateSnapshot:
     invalidated_artifacts: list[str]
     rejected_review_artifacts: list[str]
     needs_rerun: dict[str, Any]
+    materialization_preview_status: str
+    materialization_preview_error: str
     latest_run_id: str
 
 
@@ -138,6 +140,8 @@ def build_execution_gate_snapshot(
     invalidated: list[str] = []
     rejected_review_artifacts: list[str] = []
     pending_review_artifacts: list[str] = []
+    preview_status = ""
+    preview_error = ""
     if latest_run_dir is not None:
         lineage = load_lineage(latest_run_dir)
         present = set()
@@ -174,6 +178,15 @@ def build_execution_gate_snapshot(
         request_path = latest_run_dir / "execution_request.json"
         if not request_path.exists():
             materialization_reasons.append("execution_request_missing")
+
+        preview_path = latest_run_dir / "execution_preview.json"
+        if preview_path.exists() and preview_path.is_file():
+            preview = _load_json_object(preview_path)
+            preview_status = str(preview.get("status", "")).strip()
+            preview_error = str(preview.get("error", "")).strip()
+            if preview_status == "started":
+                # "started" means the previous attempt did not close. Block further attempts to avoid ambiguity.
+                materialization_reasons.append("materialization_incomplete")
     else:
         # If run_id is not specified and there is no latest run, treat as no runs.
         if run_id is None:
@@ -211,6 +224,8 @@ def build_execution_gate_snapshot(
         invalidated_artifacts=invalidated,
         rejected_review_artifacts=rejected_review_artifacts,
         needs_rerun={"artifacts": needs.artifacts, "stages": needs.stages},
+        materialization_preview_status=preview_status,
+        materialization_preview_error=preview_error,
         latest_run_id=latest_run_id,
     )
 
@@ -247,6 +262,9 @@ def render_execution_gate(snapshot: ExecutionGateSnapshot) -> str:
     else:
         lines.append("- rejected_review_artifacts: []")
     lines.append(f"- needs_rerun: {snapshot.needs_rerun}")
+    lines.append(f"- materialization_preview_status: {snapshot.materialization_preview_status or ''}")
+    if snapshot.materialization_preview_error:
+        lines.append(f"- materialization_preview_error: {snapshot.materialization_preview_error}")
     lines.append("Materialization Reasons")
     if snapshot.materialization_reasons:
         for reason in snapshot.materialization_reasons:

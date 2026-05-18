@@ -391,6 +391,9 @@ def render_replay(snapshot: RuntimeReplaySnapshot) -> str:
         status = str(snapshot.execution_preview.get("status", "")).strip() or "unknown"
         lines.append(f"- generated_root: {generated_root or '(missing)'}")
         lines.append(f"- status: {status}")
+        error = str(snapshot.execution_preview.get("error", "")).strip()
+        if error:
+            lines.append(f"- error: {error}")
 
         writes = snapshot.execution_preview.get("writes", [])
         if isinstance(writes, list) and writes:

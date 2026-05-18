@@ -73,6 +73,23 @@ class RuntimeEventsTests(unittest.TestCase):
             log = load_runtime_events(run_dir)
             self.assertEqual([e.event_type for e in log.events], ["run_started", "step_finished"])
 
+    def test_materialization_preview_failed_is_accepted_by_event_loader(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir) / "runs" / "run-1"
+            run_dir.mkdir(parents=True, exist_ok=True)
+            (run_dir / "events.jsonl").write_text(
+                (
+                    '{"timestamp":"t1","event_type":"run_started","run_id":"run-1","sequence":1,"payload":{}}\n'
+                    '{"timestamp":"t2","event_type":"materialization_preview_failed","run_id":"run-1","sequence":2,"payload":{"error":"x"}}\n'
+                ),
+                encoding="utf-8",
+            )
+            log = load_runtime_events(run_dir)
+            self.assertEqual(
+                [e.event_type for e in log.events],
+                ["run_started", "materialization_preview_failed"],
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

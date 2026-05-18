@@ -234,6 +234,21 @@
   - `schemas/**`
   - `tests/unit/agents/**`
 
+### `track/materialization-failure-semantics`
+- 允许改动：
+  - `main.py`（sandbox preview materialization entrypoint; failure semantics）
+  - `forgeflow/runtime/**`（execution_preview status + failed attempt recording）
+  - `tests/unit/runtime/**`
+  - `tests/unit/entrypoints/**`
+  - `docs/**`
+  - `.github/workflows/**`
+  - `scripts/branch_path_guard.sh`
+- 禁止改动：
+  - `agents/**`
+  - `tui/**`
+  - `schemas/**`
+  - `tests/unit/agents/**`
+
 ### `track/lineage-invalidation-metadata`
 - 允许改动：
   - `agents/orchestrator/**`（仅 lineage invalidation metadata 写入）

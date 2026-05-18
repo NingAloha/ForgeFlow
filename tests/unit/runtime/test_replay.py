@@ -79,6 +79,29 @@ class RuntimeReplayInvariantTests(unittest.TestCase):
             self.assertIn("generated_root:", output)
             self.assertIn("create_or_overwrite:", output)
 
+    def test_replay_renders_execution_preview_error_when_failed(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_dir = Path(temp_dir) / "state"
+            run_id = "20260101T000000Z-demo"
+            run_dir = Path(temp_dir) / "runs" / run_id
+            run_dir.mkdir(parents=True, exist_ok=True)
+            (run_dir / "summary.json").write_text(
+                '{"schema_version":"1","run_id":"20260101T000000Z-demo","steps":[]}\n',
+                encoding="utf-8",
+            )
+            (run_dir / "execution_preview.json").write_text(
+                (
+                    '{"schema_version":"1","run_id":"20260101T000000Z-demo","mode":"sandbox_preview",'
+                    '"status":"failed","error":"attempt failed",'
+                    '"generated_root":".forgeflow/generated/20260101T000000Z-demo/","writes":[]}\n'
+                ),
+                encoding="utf-8",
+            )
+            snapshot = load_replay_snapshot(run_id, str(state_dir))
+            output = render_replay(snapshot)
+            self.assertIn("- status: failed", output)
+            self.assertIn("- error: attempt failed", output)
+
     def test_replay_falls_back_to_summary_steps_when_events_missing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             state_dir = Path(temp_dir) / "state"

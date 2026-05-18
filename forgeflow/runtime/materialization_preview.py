@@ -114,42 +114,66 @@ def materialize_sandbox_preview(
         },
     )
 
-    readme_path = generated_root / "README.md"
-    readme_path.write_text(
-        _render_preview_readme(run_id=rid, generated_root=f".forgeflow/generated/{rid}/", writes=writes),
-        encoding="utf-8",
-    )
-
-    append_runtime_event(
-        run_dir=run_dir,
-        event_type="materialization_preview_written",
-        run_id=rid,
-        payload={
-            "path": str(writes[0]["path"]),
-            "type": str(writes[0]["type"]),
-        },
-    )
-
+    # Status semantics:
+    # - started: an attempt began but did not close (block further attempts)
+    # - failed: attempt failed (retry allowed in v0.2.1+)
+    # - completed: terminal success (no-op on rerun in v0.2.1+)
     preview_payload: dict[str, Any] = {
         "schema_version": "1",
         "run_id": rid,
         "mode": "sandbox_preview",
-        "status": "completed",
+        "status": "started",
         "generated_root": f".forgeflow/generated/{rid}/",
         "writes": writes,
         "generated_at": _utc_timestamp_z(),
     }
-    _write_json_atomic(run_dir / "execution_preview.json", preview_payload)
+    preview_path = run_dir / "execution_preview.json"
+    _write_json_atomic(preview_path, preview_payload)
 
-    append_runtime_event(
-        run_dir=run_dir,
-        event_type="materialization_preview_finished",
-        run_id=rid,
-        payload={
-            "status": "completed",
-            "execution_preview_path": "execution_preview.json",
-        },
-    )
+    try:
+        readme_path = generated_root / "README.md"
+        readme_path.write_text(
+            _render_preview_readme(run_id=rid, generated_root=f".forgeflow/generated/{rid}/", writes=writes),
+            encoding="utf-8",
+        )
+
+        append_runtime_event(
+            run_dir=run_dir,
+            event_type="materialization_preview_written",
+            run_id=rid,
+            payload={
+                "path": str(writes[0]["path"]),
+                "type": str(writes[0]["type"]),
+            },
+        )
+
+        preview_payload["status"] = "completed"
+        _write_json_atomic(preview_path, preview_payload)
+
+        append_runtime_event(
+            run_dir=run_dir,
+            event_type="materialization_preview_finished",
+            run_id=rid,
+            payload={
+                "status": "completed",
+                "execution_preview_path": "execution_preview.json",
+            },
+        )
+    except Exception as exc:
+        # Record a failed attempt. This does not imply the run failed.
+        preview_payload["status"] = "failed"
+        preview_payload["error"] = str(exc)
+        _write_json_atomic(preview_path, preview_payload)
+        append_runtime_event(
+            run_dir=run_dir,
+            event_type="materialization_preview_failed",
+            run_id=rid,
+            payload={
+                "status": "failed",
+                "error": str(exc),
+                "execution_preview_path": "execution_preview.json",
+            },
+        )
+        raise
 
     return preview_payload
-

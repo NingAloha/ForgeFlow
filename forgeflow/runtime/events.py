@@ -16,6 +16,7 @@ RuntimeEventType = Literal[
     "materialization_preview_started",
     "materialization_preview_written",
     "materialization_preview_finished",
+    "materialization_preview_failed",
 ]
 
 
@@ -94,6 +95,7 @@ def load_runtime_events(run_dir: Path) -> RuntimeEventLog:
             "materialization_preview_started",
             "materialization_preview_written",
             "materialization_preview_finished",
+            "materialization_preview_failed",
         }:
             errors.append(
                 {"line_no": idx, "raw": raw, "reason": "invalid_field: event_type"}

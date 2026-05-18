@@ -11,6 +11,19 @@
 
 本篇只覆盖一次成功路径；failure semantics（failed/partial/retry）属于 v0.2.1+。
 
+## Materialization attempt lifecycle（v0.2.1+）
+
+v0.2.1 将 materialization preview 视为一次 **attempt lifecycle**，并定义稳定语义：
+
+- `started`：attempt 已开始但未闭合（incomplete attempt）。这是一种 **blocker**，会阻断后续 materialization attempts，避免语义歧义。
+- `failed`：attempt 已闭合为失败（signal only）。这是 **可恢复失败**，允许再次 `--materialize-preview` 进行 retry。
+- `completed`：attempt 已闭合为成功（terminal success）。再次 `--materialize-preview` 必须是 **幂等 no-op**。
+
+重要边界（语义澄清）：
+
+- materialization preview 是 **governed preview write-path**：只在受限路径内写入 preview artifacts，用于证明 runtime governance 成立。
+- materialization preview **不是 mutation**：不改用户源码、不做 patch apply、不执行 mutation，也不引入自动恢复/后台重试语义。
+
 ## v0.2 的关键边界
 
 - **Forbidden**：改用户源码、git working tree mutation、自动 patch apply、自动 commit、unrestricted shell execution。
@@ -146,4 +159,3 @@ python3.11 main.py --state-dir "$FF_STATE_DIR" --replay-run <run_id>
 → `sandbox-scoped preview write`  
 → `execution_preview recorded + events appended`  
 → `replay can explain what was materialized`
-

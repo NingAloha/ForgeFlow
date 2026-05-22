@@ -3,43 +3,67 @@
 [English version](./README_EN.md)
 
 ## 项目定位
-ForgeFlow 是一个结构化的 AI workflow runtime：
-它提供可审计的 runtime control plane（状态、事件、回放、治理与审批），用于驱动一个明确、可解释、可回放的工作流执行过程。
+AI coding 的主要问题通常不是“生成不出代码”，而是工程流程不稳定：
 
-ForgeFlow SE 是 ForgeFlow 的第一个 target profile：软件工程工作流（Software Engineering pipeline profile）。
-其阶段链路为：`Requirements -> Solution -> Design -> Implementation -> Testing`。
+- workflow 不可复现
+- 阶段推进隐式漂移
+- artifact 语义不稳定
+- 执行路径缺乏可验证边界
+
+ForgeFlow 针对的是这个问题域：把 AI 软件工程从“提示词序列”改造成“有状态、可回放、可验证”的工程流程。
 
 ForgeShell 是主界面（Primary UI）目标；CLI Runner 是当前可运行的开发/调试入口。
 
+## 定位
+- ForgeFlow 不替代 coding agents。
+- ForgeFlow 在 agents 外层提供可复现的 orchestration runtime。
+- ForgeFlow 假设：未经约束的 workflow flexibility 最终会演化为工程不稳定。
+
+## 设计原则
+- 显式性优于智能性（explicit workflow semantics over implicit agent behavior）
+- 先收敛语义，再扩展能力（runtime-first, capability-second）
+- Fail closed 优于 silent fallback
+
+## 系统承诺（当前可验证）
+- 显式阶段（explicit stages）
+- 显式产物契约（artifact contracts）
+- 可回放运行轨迹（replayable runs）
+- 可追踪产物依赖（lineage）
+- 受治理的执行边界（mutation gating）
+
+## 非目标（当前明确不做）
+- 不追求 uncontrolled autonomy
+- 不在当前阶段开放 execution mutation
+- 不把所有 runtime decision 立即声明化
+- 不把 ForgeFlow 定义为“another agent framework”
+
+## 当前聚焦（v0.2.x）
+
+### 已完成（第一阶段解耦闭环）
+- PR1：SE 工作流事实已声明到 manifest
+- PR2：Orchestrator 的 agent 绑定已改为 manifest 驱动
+- PR3：runtime lineage 依赖已改为 manifest 驱动
+- PR4：profile/runtime decoupling boundary 已文档化
+
+### 当前不做（刻意边界）
+- 不改 `StageEvaluator`
+- 不改 backflow / question flow
+- 不开放 execution mutation（仍 blocked）
+
+### 下一步唯一目标（待启动）
+- PR5：declared forward transitions read path（前向 transitions 读取路径声明化）
+- 验收目标：行为零变化 + `pytest -q` 全绿
+
+## Scope 说明（当前边界）
+- ForgeFlow 不是“自动写代码系统”的完整替代。
+- ForgeFlow 当前重点是 workflow semantics 的结构稳定性与可验证性。
+- ForgeFlow SE 是第一个 target profile：软件工程 workflow。
+
 ## 四个概念（Core / Profile / Skill / Shell）
-
-### ForgeFlow Core
-负责 runtime 的控制面与语义收敛：
-* orchestration
-* runtime
-* replay
-* governance
-* events
-* approvals
-* state semantics
-
-### ForgeFlow SE（第一个 profile）
-负责软件工程工作流的阶段产物：
-* Requirements
-* Solution
-* Design
-* Implementation
-* Testing
-
-### ForgeFlow Skills
-负责提供局部、可替换的操作能力（工具化能力），用于支撑 profile 的具体运行需求。
-
-### ForgeShell
-作为 human interface layer（entrypoint layer），负责 human-in-the-loop 交互与观测：
-* human-in-the-loop interaction
-* runtime inspection
-* approvals
-* replay/status
+- **ForgeFlow Core**：控制面语义收敛（state / events / replay / governance / approvals）
+- **ForgeFlow SE**：第一个 profile，定义 SE workflow 的阶段与产物约束
+- **ForgeFlow Skills**：局部、可替换的操作能力
+- **ForgeShell**：human-in-the-loop 交互与观测入口
 
 ## 当前架构
 
@@ -65,12 +89,10 @@ CLI Runner (Dev / Debug) ┘
 
 边界说明（防误读）：
 
-*The current manifest is not yet the source of truth for all runtime decisions. It is the source of truth only for the explicitly listed consumption surfaces.*
-
 - manifest 还不是所有 runtime 决策的唯一真相源；它只对当前列出的消费面负责。
 - 当前已 manifest-driven 的消费面：
-  - Orchestrator consumes `stage_agents` for agent binding
-  - runtime lineage consumes `lineage_dependencies`
+  - Orchestrator 使用 `stage_agents` 完成 agent 绑定
+  - runtime lineage 使用 `lineage_dependencies`
 - 仍故意未声明化：`StageEvaluator` / backflow / question flow / execution
 
 继续阅读：`docs/profile-runtime.md`

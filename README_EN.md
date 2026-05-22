@@ -60,6 +60,7 @@ ForgeShell is the primary UI target, while the CLI runner is the current develop
 - PR5: declared forward transitions read path
 - Acceptance target: behavior-preserving change + green `pytest -q`
 
+### Scope Boundary
 - ForgeFlow is not a full replacement for end-to-end autonomous coding systems.
 - The current emphasis is structural stability and verifiability of workflow semantics.
 - ForgeFlow SE is the first target profile.
@@ -130,6 +131,7 @@ before enabling autonomous execution.
 - **Core Runtime**: converges control-plane semantics such as replay, lineage, approvals, and execution boundaries.
 - **Profiles**: define domain workflows; ForgeFlow SE is the first profile (software engineering pipeline).
 - **Skills**: localized, swappable operational capabilities that profiles rely on for concrete actions.
+- Current runtime constraints: state explicit / replay read-only / events append-only / execution governed / artifacts auditable.
 
 Further reading:
 - [docs/runtime-theory.en.md](./docs/runtime-theory.en.md)
@@ -154,14 +156,6 @@ Further reading:
 Detailed execution governance semantics are documented in:
 - [docs/implementation-governance.md](./docs/implementation-governance.md)
 - [docs/profile-runtime.md](./docs/profile-runtime.md)
-
-## Runtime Principles
-- State is explicit.
-- Replay is read-only.
-- Events are append-only.
-- Execution is governed.
-- Runtime artifacts are auditable.
-- Human approval is first-class.
 
 ## Installation
 

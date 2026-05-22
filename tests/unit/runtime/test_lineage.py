@@ -20,6 +20,10 @@ class RuntimeLineageTests(unittest.TestCase):
         self.assertEqual(depends_on_for_artifact("implementation_status"), ["system_design"])
         self.assertEqual(depends_on_for_artifact("test_report"), ["implementation_status"])
 
+        deps = depends_on_for_artifact("solution")
+        deps.append("x")
+        self.assertEqual(depends_on_for_artifact("solution"), ["spec"])
+
     def test_upsert_writes_atomic_json(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = Path(temp_dir) / "runs" / "20260101T000000Z-demo0000"
@@ -54,4 +58,3 @@ class RuntimeLineageTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

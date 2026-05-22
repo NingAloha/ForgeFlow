@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
+from types import MappingProxyType
+from typing import Mapping
 from typing import Literal
 
 
@@ -34,39 +37,42 @@ def _lineage_path(run_dir: Path) -> Path:
     return run_dir / "lineage.json"
 
 
+@lru_cache(maxsize=1)
+def _get_declared_lineage_dependencies() -> Mapping[str, tuple[str, ...]]:
+    # Local import to avoid circular imports during module initialization.
+    from forgeflow.profiles.registry import get_profile_manifest
+
+    manifest = get_profile_manifest("se")
+    normalized = {
+        str(artifact).strip(): tuple(str(x).strip() for x in deps if str(x).strip())
+        for artifact, deps in manifest.lineage_dependencies.items()
+    }
+    return MappingProxyType(normalized)
+
+
 def depends_on_for_artifact(artifact: LineageArtifact) -> list[str]:
-    if artifact == "spec":
-        return []
-    if artifact == "solution":
-        return ["spec"]
-    if artifact == "system_design":
-        return ["solution"]
-    if artifact == "implementation_status":
-        return ["system_design"]
-    if artifact == "test_report":
-        return ["implementation_status"]
-    return []
+    deps = _get_declared_lineage_dependencies()
+    return list(deps.get(str(artifact), ()))
 
 
 def _dependency_closure(artifact: str) -> set[str]:
     """
     Return all downstream artifacts (transitive) that depend on `artifact`.
     """
-    graph: dict[str, list[str]] = {
-        "spec": ["solution"],
-        "solution": ["system_design"],
-        "system_design": ["implementation_status"],
-        "implementation_status": ["test_report"],
-        "test_report": [],
-    }
+    declared = _get_declared_lineage_dependencies()
+    reverse_graph: dict[str, list[str]] = {}
+    for child, parents in declared.items():
+        for parent in parents:
+            reverse_graph.setdefault(parent, []).append(child)
+
     visited: set[str] = set()
-    stack = list(graph.get(artifact, []))
+    stack = list(reverse_graph.get(artifact, []))
     while stack:
         node = stack.pop()
         if node in visited:
             continue
         visited.add(node)
-        stack.extend(graph.get(node, []))
+        stack.extend(reverse_graph.get(node, []))
     return visited
 
 

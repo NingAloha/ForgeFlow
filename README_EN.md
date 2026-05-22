@@ -4,6 +4,11 @@
 > The Chinese README (`README.md`) is currently the primary source of truth during active development.
 > This English document is a lightweight developer-oriented overview.
 
+> TL;DR  
+> ForgeFlow is a stateful orchestration runtime for AI software engineering workflows.  
+> It emphasizes reproducibility, structural stability, and verifiable process boundaries,  
+> not replacing coding agents themselves.
+
 ## Overview
 The primary failure mode in AI coding is often not code generation itself, but workflow instability:
 
@@ -17,8 +22,7 @@ ForgeFlow targets this problem space: it treats AI software engineering as a sta
 ForgeShell is the primary UI target, while the CLI runner is the current development/debug entrypoint.
 
 ## Positioning
-- ForgeFlow does not replace coding agents.
-- ForgeFlow provides a reproducible orchestration runtime around agents.
+- ForgeFlow does not replace coding agents; it provides a reproducible orchestration runtime around them.
 - ForgeFlow assumes uncontrolled workflow flexibility eventually becomes engineering instability.
 
 ## Principles
@@ -39,7 +43,7 @@ ForgeShell is the primary UI target, while the CLI runner is the current develop
 - immediate declarative migration of all runtime decisions
 - positioning as "another agent framework"
 
-## Current Focus (v0.2.x)
+## Current Scope (v0.2.x)
 
 ### Completed (Phase-1 decoupling loop)
 - PR1: SE workflow facts are declared in the manifest
@@ -56,40 +60,9 @@ ForgeShell is the primary UI target, while the CLI runner is the current develop
 - PR5: declared forward transitions read path
 - Acceptance target: behavior-preserving change + green `pytest -q`
 
-## Scope (Current Boundary)
 - ForgeFlow is not a full replacement for end-to-end autonomous coding systems.
 - The current emphasis is structural stability and verifiability of workflow semantics.
 - ForgeFlow SE is the first target profile.
-
-## Four Concepts (Core / Profile / Skill / Shell)
-
-### ForgeFlow Core
-Owns runtime convergence and control-plane semantics:
-- orchestration
-- runtime
-- replay
-- governance
-- events
-- approvals
-- state semantics
-
-### ForgeFlow SE (first profile)
-Owns staged software engineering artifacts:
-- Requirements
-- Solution
-- Design
-- Implementation
-- Testing
-
-### ForgeFlow Skills
-Owns localized, swappable operational capabilities that profiles rely on for concrete actions.
-
-### ForgeShell
-As the human interface (entrypoint) layer, owns human-in-the-loop interaction and inspection:
-- human-in-the-loop interaction
-- runtime inspection
-- approvals
-- replay/status
 
 ## Architecture
 
@@ -123,6 +96,12 @@ Boundary (anti-misread):
 - Intentionally not declarative yet: `StageEvaluator` / backflow / question flow / execution
 
 Further reading: `docs/profile-runtime.md`
+
+## System Components
+- **ForgeFlow Core**: converges control-plane semantics (`state` / `events` / `replay` / `governance` / `approvals`)
+- **ForgeFlow SE**: first profile defining staged constraints and artifacts for software engineering workflows
+- **ForgeFlow Skills**: localized, swappable operational capabilities
+- **ForgeShell**: human-in-the-loop interaction and runtime inspection entrypoint
 
 ## Entrypoints
 Execution routes through the Project Orchestrator for both entrypoints.
@@ -170,47 +149,11 @@ Further reading:
 
 ## Implementation Modes
 - `handoff` (default, stable): design-to-implementation checklist output.
-- `execute` (disabled preview path): returns blocked status with preview artifacts only.
+- `execute` (preview-only): returns `blocked` plus reviewable execution contract output; no real mutation.
 
-Current execute-mode status semantics:
-- blocked
-- patch preview generated
-- single-module patch draft generated
-- no mutation performed
-
-## Execution Safety Boundary
-Real code execution is currently disabled.
-Future execution requires safety controls such as:
-- sandboxed workspace
-- allowed/denied path policy
-- allowed command policy
-- retry limit
-- patch preview
-- rollback policy
-- execution report
-
-## Patch Preview / Patch Draft
-Patch preview and patch draft are dry-run outputs only.
-
-Patch draft constraints in current implementation:
-- limited to the first design module
-- unified diff preview
-- create-only
-- README placeholders only
-- no Python implementation code generation
-- no file writes
-- no command execution
-
-## Runtime Artifact Boundary
-- Runtime cache artifacts must not be committed:
-  - `.forgeflow/state/`
-  - `.forgeflow/generated/`
-  - `.forgeflow/runs/`
-  - non-curated runtime outputs under `runs/*`
-  - `/tmp/forgeflow_*` (outside repository scope)
-- Repository knowledge that should remain versioned:
-  - `runs/manual_reviews/` (curated review artifacts)
-- Goal: keep runtime outputs (generated files, run summaries, previews) from polluting repository history.
+Detailed execution governance semantics are documented in:
+- [docs/implementation-governance.md](./docs/implementation-governance.md)
+- [docs/profile-runtime.md](./docs/profile-runtime.md)
 
 ## Runtime Principles
 - State is explicit.
@@ -219,43 +162,6 @@ Patch draft constraints in current implementation:
 - Execution is governed.
 - Runtime artifacts are auditable.
 - Human approval is first-class.
-
-## Runtime Root
-
-The default runtime root is `.forgeflow/`:
-
-```text
-.forgeflow/
-├── state/
-├── runs/
-│   ├── <run_id>/
-│   │   ├── summary.json
-│   │   ├── events.jsonl
-│   │   └── approvals/
-└── generated/
-```
-
-### Materialized runtime artifacts
-
-These artifacts are already present in Runtime v0 (materialized cache; may lag behind truth;
-index is cache, not source of truth):
-
-```text
-.forgeflow/runs/index.json
-```
-
-## Repo metadata suggestions (not applied in this PR)
-- GitHub Description:
-  - A structured AI workflow runtime. First profile: Software Engineering Pipeline.
-- Topics:
-  - ai-workflow-runtime
-  - llm-orchestration
-  - structured-workflow
-  - ai-engineering
-  - agentic-workflow
-  - runtime-governance
-- LICENSE:
-  - MIT (present)
 
 ## Installation
 
@@ -279,15 +185,13 @@ Current quality gate:
 - `ruff check .`
 - `pytest -q`
 
-## Branch Collaboration Boundary
-- Recommended branch model: `main` (stable trunk) + `track/*` (topic branches).
-- `track/*` branches are enforced by a CI branch path guard; out-of-scope file changes fail CI.
-- Boundary policy is defined in [docs/branch-boundaries.md](./docs/branch-boundaries.md).
-- Guard files:
-  - `scripts/branch_path_guard.sh`
-  - `.github/workflows/branch-path-guard.yml`
-
 ## Current Limitations
 - Execute mode is not enabled for real mutation.
 - Patch artifacts are previews only and are never applied.
 - No real Code Agent execution path is enabled in the stable flow.
+
+## More Documentation
+- Runtime root / materialized cache / runtime artifact boundary: `docs/runtime-v0-architecture.md`
+- Branch collaboration boundary: `docs/branch-boundaries.md`, `docs/git-workflow.md`
+- Execution governance and reviewable execution contracts: `docs/implementation-governance.md`
+- Profile/runtime decoupling boundary: `docs/profile-runtime.md`

@@ -101,8 +101,9 @@ class SEProfileManifest(BaseModel):
         if self.transitions != expected_transitions:
             raise ValueError("transitions must match the linear forward stage chain.")
 
-        # Validate lineage dependencies.
+        # Validate lineage dependencies (normalize without mutating during iteration).
         allowed_artifacts = set(self.artifact_keys)
+        normalized_lineage: dict[str, list[str]] = {}
         for artifact, depends_on in self.lineage_dependencies.items():
             artifact_key = self._normalize_key(artifact)
             if artifact_key not in allowed_artifacts:
@@ -118,7 +119,11 @@ class SEProfileManifest(BaseModel):
                 raise ValueError("lineage_dependencies must not contain self-dependencies.")
             if any(dep not in allowed_artifacts for dep in normalized_depends):
                 raise ValueError("lineage_dependencies must only reference artifact_keys.")
-            self.lineage_dependencies[artifact_key] = normalized_depends
+            if artifact_key in normalized_lineage:
+                raise ValueError("lineage_dependencies must not contain duplicate artifact keys.")
+            normalized_lineage[artifact_key] = normalized_depends
+
+        self.lineage_dependencies = normalized_lineage
 
         if self._detect_cycle(self.lineage_dependencies):
             raise ValueError("lineage_dependencies must not contain cycles.")
@@ -127,7 +132,7 @@ class SEProfileManifest(BaseModel):
 
 
 @lru_cache(maxsize=1)
-def get_se_manifest() -> SEProfileManifest:
+def _se_manifest_singleton() -> SEProfileManifest:
     return SEProfileManifest(
         profile_name="se",
         profile_version="0.1",
@@ -179,3 +184,8 @@ def get_se_manifest() -> SEProfileManifest:
             "question_state": [],
         },
     )
+
+
+def get_se_manifest() -> SEProfileManifest:
+    # Defensive deep copy: callers must not be able to mutate a cached singleton.
+    return _se_manifest_singleton().model_copy(deep=True)

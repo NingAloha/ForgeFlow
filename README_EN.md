@@ -5,14 +5,61 @@
 > This English document is a lightweight developer-oriented overview.
 
 ## Overview
-ForgeFlow is a structured AI workflow runtime.
-It provides an auditable runtime control plane (state, events, replay, governance, approvals) to drive an
-explicit, explainable, replayable workflow.
+The primary failure mode in AI coding is often not code generation itself, but workflow instability:
 
-ForgeFlow SE is ForgeFlow's first target profile: a Software Engineering pipeline profile, with staged progression:
-`Requirements -> Solution -> Design -> Implementation -> Testing`.
+- non-replayable workflows
+- implicit stage drift
+- unstable artifact semantics
+- unverifiable execution boundaries
+
+ForgeFlow targets this problem space: it treats AI software engineering as a stateful, replayable, verifiable process rather than a sequence of prompts.
 
 ForgeShell is the primary UI target, while the CLI runner is the current development/debug entrypoint.
+
+## Positioning
+- ForgeFlow does not replace coding agents.
+- ForgeFlow provides a reproducible orchestration runtime around agents.
+- ForgeFlow assumes uncontrolled workflow flexibility eventually becomes engineering instability.
+
+## Principles
+- Explicit workflow semantics over implicit agent behavior
+- Runtime semantics first, capability expansion second
+- Fail closed over silent fallback
+
+## Guarantees (Current, Verifiable)
+- explicit stages
+- artifact contracts
+- replayable runs
+- lineage visibility
+- governed mutation boundaries
+
+## Non-Goals (Current)
+- uncontrolled autonomy
+- execution mutation enablement in the current phase
+- immediate declarative migration of all runtime decisions
+- positioning as "another agent framework"
+
+## Current Focus (v0.2.x)
+
+### Completed (Phase-1 decoupling loop)
+- PR1: SE workflow facts are declared in the manifest
+- PR2: Orchestrator agent binding is manifest-driven
+- PR3: runtime lineage dependencies are manifest-driven
+- PR4: profile/runtime decoupling boundary is documented
+
+### Intentionally Out of Scope Now
+- No `StageEvaluator` refactor yet
+- No backflow / question flow declarative migration yet
+- No execution mutation enablement (still blocked)
+
+### Next Single Milestone (Not started)
+- PR5: declared forward transitions read path
+- Acceptance target: behavior-preserving change + green `pytest -q`
+
+## Scope (Current Boundary)
+- ForgeFlow is not a full replacement for end-to-end autonomous coding systems.
+- The current emphasis is structural stability and verifiability of workflow semantics.
+- ForgeFlow SE is the first target profile.
 
 ## Four Concepts (Core / Profile / Skill / Shell)
 

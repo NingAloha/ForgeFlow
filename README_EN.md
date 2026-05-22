@@ -51,12 +51,31 @@ ForgeShell (Primary UI) ─┐
                          ├── Project Orchestrator
 CLI Runner (Dev / Debug) ┘
                              ├── State Manager
-                             ├── Requirements Engineer
-                             ├── Solution Engineer
-                             ├── System Designer
-                             ├── Implementation Engineer
-                             └── Test & Validation Engineer
+                             ├── Profile Registry
+                             │     └── ForgeFlow SE Manifest
+                             │           ├── stage_agents
+                             │           ├── stage_produces
+                             │           ├── transitions
+                             │           └── lineage_dependencies
+                             ├── StageEvaluator
+                             └── SE Agents (bound via manifest stage_agents)
+                                   ├── Requirements Engineer
+                                   ├── Solution Engineer
+                                   ├── System Designer
+                                   ├── Implementation Engineer
+                                   └── Test & Validation Engineer
 ```
+
+Boundary (anti-misread):
+
+*The current manifest is not yet the source of truth for all runtime decisions. It is the source of truth only for the explicitly listed consumption surfaces.*
+
+- Manifest-driven consumption surfaces today:
+  - Orchestrator consumes `stage_agents` for agent binding
+  - runtime lineage consumes `lineage_dependencies`
+- Intentionally not declarative yet: `StageEvaluator` / backflow / question flow / execution
+
+Further reading: `docs/profile-runtime.md`
 
 ## Entrypoints
 Execution routes through the Project Orchestrator for both entrypoints.

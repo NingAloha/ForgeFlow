@@ -48,12 +48,32 @@ ForgeShell (主界面 / Primary UI) ─┐
                          ├── Project Orchestrator
 CLI Runner (Dev / Debug) ┘
                              ├── State Manager
-                             ├── Requirements Engineer
-                             ├── Solution Engineer
-                             ├── System Designer
-                             ├── Implementation Engineer
-                             └── Test & Validation Engineer
+                             ├── Profile Registry
+                             │     └── ForgeFlow SE Manifest
+                             │           ├── stage_agents
+                             │           ├── stage_produces
+                             │           ├── transitions
+                             │           └── lineage_dependencies
+                             ├── StageEvaluator
+                             └── SE Agents（由 manifest stage_agents 绑定）
+                                   ├── Requirements Engineer
+                                   ├── Solution Engineer
+                                   ├── System Designer
+                                   ├── Implementation Engineer
+                                   └── Test & Validation Engineer
 ```
+
+边界说明（防误读）：
+
+*The current manifest is not yet the source of truth for all runtime decisions. It is the source of truth only for the explicitly listed consumption surfaces.*
+
+- manifest 还不是所有 runtime 决策的唯一真相源；它只对当前列出的消费面负责。
+- 当前已 manifest-driven 的消费面：
+  - Orchestrator consumes `stage_agents` for agent binding
+  - runtime lineage consumes `lineage_dependencies`
+- 仍故意未声明化：`StageEvaluator` / backflow / question flow / execution
+
+继续阅读：`docs/profile-runtime.md`
 
 ## 入口边界
 - ForgeShell 是主交互界面目标，CLI Runner 是开发/调试入口。

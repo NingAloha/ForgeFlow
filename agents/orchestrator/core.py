@@ -1,17 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import importlib
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 from ..base import AgentContext, AgentResult
-from ..implementation_engineer import ImplementationEngineerAgent
-from ..requirements_engineer import RequirementsEngineerAgent
-from ..solution_engineer import SolutionEngineerAgent
 from ..state_manager import StateManager
-from ..system_designer import SystemDesignerAgent
-from ..test_validation_engineer import TestValidationEngineerAgent
 from .backflow_evaluator import BackflowEvaluator
 from .models import OrchestrationResult, Stage, TransitionDecision
 from .question_flow import QuestionFlow
@@ -23,6 +19,15 @@ from forgeflow.runtime.lineage import upsert_lineage_entry
 from forgeflow.runtime.pause import load_runtime_pause_state
 from forgeflow.runtime.review_state import upsert_pending_review
 from forgeflow.runtime.run_index import update_index_on_run_event
+
+
+def _load_class(dotted_path: str) -> type:
+    module_name, class_name = str(dotted_path).rsplit(".", 1)
+    module = importlib.import_module(module_name)
+    loaded = getattr(module, class_name)
+    if not isinstance(loaded, type):
+        raise TypeError(f"{dotted_path} did not resolve to a class.")
+    return loaded
 
 
 class Orchestrator:
@@ -114,12 +119,13 @@ class Orchestrator:
             is_requirements_ready=self.stage_evaluator.is_requirements_ready,
             is_solution_ready=self.stage_evaluator.is_solution_ready,
         )
+        # Local import to avoid circular import during module initialization.
+        from forgeflow.profiles.registry import get_profile_manifest
+
+        self.profile_manifest = get_profile_manifest("se")
         self.agents = {
-            Stage.REQUIREMENTS: RequirementsEngineerAgent(),
-            Stage.SOLUTION: SolutionEngineerAgent(),
-            Stage.DESIGN: SystemDesignerAgent(),
-            Stage.IMPLEMENTATION: ImplementationEngineerAgent(),
-            Stage.TESTING: TestValidationEngineerAgent(),
+            stage: _load_class(dotted_path)()
+            for stage, dotted_path in self.profile_manifest.stage_agents.items()
         }
 
     def build_context(

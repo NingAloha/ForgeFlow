@@ -18,6 +18,7 @@
 - pseudo-completion：LLM 声称完成，但缺少可执行证据/可追溯链路
 - context fragmentation：团队/模型上下文不断丢失，无法回答“现在到底做到哪了”
 - broken traceability：需求/设计/实现/测试之间缺少结构化链接
+- 文档与实现漂移：过期架构假设被文档固化，artifact 与 runtime evidence 脱节
 - irreversible mutation：变更不可审计、不可复现，回退成本不确定
 - rollback ambiguity：失败后不知道应该回退到 requirements / design / implementation / testing 的哪一层
 

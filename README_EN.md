@@ -16,6 +16,7 @@ Typical failures are engineering-state continuity failures, not prompting failur
 - requirement drift
 - pseudo-completion without executable evidence
 - broken traceability across requirements/design/implementation/testing
+- documentation/implementation divergence (stale architectural assumptions; artifacts drifting away from runtime evidence)
 - rollback ambiguity after failures
 
 ## 2. What ForgeFlow Is

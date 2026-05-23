@@ -124,6 +124,29 @@ class BackflowEvaluatorTests(unittest.TestCase):
 
         self.assertEqual(target, Stage.IMPLEMENTATION)
 
+    def test_testing_environment_failure_stays_put_without_rollback(self) -> None:
+        states = make_testing_states()
+        states["test_report"].update(
+            {
+                "result": "fail",
+                "issues": [
+                    {
+                        "title": "Tests cannot run in sandbox",
+                        "severity": "critical",
+                        "status": "open",
+                        "related_modules": [],
+                        "related_contracts": [],
+                        "notes": "Dependency install fails due to permission / sandbox restrictions.",
+                    }
+                ],
+            }
+        )
+
+        target, evidence = self.evaluator.evaluate(states, Stage.TESTING)
+
+        self.assertIsNone(target)
+        self.assertTrue(evidence)
+
     def test_implementation_blocked_without_blockers_does_not_backflow(self) -> None:
         states = make_design_ready_states()
         states["implementation_status"].update(

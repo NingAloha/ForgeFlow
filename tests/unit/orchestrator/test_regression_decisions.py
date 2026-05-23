@@ -115,6 +115,31 @@ class OrchestratorRegressionDecisionTests(unittest.TestCase):
         self.assertEqual(decision.backflow_target, Stage.IMPLEMENTATION)
         self.assertEqual(decision.final_stage, Stage.IMPLEMENTATION)
 
+    def test_testing_environment_failure_stays_on_testing_with_evidence(self) -> None:
+        states = make_testing_states()
+        states["test_report"].update(
+            {
+                "result": "fail",
+                "issues": [
+                    {
+                        "title": "Environment is not ready",
+                        "severity": "critical",
+                        "status": "open",
+                        "related_modules": [],
+                        "related_contracts": [],
+                        "notes": "Network/DNS failure while running tests; sandbox dependency install blocked.",
+                    }
+                ],
+            }
+        )
+
+        decision = self.orchestrator.resolve_transition(states)
+
+        self.assertTrue(decision.should_stay)
+        self.assertIsNone(decision.backflow_target)
+        self.assertEqual(decision.final_stage, Stage.TESTING)
+        self.assertTrue(decision.evidence)
+
     def test_diagnostic_payload_contains_decision_and_question_summary_fields(
         self,
     ) -> None:

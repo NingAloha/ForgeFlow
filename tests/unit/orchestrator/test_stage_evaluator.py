@@ -128,6 +128,21 @@ class StageEvaluatorTests(unittest.TestCase):
         )
         self.assertFalse(self.evaluator.is_done(states))
 
+    def test_is_done_requires_hard_test_evidence_fields(self) -> None:
+        states = make_done_states()
+        self.assertTrue(self.evaluator.is_done(states))
+
+        states["test_report"]["command"] = []
+        self.assertFalse(self.evaluator.is_done(states))
+
+        states = make_done_states()
+        states["test_report"]["tests_run"] = 0
+        self.assertFalse(self.evaluator.is_done(states))
+
+        states = make_done_states()
+        states["test_report"]["exit_code"] = 1
+        self.assertFalse(self.evaluator.is_done(states))
+
     def test_evaluate_stage_flags_short_circuits_downstream_flags_when_upstream_breaks(
         self,
     ) -> None:

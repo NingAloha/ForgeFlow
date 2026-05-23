@@ -344,6 +344,15 @@ class Orchestrator:
                 reason="Backflow triggered.",
                 evidence=backflow_evidence,
             )
+        if backflow_evidence:
+            return TransitionDecision(
+                computed_stage=computed_stage,
+                final_stage=source_stage,
+                source_stage=source_stage,
+                should_stay=True,
+                reason="Stay on current stage due to backflow diagnostics.",
+                evidence=backflow_evidence,
+            )
 
         next_stage_to_execute, forward_evidence = self.evaluate_forward_transition(
             states, computed_stage

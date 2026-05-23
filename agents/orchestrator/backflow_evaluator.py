@@ -46,12 +46,10 @@ class BackflowEvaluator:
             "toolchain",
             "permission",
             "resource",
-            "local",
             "install",
             "network",
             "dns",
             "sandbox",
-            "runtime",
         }
         design_keywords = {
             "contract",
@@ -103,6 +101,19 @@ class BackflowEvaluator:
             if test_report.get("result") == "partial" and not active_issues:
                 evidence.append(
                     "Stay on TESTING because validation is partial and issue attribution is incomplete."
+                )
+                return None, evidence
+
+            environment_failure = any(
+                contains_any(
+                    collect_text(issue.get("title"), issue.get("notes")),
+                    execution_keywords,
+                )
+                for issue in blocking_issues
+            )
+            if environment_failure:
+                evidence.append(
+                    "Stay on TESTING because failures look environment/tooling-related and should not trigger rollback."
                 )
                 return None, evidence
 

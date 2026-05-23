@@ -212,6 +212,7 @@ forgeflow --tui
 - Runtime 理论与方向（含 “已实现 vs 可能方向” 区分）：`docs/runtime-theory.md`
 - 工作流规则与回流说明：`docs/workflow/README.md`
 - 状态契约入口：`docs/state/README.md`
+- Case studies：`docs/case-studies/forgeflow-self-realignment.md`
 
 ## 英文版本
 英文开发者概览见 [README_EN.md](./README_EN.md)。

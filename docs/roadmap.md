@@ -2,7 +2,7 @@
 
 ## North Star
 
-ForgeFlow is a runtime-first, artifact-first orchestration system for structured engineering workflows.
+ForgeFlow is a runtime-first, artifact-first engineering state system for AI-assisted software development.
 
 The project is not intended to be a prompt chain or a thin wrapper around LLM calls.
 Its primary focus is:

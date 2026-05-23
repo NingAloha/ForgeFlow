@@ -1,6 +1,6 @@
 # ForgeFlow / ForgeShell
 
-A structured AI workflow runtime (first profile: ForgeFlow SE).
+A structured engineering state system (Git-aware; first profile: ForgeFlow SE).
 
 ## Overview
 
@@ -18,10 +18,10 @@ ForgeShell is the target primary user-facing entrypoint for this flow. The curre
 
 This is not a general chat application.
 
-It is a workflow-oriented engineering system built around:
+It is an engineering state system built around:
 
-* layered agents that each own one stage of work
-* a control layer that routes the workflow
+* stage state producers (implementation detail)
+* a control layer that routes staged progression based on structured state
 * structured state files used as stage contracts
 * an interaction layer where TUI is the target product entrypoint and CLI is the currently runnable development/debug entrypoint
 
@@ -41,11 +41,10 @@ CLI Runner (Dev / Debug) ┘
 
 ## Core Ideas
 
-* Separation of concerns: each agent owns one layer
-* Contract-driven flow: stages hand off structured outputs
-* Implicit orchestration: normal usage should feel automatic
-* Explicit control: users can still inspect, switch, lock, and intervene
-* State transparency: the system should expose progress without unnecessary noise
+* Separation of concerns: stage state is produced per layer
+* Contract-driven progression: stages hand off structured outputs
+* Explicit control: users can inspect, intervene, and review evidence
+* State transparency: expose progress without unnecessary noise
 
 ## Repository Layout
 

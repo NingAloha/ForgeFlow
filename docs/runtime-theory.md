@@ -29,7 +29,7 @@ Requirements → Solution → Design → Implementation → Testing
 
 逐渐转变为：
 
-> “受治理的 AI workflow runtime”
+> “受治理的 engineering state system（工程状态系统）”
 
 ForgeFlow 当前真正尝试解决的问题，也不再只是：
 
@@ -37,7 +37,7 @@ ForgeFlow 当前真正尝试解决的问题，也不再只是：
 
 而是：
 
-> “如何通过 runtime contract，让 AI 与现实的交互变得可治理”
+> “如何通过结构化契约与证据，让工程状态可治理、可回放、可审计”
 
 ---
 

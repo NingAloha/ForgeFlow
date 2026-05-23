@@ -30,7 +30,7 @@ This changes the system definition from:
 
 to:
 
-> “a governed AI workflow runtime”
+> “a governed engineering state system”
 
 The primary problem ForgeFlow attempts to solve is no longer:
 
@@ -38,7 +38,7 @@ The primary problem ForgeFlow attempts to solve is no longer:
 
 but instead:
 
-> “how to govern AI interaction with reality through structured runtime contracts”
+> “how to make engineering state governable, auditable, and replayable through structured contracts and evidence”
 
 ---
 

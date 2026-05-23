@@ -5,65 +5,68 @@
 > This English document is a lightweight developer-oriented overview.
 
 > TL;DR  
-> ForgeFlow is a stateful orchestration runtime for AI software engineering workflows.  
-> It emphasizes reproducibility, structural stability, and verifiable process boundaries,  
-> not replacing coding agents themselves.
+> ForgeFlow is an **engineering state system** for AI-assisted software development.  
+> It makes “where the project is, what’s proven, and what to roll back” inspectable via structured artifacts and runtime evidence, not hidden prompt memory.
 
-## Overview
-The primary failure mode in AI coding is often not code generation itself, but workflow instability:
+## 1. Problem / Failure Model
+Modern AI coding agents can make local progress (generate code, fix errors, implement a module),
+but they often fail to maintain a stable, inspectable **project engineering state** over long-running work.
 
-- non-replayable workflows
-- implicit stage drift
-- unstable artifact semantics
-- unverifiable execution boundaries
+Typical failures are engineering-state continuity failures, not prompting failures:
+- requirement drift
+- pseudo-completion without executable evidence
+- broken traceability across requirements/design/implementation/testing
+- rollback ambiguity after failures
 
-ForgeFlow targets this problem space: it treats AI software engineering as a stateful, replayable, verifiable process rather than a sequence of prompts.
+## 2. What ForgeFlow Is
+ForgeFlow is an engineering state system for AI-assisted software development, using staged progression:
 
-ForgeShell is the primary UI target, while the CLI runner is the current development/debug entrypoint.
+```text
+Requirements → Solution / Architecture → Design → Implementation → Testing
+```
 
-## Positioning
-- ForgeFlow does not replace coding agents; it provides a reproducible orchestration runtime around them.
-- ForgeFlow assumes uncontrolled workflow flexibility eventually becomes engineering instability.
+Primary object:
+> project engineering state
 
-## Principles
-- Explicit workflow semantics over implicit agent behavior
-- Runtime semantics first, capability expansion second
-- Fail closed over silent fallback
+ForgeFlow is **Git-aware** and is designed to bind engineering state to Git snapshots / recovery points eventually, but it does not treat “completed node → Git commit” as an implemented guarantee today.
 
-## Guarantees (Current, Verifiable)
-- explicit stages
-- artifact contracts
-- replayable runs
-- lineage visibility
-- governed mutation boundaries
+## 3. What ForgeFlow Is Not
+ForgeFlow is not:
+- a general-purpose workflow engine / orchestration framework
+- a multi-agent framework (not a LangGraph / CrewAI / AutoGen alternative)
+- a prompt chain manager
+- a coding agent or a Claude Code replacement
 
-## Non-Goals (Current)
-- uncontrolled autonomy
-- execution mutation enablement in the current phase
-- immediate declarative migration of all runtime decisions
-- positioning as "another agent framework"
+Agents are implementation details: stage state producers, not the primary abstraction.
 
-## Current Scope (v0.2.x)
+## 4. Core Model
+- Staged progression driven by structured state contracts and evaluator rules.
+- Completion is not “LLM says done”; it must be derivable from structured state (schema-valid / structurally complete; traceable where possible).
+- Testing failures should map to attribution and rollback targets (partially documented/implemented in this repo; see docs).
 
-### Completed (Phase-1 decoupling loop)
-- PR1: SE workflow facts are declared in the manifest
-- PR2: Orchestrator agent binding is manifest-driven
-- PR3: runtime lineage dependencies are manifest-driven
-- PR4: profile/runtime decoupling boundary is documented
+## 5. Artifacts and Evidence
+Evidence has a strength ladder:
+- Soft evidence: LLM review / self-reports (never “verified” by itself)
+- Stronger evidence: structured artifacts, lineage/trace links, runtime events, diagnostics, review/approval records
+- Harder evidence (when available): real test/command executions and their results
 
-### Intentionally Out of Scope Now
-- No `StageEvaluator` refactor yet
-- No backflow / question flow declarative migration yet
-- No execution mutation enablement (still blocked)
+Inspectable artifacts produced today:
+- `.forgeflow/state/*.json`: stage state (spec/solution/system_design/implementation_status/test_report/question_state)
+- `.forgeflow/runs/<run_id>/`: runtime evidence (`summary.json`, `events.jsonl`, `lineage.json`, `review_state.json`, `approvals/*.json`, …)
 
-### Next Single Milestone (Not started)
-- PR5: declared forward transitions read path
-- Acceptance target: behavior-preserving change + green `pytest -q`
+## 6. Current guarantees and boundaries
+Implemented today:
+- structured state contracts + schema validation
+- replayable runtime artifacts (events/summary/lineage/review/approvals)
+- governed execution boundaries and preview-only execution contracts (mutation disabled by design)
 
-### Scope Boundary
-- ForgeFlow is not a full replacement for end-to-end autonomous coding systems.
-- The current emphasis is structural stability and verifiability of workflow semantics.
-- ForgeFlow SE is the first target profile.
+Designed direction (not yet a guarantee):
+- stronger evidence binding and attribution semantics
+- tighter binding to Git recovery points (checkpoint metadata)
+
+Not yet implemented:
+- real mutation runtime (patch apply / command execution)
+- automatic rollback
 
 ## Architecture
 
@@ -98,7 +101,7 @@ Boundary (anti-misread):
 
 Further reading: `docs/profile-runtime.md`
 
-## System Components
+## System Components (implementation layers)
 - **ForgeFlow Core**: converges control-plane semantics (`state` / `events` / `replay` / `governance` / `approvals`)
 - **ForgeFlow SE**: first profile defining staged constraints and artifacts for software engineering workflows
 - **ForgeFlow Skills**: localized, swappable operational capabilities
@@ -124,20 +127,7 @@ Unsupported control commands (not implemented):
 - `--tui` launches the minimal ForgeShell terminal shell.
 - Implementation currently produces handoff artifacts and execution previews, not real code mutation.
 
-## Runtime Model
-ForgeFlow is runtime-first: it prioritizes governed runtime semantics (replayability, auditability, boundaries)
-before enabling autonomous execution.
-
-- **Core Runtime**: converges control-plane semantics such as replay, lineage, approvals, and execution boundaries.
-- **Profiles**: define domain workflows; ForgeFlow SE is the first profile (software engineering pipeline).
-- **Skills**: localized, swappable operational capabilities that profiles rely on for concrete actions.
-- Current runtime constraints: state explicit / replay read-only / events append-only / execution governed / artifacts auditable.
-
-Further reading:
-- [docs/runtime-theory.en.md](./docs/runtime-theory.en.md)
-- [docs/runtime-theory.md](./docs/runtime-theory.md)
-
-### Capability Boundary Matrix
+### Capability Boundary Matrix (verifiable)
 | Capability | Status |
 | --- | --- |
 | Planning (Requirements/Solution/Design) | ✅ |
@@ -157,13 +147,13 @@ Detailed execution governance semantics are documented in:
 - [docs/implementation-governance.md](./docs/implementation-governance.md)
 - [docs/profile-runtime.md](./docs/profile-runtime.md)
 
-## Installation
+## 7. Quickstart
 
 ```bash
 python3.11 -m pip install -e ".[dev]"
 ```
 
-## Developer Workflow
+Developer workflow:
 
 ```bash
 python3.11 main.py --auto-run "<requirement>"
@@ -184,8 +174,11 @@ Current quality gate:
 - Patch artifacts are previews only and are never applied.
 - No real Code Agent execution path is enabled in the stable flow.
 
-## More Documentation
+## 8. Docs map
 - Runtime root / materialized cache / runtime artifact boundary: `docs/runtime-v0-architecture.md`
 - Branch collaboration boundary: `docs/branch-boundaries.md`, `docs/git-workflow.md`
 - Execution governance and reviewable execution contracts: `docs/implementation-governance.md`
 - Profile/runtime decoupling boundary: `docs/profile-runtime.md`
+- Runtime direction notes (implemented vs possible future): `docs/runtime-theory.en.md`
+- Workflow rules and backflow docs: `docs/workflow/README.md`
+- State contracts entry: `docs/state/README.md`

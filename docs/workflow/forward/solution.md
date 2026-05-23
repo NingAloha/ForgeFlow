@@ -5,7 +5,7 @@
 必须满足：
 
 * `selected_stack` 中与当前项目直接相关的关键技术位已经明确，尤其是核心执行层 `backend`。
-* 如果项目存在明确交互层，则对应的 `frontend` 已明确；如果项目以 agent 为核心，则 `agent_framework` 已明确。
+* 如果项目存在明确交互层，则对应的 `frontend` 已明确；如果你正在构建的**目标项目**本身以 agent-based 交互为核心，则可在 `agent_framework` 里记录该目标项目采用的相关框架（这不是 ForgeFlow 本身的定位）。
 * `module_mapping` 非空，且已经列出本轮方案中的核心模块。
 * 每个核心模块都具备基本职责说明，即 `module` 与 `responsibilities` 已形成稳定映射。
 * 核心需求已经被模块承接，即主要 `functional_requirements` 在 `covers_requirements` 中已有归属。

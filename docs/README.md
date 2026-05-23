@@ -35,7 +35,7 @@ ForgeFlow Runtime v0 已形成 **runtime control plane 的闭环**，
 
 ### What Phase A–E Completed
 
-- **Phase A**: narrative convergence（将 ForgeFlow 统一为 “AI workflow runtime”，ForgeFlow SE 作为第一个 profile）
+- **Phase A**: narrative convergence（将 ForgeFlow 收束为“engineering state system”（Git-aware），ForgeFlow SE 作为第一个 profile）
 - **Phase B**: `.forgeflow/runs/index.json`（materialized cache index；index is cache, not source of
   truth；status 优先读 index，必要时 fallback scan）
 - **Phase C**: `.forgeflow/runs/<run_id>/lineage.json`（lineage metadata foundation）

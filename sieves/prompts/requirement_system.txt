@@ -12,6 +12,7 @@ Always return a JSON object with EXACTLY the following fields:
 
 {
   "goal": string,
+  "target_users": string[],
   "functional_requirements": string[],
   "constraints": string[],
   "acceptance_criteria": string[],
@@ -31,11 +32,22 @@ Field definitions:
 - "goal":
   A concise summary of the user's core software objective.
 
+- "target_users":
+  Intended user groups, roles, or user types explicitly stated by the user.
+
 - "functional_requirements":
   Observable system behaviors or capabilities explicitly requested by the user.
 
 - "constraints":
-  Technical, operational, architectural, platform, performance, or environmental limitations explicitly stated by the user.
+  Technical, operational, platform, runtime, deployment, UI style, performance, or environmental limitations explicitly stated by the user.
+
+  Examples:
+  - "运行于 macOS"
+  - "桌面应用"
+  - "Web 应用"
+  - "离线运行"
+  - "低内存占用"
+  - "UI 风格简洁"
 
 - "acceptance_criteria":
   Concrete observable conditions indicating the requirement is satisfied.

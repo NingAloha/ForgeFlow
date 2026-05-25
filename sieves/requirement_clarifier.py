@@ -6,6 +6,56 @@ from llm import call_llm_json, load_text_file
 
 REQUIREMENT_PROMPT_PATH = "sieves/prompts/requirement_system.txt"
 
+REQUIRED_FIELDS: dict[str, type] = {
+    "goal": str,
+    "target_users": list,
+    "functional_requirements": list,
+    "constraints": list,
+    "acceptance_criteria": list,
+    "unresolved_items": list,
+    "inconsistencies": list,
+    "assumptions": list,
+}
+
+
+def validate_requirement_spec(spec: dict[str, Any]) -> None:
+    if not isinstance(spec, dict):
+        raise RuntimeError("requirement artifact must be a JSON object")
+
+    expected_fields = set(REQUIRED_FIELDS)
+    actual_fields = set(spec)
+
+    missing_fields = expected_fields - actual_fields
+    if missing_fields:
+        raise RuntimeError(
+            "requirement artifact missing required fields: "
+            + ", ".join(sorted(missing_fields))
+        )
+
+    extra_fields = actual_fields - expected_fields
+    if extra_fields:
+        raise RuntimeError(
+            "requirement artifact has unexpected fields: "
+            + ", ".join(sorted(extra_fields))
+        )
+
+    for field, expected_type in REQUIRED_FIELDS.items():
+        value = spec[field]
+
+        if not isinstance(value, expected_type):
+            raise RuntimeError(
+                f"requirement artifact field '{field}' must be "
+                f"{expected_type.__name__}, got {type(value).__name__}"
+            )
+
+        if isinstance(value, list):
+            for index, item in enumerate(value):
+                if not isinstance(item, str):
+                    raise RuntimeError(
+                        f"requirement artifact field '{field}' item at index "
+                        f"{index} must be str, got {type(item).__name__}"
+                    )
+
 
 def clarify_requirement(user_intent: str) -> dict[str, Any]:
     if not user_intent.strip():
@@ -13,10 +63,13 @@ def clarify_requirement(user_intent: str) -> dict[str, Any]:
 
     system_prompt = load_text_file(REQUIREMENT_PROMPT_PATH)
 
-    return call_llm_json(
+    requirement_spec = call_llm_json(
         system_prompt=system_prompt,
         user_prompt=user_intent,
     )
+
+    validate_requirement_spec(requirement_spec)
+    return requirement_spec
 
 
 def refine_requirement(
@@ -26,6 +79,8 @@ def refine_requirement(
 ) -> dict[str, Any]:
     if not current_spec:
         raise ValueError("current_spec must not be empty")
+
+    validate_requirement_spec(current_spec)
 
     if not current_question.strip():
         raise ValueError("current_question must not be empty")
@@ -48,7 +103,7 @@ def refine_requirement(
         ),
     }
 
-    return call_llm_json(
+    requirement_spec = call_llm_json(
         system_prompt=system_prompt,
         user_prompt=json.dumps(
             refinement_input,
@@ -57,18 +112,17 @@ def refine_requirement(
         ),
     )
 
+    validate_requirement_spec(requirement_spec)
+    return requirement_spec
+
 
 def get_open_issues(requirement_spec: dict[str, Any]) -> list[str]:
+    validate_requirement_spec(requirement_spec)
+
     issues: list[str] = []
 
-    unresolved_items = requirement_spec.get("unresolved_items", [])
-    inconsistencies = requirement_spec.get("inconsistencies", [])
-
-    if isinstance(unresolved_items, list):
-        issues.extend(str(item) for item in unresolved_items)
-
-    if isinstance(inconsistencies, list):
-        issues.extend(str(item) for item in inconsistencies)
+    issues.extend(requirement_spec["unresolved_items"])
+    issues.extend(requirement_spec["inconsistencies"])
 
     return issues
 

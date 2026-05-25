@@ -18,6 +18,24 @@ REQUIRED_FIELDS: dict[str, type] = {
 }
 
 
+def _unwrap_requirement_artifact(response: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(response, dict):
+        return response
+
+    wrapper_keys = (
+        "current_requirement_artifact",
+        "requirement_artifact",
+        "requirement_spec",
+    )
+
+    for key in wrapper_keys:
+        wrapped = response.get(key)
+        if isinstance(wrapped, dict):
+            return wrapped
+
+    return response
+
+
 def validate_requirement_spec(spec: dict[str, Any]) -> None:
     if not isinstance(spec, dict):
         raise RuntimeError("requirement artifact must be a JSON object")
@@ -111,6 +129,7 @@ def refine_requirement(
             indent=2,
         ),
     )
+    requirement_spec = _unwrap_requirement_artifact(requirement_spec)
 
     validate_requirement_spec(requirement_spec)
     return requirement_spec

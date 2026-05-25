@@ -1,67 +1,288 @@
 # ForgeFlow
 
-ForgeFlow 是一个以 Contract（契约）、Artifact（工件）、Verification（验证）和 Revision（版本修订）为核心的软件工程系统。
+[中文](./README.md) | [EN](./README_EN.md)
 
-它并不是一个“万能 AI 自动编程 Agent”。
+ForgeFlow 是一个面向软件工程语义稳定化的实验性系统。
 
-ForgeFlow 更接近：
+它不是一个“万能 AI 自动编程 Agent”，也不是一个直接替你生成完整项目的黑箱工具。
+
+ForgeFlow 当前关注的问题是：
 
 ```text
-用户意图
-→ 不断规格化
-→ 不断稳定化
-→ 最终形成可验证实现
+模糊用户意图
+→ 结构化 artifact
+→ 多轮澄清
+→ 本地验证
+→ 更稳定的工程输入
 ```
 
-系统中的每一层都像一层“筛子”：
+换句话说，ForgeFlow 试图把 AI 从“直接写代码的人”约束成：
 
-- 筛掉模糊需求
-- 筛掉隐式假设
-- 筛掉不一致结构
-- 筛掉不可验证实现
+```text
+受限的 artifact transformer
+```
 
-最终只允许满足约束的 artifact 继续向下流动。
+系统的核心目标不是让 AI 一步到位完成开发，而是让软件工程过程中的中间产物变得：
+
+- 显式
+- 可检查
+- 可验证
+- 可追踪
+- 可逐步稳定
 
 ---
 
-# 核心理念
+## 当前状态
 
-传统 Agent 系统经常出现：
+ForgeFlow 当前仍处于早期原型阶段。
 
-- agent 边界漂移
-- workflow 语义失控
-- runtime 黑箱化
-- retry 造成 semantic drift
-- hidden assumptions 不断积累
-
-最终系统会进入：
+已经实现的部分：
 
 ```text
-看起来在运行
-但没人真正知道系统语义
+llm/
+  最小 OpenAI-compatible LLM 调用原语
+
+sieves/
+  Requirement Clarifier 原型
 ```
 
-ForgeFlow 尝试通过以下方式避免这种崩塌：
+当前已验证链路：
 
-- 显式 artifact
-- 显式 contract
-- 显式 ownership
-- 显式 assumption
-- 显式 failure attribution
-- 显式 revision history
+```text
+用户输入
+→ LLM JSON 输出
+→ requirement artifact
+→ 本地 schema 校验
+→ 单问题澄清循环
+→ refined requirement artifact
+```
 
 ---
 
-# 系统结构
+## 当前项目结构
 
-ForgeFlow 是一个“多层语义筛选系统”。
+```text
+ForgeFlow/
+├── llm/
+│   ├── api.py
+│   ├── llm_caller.py
+│   └── prompts/
+│       └── json_only_system.txt
+│
+├── sieves/
+│   ├── requirement_clarifier.py
+│   └── prompts/
+│       └── requirement_system.txt
+│
+├── README.md
+└── README_EN.md
+```
+
+---
+
+## LLM Primitive
+
+`llm/` 目前只负责一件事：
+
+```text
+system_prompt + user_prompt
+→ OpenAI-compatible Chat Completion API
+→ JSON object
+```
+
+它不负责：
+
+- agent orchestration
+- memory
+- retries
+- workflow
+- schema semantics
+- business logic
+- tool calling
+- code generation
+
+当前核心接口：
+
+```python
+call_llm_json(system_prompt: str, user_prompt: str) -> dict
+```
+
+这只是 ForgeFlow 的底层 transport primitive。
+
+---
+
+## Requirement Clarifier
+
+`Requirement Clarifier` 是 ForgeFlow 的第一个语义筛子。
+
+它负责：
+
+```text
+raw user intent
+→ validated requirement artifact
+```
+
+并通过 `unresolved_items` / `inconsistencies` 驱动单问题澄清循环。
+
+当前 requirement artifact schema：
+
+```json
+{
+  "goal": "string",
+  "target_users": ["string"],
+  "functional_requirements": ["string"],
+  "constraints": ["string"],
+  "acceptance_criteria": ["string"],
+  "unresolved_items": ["string"],
+  "inconsistencies": ["string"],
+  "assumptions": ["string"]
+}
+```
+
+当前本地校验只检查：
+
+- 必填字段存在
+- 不允许额外字段
+- 字段类型正确
+- list 元素必须是 string
+
+它暂时不做：
+
+- 语义验证
+- 合规检查
+- 安全策略判断
+- artifact 持久化
+- 历史记录
+- rollback
+- downstream design 生成
+
+---
+
+## 运行方式
+
+创建虚拟环境：
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+安装依赖：
+
+```bash
+pip install openai python-dotenv
+```
+
+项目根目录创建 `.env`：
+
+```env
+MODEL_BASE_URL=https://api.deepseek.com
+MODEL_API_KEY=your_api_key
+MODEL_NAME=your_model_name
+```
+
+运行 LLM 调用测试：
+
+```bash
+.venv/bin/python -m llm.llm_caller
+```
+
+运行 Requirement Clarifier：
+
+```bash
+.venv/bin/python -m sieves.requirement_clarifier
+```
+
+---
+
+## 当前设计原则
+
+### 1. 小 primitive 优先
+
+ForgeFlow 当前不追求完整架构。
+
+优先验证：
+
+```text
+小模块
+真实可跑
+边界清楚
+可逐步组合
+```
+
+而不是提前构造：
+
+- runtime
+- orchestrator
+- plugin system
+- provider abstraction
+- agent framework
+
+---
+
+### 2. Artifact 优先于对话历史
+
+ForgeFlow 不希望系统长期依赖自由对话上下文。
+
+当前方向是：
+
+```text
+当前 artifact + 用户澄清
+→ refined artifact
+```
+
+而不是：
+
+```text
+完整聊天记录
+→ 重新猜测需求
+```
+
+---
+
+### 3. Prompt 是 artifact
+
+ForgeFlow 把 prompt 视为语义转换规则，而不是临时字符串。
+
+因此 prompt 被放在：
+
+```text
+llm/prompts/
+sieves/prompts/
+```
+
+并通过文件进行版本管理。
+
+---
+
+### 4. JSON 不是语义稳定
+
+ForgeFlow 不认为“模型返回 JSON”就等于系统稳定。
+
+当前已经区分：
+
+```text
+JSON object
+≠
+valid requirement artifact
+```
+
+所以 Requirement Clarifier 增加了本地 schema validator。
+
+---
+
+## 长期方向
+
+ForgeFlow 长期可能演化为多层语义筛选系统：
 
 ```text
 User Intent
   ↓
-Requirements Sieve
+Requirement Sieve
   ↓
 Design Sieve
+  ↓
+Contract Sieve
   ↓
 Test Sieve
   ↓
@@ -70,410 +291,90 @@ Implementation Sieve
 Verification Sieve
 ```
 
-每一层：
-- 接收 artifact
-- 检查语义合法性
+每一层都应该：
+
+- 接收明确 artifact
+- 检查结构合法性
+- 暴露 unresolved items
+- 标记 inconsistencies
 - 输出更稳定的 artifact
 
-ForgeFlow 的核心不是：
-- workflow orchestration
-- autonomous agents
+---
 
-而是：
+## 长期核心对象
+
+未来 ForgeFlow 可能包含：
+
+- `RequirementSpec`
+- `ModuleContract`
+- `ContractGraph`
+- `TestSuite`
+- `IntegrationTestSuite`
+- `VerificationResult`
+- `FailureReport`
+- `Assumption`
+- `Revision`
+
+但当前不会提前实现这些对象。
+
+只有当下一个 sieve 真正需要它们时，才会引入。
+
+---
+
+## 当前明确不做
+
+ForgeFlow 当前不做：
+
+- 自动完整写代码
+- 自主 agent loop
+- 黑箱 runtime
+- 自动 retry
+- 自动 rollback
+- 自动 commit
+- 多 provider abstraction
+- 复杂 workflow orchestration
+- 安全 / 合规检查
+- artifact persistence
+
+这些都不是当前阶段的核心问题。
+
+---
+
+## 当前核心问题
+
+ForgeFlow 现在最重要的问题不是：
 
 ```text
-artifact stabilization
-```
-
----
-
-# 核心 Ontology
-
-## RequirementSpec
-
-用户需求的结构化表示。
-
-包含：
-
-- goals
-- functional requirements
-- constraints
-- acceptance criteria
-- unresolved items
-- assumptions
-
-RequirementSpec 必须足够规格化后才能进入 Design 阶段。
-
----
-
-## ModuleContract
-
-模块的行为契约。
-
-定义：
-
-- 输入格式
-- 输入范围
-- 数据处理语义
-- 输出格式
-- rejection conditions
-
-不定义：
-
-- 文件结构
-- 函数名
-- 算法
-- runtime
-- library
-
-因为这些属于 implementation world。
-
----
-
-## ContractGraph
-
-模块之间的契约关系图。
-
-定义：
-
-- 模块依赖关系
-- 数据流
-- compatibility constraints
-- integration expectations
-
----
-
-## TestSuite
-
-由 contract 自动生成的模块测试。
-
-验证：
-
-- 输入输出行为
-- rejection behavior
-- semantic expectations
-
----
-
-## IntegrationTestSuite
-
-多模块协作测试。
-
-验证：
-
-- contract compatibility
-- integration correctness
-- cross-module behavior
-
----
-
-## VerificationResult
-
-结构化验证结果。
-
-包含：
-
-- passed tests
-- failed tests
-- semantic verification status
-- coverage information
-
----
-
-## FailureReport
-
-失败归因对象。
-
-ForgeFlow 禁止“盲目 retry”。
-
-任何失败都必须先归因：
-
-```yaml
-attribution:
-  - implementation_error
-  - test_error
-  - contract_error
-  - requirement_error
-```
-
-只有归因后，系统才允许 rollback。
-
----
-
-## Assumption
-
-显式假设。
-
-ForgeFlow 不允许 hidden assumptions。
-
-所有：
-- 默认值
-- 推断条件
-- 未定义行为
-
-都必须成为 artifact。
-
----
-
-# Agents
-
-ForgeFlow 中的 Agent 不是“人格化智能体”。
-
-它们更接近：
-
-```text
-受限 artifact transformer
-```
-
----
-
-## RequirementsAgent
-
-负责：
-
-```text
-User Intent
-→ RequirementSpec
-```
-
-职责：
-
-- 发现模糊需求
-- 请求用户澄清
-- 显式记录 unresolved items
-- 在必要时生成 assumptions
-
-不能：
-
-- 写 implementation
-- 生成 contracts
-- 决定 architecture
-
----
-
-## DesignAgent
-
-负责：
-
-```text
-RequirementSpec
-→ ModuleContracts + ContractGraph
-```
-
-职责：
-
-- 划分模块边界
-- 生成模块 contract
-- 定义 integration graph
-
-拥有：
-
-- contract ownership
-- graph ownership
-
----
-
-## TestAgent
-
-负责：
-
-```text
-ModuleContract
-→ Module TestSuite
-```
-
-职责：
-
-- 根据 contract 生成测试
-- 验证 rejection behavior
-- 保持 semantic expectations
-
-不能修改 contract。
-
----
-
-## IntegrationAgent
-
-负责：
-
-```text
-ContractGraph
-→ Integration TestSuite
-```
-
-职责：
-
-- 验证模块兼容性
-- 验证 integration correctness
-
-不能修改 contract。
-
----
-
-## ImplementAgent
-
-负责：
-
-```text
-Contracts + Tests
-→ Source Code
-```
-
-职责：
-
-- 根据 contract 和 tests 实现代码
-- 持续运行测试
-
-不能修改：
-- contracts
-- tests
-
----
-
-# Runtime
-
-ForgeFlow Runtime 是：
-
-```text
-受控 artifact 状态机
-```
-
-而不是：
-
-- autonomous orchestrator
-- reasoning engine
-- AI planner
-
-职责：
-
-- 调用 agent
-- 控制写权限
-- 管理状态转移
-- 运行测试
-- 管理 rollback
-- 生成 git commit
-- 保存 revision history
-
----
-
-# Git
-
-Git 在 ForgeFlow 中不是简单版本管理工具。
-
-Git 是：
-
-```text
-semantic revision ledger
-```
-
-系统中的每个重要 transition 都必须形成 revision：
-
-- requirement revision
-- contract revision
-- test generation
-- implementation iteration
-- verification failure
-
----
-
-# Failure Handling
-
-ForgeFlow 禁止：
-
-```text
-失败
-→ 无限 retry
-→ 随机修改
-```
-
-正确流程：
-
-```text
-失败
-→ FailureReport
-→ Attribution
-→ 精确 rollback
-```
-
-例如：
-
-```text
-Implementation fails
-→ implementation_error
-→ retry implementation
-
-Tests inconsistent with contract
-→ test_error
-→ regenerate tests
-
-Contract impossible to satisfy
-→ contract_error
-→ rollback to DesignAgent
-
-Requirement itself contradictory
-→ requirement_error
-→ rollback to RequirementsAgent
-```
-
----
-
-# 最小项目结构
-
-```text
-project/
-├── requirements/
-│   └── requirement_spec.yaml
-│
-├── modules/
-│   ├── parser/
-│   │   ├── contract.yaml
-│   │   ├── tests/
-│   │   ├── src/
-│   │   └── verification/
-│   │
-│   └── summarizer/
-│       ├── contract.yaml
-│       ├── tests/
-│       ├── src/
-│       └── verification/
-│
-├── integration/
-│   ├── contract_graph.yaml
-│   ├── tests/
-│   └── verification/
-│
-├── revisions/
-│
-└── runtime/
-```
-
----
-
-# 当前目标
-
-ForgeFlow 当前阶段专注于：
-
-- ontology stabilization
-- contract refinement
-- artifact semantics
-- verification structure
-- revision discipline
-
-当前刻意避免：
-
-- 黑箱 autonomous orchestration
-- 无约束 code generation
-- 不可追踪 reasoning
-- semantic drift
-
-ForgeFlow 目前最重要的问题不是：
-
-```text
-能不能自动写代码
+AI 能不能自动写代码？
 ```
 
 而是：
 
 ```text
-能不能形成稳定、可验证、可回滚、可追踪的软件工程语义系统
+模糊软件需求能不能通过可控语义循环，
+逐步收敛为结构稳定、可验证、可传递的 artifact？
 ```
+
+如果这个问题不能成立，后面的 Design、Contract、Test、Implementation 都没有稳定基础。
+
+---
+
+## 当前里程碑
+
+已完成：
+
+```text
+LLM transport primitive
+Requirement clarification sieve prototype
+Validated requirement artifact schema
+Single-question refinement loop
+```
+
+下一步可能是：
+
+```text
+Requirement artifact
+→ Design / Contract artifact
+```
+
+但在进入下一层之前，需要继续观察 Requirement Clarifier 是否足够稳定。

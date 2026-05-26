@@ -5,7 +5,7 @@ from typing import Any
 from sieves.requirements.validator import validate_requirements_artifact
 
 
-DEFAULT_REQUIREMENTS_PATH = Path("requirements.json")
+DEFAULT_REQUIREMENTS_PATH = Path(".runtime") / "requirements" / "requirements.json"
 
 EXAMPLE_REQUIREMENTS_PATH = Path(__file__).parent / "requirements.example.json"
 
@@ -51,6 +51,8 @@ def save_requirements(
 ) -> None:
     if validate:
         validate_requirements_artifact(artifact)
+
+    path.parent.mkdir(parents=True, exist_ok=True)
 
     path.write_text(
         json.dumps(artifact, ensure_ascii=False, indent=2) + "\n",

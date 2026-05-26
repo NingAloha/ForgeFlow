@@ -1,6 +1,7 @@
 .DS_Store
 .AppleDouble
 .LSOverride
+.runtime
 
 # Python caches
 __pycache__/

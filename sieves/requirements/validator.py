@@ -207,3 +207,79 @@ def validate_requirements_artifact(artifact: dict[str, Any]) -> None:
         artifact["inconsistencies"],
         "requirements artifact.inconsistencies",
     )
+
+
+def _flatten_paths(
+    value: Any,
+    prefix: tuple[str, ...] = (),
+) -> dict[tuple[str, ...], Any]:
+    paths: dict[tuple[str, ...], Any] = {}
+
+    if isinstance(value, dict):
+        if not value:
+            paths[prefix] = value
+            return paths
+
+        for key, child in value.items():
+            paths.update(_flatten_paths(child, prefix + (key,)))
+
+        return paths
+
+    paths[prefix] = value
+    return paths
+
+
+def _is_path_allowed(
+    changed_path: tuple[str, ...],
+    allowed_paths: set[tuple[str, ...]],
+) -> bool:
+    for allowed_path in allowed_paths:
+        if changed_path == allowed_path:
+            return True
+
+        if len(changed_path) > len(allowed_path):
+            if changed_path[: len(allowed_path)] == allowed_path:
+                return True
+
+    return False
+
+
+def validate_allowed_mutation(
+    before: dict[str, Any],
+    after: dict[str, Any],
+    allowed_paths: set[tuple[str, ...]],
+) -> None:
+    validate_requirements_artifact(before)
+    validate_requirements_artifact(after)
+
+    before_paths = _flatten_paths(before)
+    after_paths = _flatten_paths(after)
+
+    all_paths = set(before_paths) | set(after_paths)
+    missing = object()
+
+    changed_paths: list[tuple[str, ...]] = []
+
+    for path in sorted(all_paths):
+        before_value = before_paths.get(path, missing)
+        after_value = after_paths.get(path, missing)
+
+        if before_value != after_value:
+            changed_paths.append(path)
+
+    disallowed_paths = [
+        path
+        for path in changed_paths
+        if not _is_path_allowed(path, allowed_paths)
+    ]
+
+    if disallowed_paths:
+        formatted_paths = [
+            ".".join(path) if path else "<root>"
+            for path in disallowed_paths
+        ]
+
+        raise RuntimeError(
+            "requirements artifact has disallowed mutations: "
+            + ", ".join(formatted_paths)
+        )

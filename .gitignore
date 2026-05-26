@@ -32,3 +32,6 @@ node_modules/
 
 # Local secrets
 .env
+
+# Runtime requirement artifact
+requirements.json

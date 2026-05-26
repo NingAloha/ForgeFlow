@@ -190,7 +190,7 @@ MODEL_NAME=your_model_name
 运行 Requirement Clarifier：
 
 ```bash
-.venv/bin/python -m sieves.requirement_clarifier
+.venv/bin/python -m sieves.requirements.requirement_clarifier
 ```
 
 ---

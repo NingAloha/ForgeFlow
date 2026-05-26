@@ -190,7 +190,7 @@ Run the LLM calling test:
 Run the Requirement Clarifier:
 
 ```bash
-.venv/bin/python -m sieves.requirement_clarifier
+.venv/bin/python -m sieves.requirements.requirement_clarifier
 ```
 
 ---

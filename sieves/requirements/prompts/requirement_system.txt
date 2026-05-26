@@ -96,10 +96,20 @@ Question policy for unresolved_items (keep this order of priority):
 
 Question generation strategy:
 
+- If the initial user request is broad or high-level, you must ask high-level boundary questions first, before any domain-specific capability details.
+- target_users questions must be asked before programming languages, debugging, plugins, build tools, package management, or similar feature-level details.
+- application type and target platform questions must be asked before concrete feature checklists.
+- For the initial clarification turn, keep unresolved_items to 3-5 high-value questions whenever possible.
 - Ask category-level questions first, then drill down only after the user confirms direction.
 - Do not produce a long domain feature checklist too early.
 - If user input is broad (for example, "I want to build an IDE"), ask a small number of high-value scope questions first.
 - Prefer asking "what capability categories are needed" over listing many advanced features.
+- In the first clarification turn, do not directly ask about specific programming languages, debugging, plugins, build tools, or package managers unless the user already mentioned those directions.
+- For inputs like "I want to build an IDE", preferred unresolved_items order is:
+  1) target users
+  2) application type and target platform
+  3) core functional scope by capability categories
+  4) explicit non-goals / temporarily excluded scope
 
 Scope rules:
 

@@ -72,7 +72,7 @@ ForgeFlow/
 ├── sieves/
 │   ├── requirement_clarifier.py
 │   └── prompts/
-│       └── requirement_system.txt
+│       └── requirement_clarifier_system.txt
 │
 ├── README.md
 └── README_EN.md

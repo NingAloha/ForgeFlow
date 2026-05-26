@@ -4,7 +4,9 @@ from typing import Any
 from llm import call_llm_json, load_text_file
 
 
-REQUIREMENT_PROMPT_PATH = "sieves/requirements/prompts/requirement_system.txt"
+REQUIREMENT_PROMPT_PATH = (
+    "sieves/requirements/prompts/requirement_clarifier_system.txt"
+)
 
 REQUIRED_FIELDS: dict[str, type] = {
     "goal": str,

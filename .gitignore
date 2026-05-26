@@ -1,6 +1,7 @@
 .DS_Store
 .AppleDouble
 .LSOverride
+.runtime
 
 # Python caches
 __pycache__/
@@ -32,3 +33,6 @@ node_modules/
 
 # Local secrets
 .env
+
+# Runtime requirement artifact
+requirements.json

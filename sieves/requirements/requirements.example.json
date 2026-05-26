@@ -1,0 +1,26 @@
+{
+  "artifact_type": "requirements",
+  "schema_version": "0.1",
+  "maturity": "intent",
+  "intent": {
+    "raw_input": "",
+    "goal": "",
+    "domain": ""
+  },
+  "product": {
+    "target_users": [],
+    "application_type": [],
+    "target_platforms": []
+  },
+  "scope": {
+    "capability_categories": [],
+    "constraints": [],
+    "non_goals": []
+  },
+  "functional_requirements": [],
+  "non_functional_requirements": [],
+  "external_interfaces": [],
+  "data_requirements": [],
+  "open_questions": [],
+  "inconsistencies": []
+}

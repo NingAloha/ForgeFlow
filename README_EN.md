@@ -41,9 +41,6 @@ Currently implemented:
 ```text
 llm/
   Minimal OpenAI-compatible LLM calling primitive
-
-sieves/
-  Requirement Clarifier prototype
 ```
 
 Currently validated flow:
@@ -51,10 +48,7 @@ Currently validated flow:
 ```text
 User input
 → LLM JSON output
-→ requirement artifact
-→ local schema validation
-→ single-question clarification loop
-→ refined requirement artifact
+→ JSON object
 ```
 
 ---
@@ -68,11 +62,6 @@ ForgeFlow/
 │   ├── llm_caller.py
 │   └── prompts/
 │       └── json_only_system.txt
-│
-├── sieves/
-│   ├── requirement_clarifier.py
-│   └── prompts/
-│       └── requirement_clarifier_system.txt
 │
 ├── README.md
 └── README_EN.md
@@ -111,53 +100,6 @@ This is only the low-level transport primitive of ForgeFlow.
 
 ---
 
-## Requirement Clarifier
-
-`Requirement Clarifier` is the first semantic sieve in ForgeFlow.
-
-It is responsible for:
-
-```text
-raw user intent
-→ validated requirement artifact
-```
-
-It uses `unresolved_items` and `inconsistencies` to drive a single-question clarification loop.
-
-Current requirement artifact schema:
-
-```json
-{
-  "goal": "string",
-  "target_users": ["string"],
-  "functional_requirements": ["string"],
-  "constraints": ["string"],
-  "acceptance_criteria": ["string"],
-  "unresolved_items": ["string"],
-  "inconsistencies": ["string"],
-  "assumptions": ["string"]
-}
-```
-
-The current local validator only checks:
-
-- all required fields exist
-- no extra fields are present
-- field types are correct
-- all list items are strings
-
-It currently does not perform:
-
-- semantic validation
-- compliance checks
-- safety policy checks
-- artifact persistence
-- history tracking
-- rollback
-- downstream design generation
-
----
-
 ## Usage
 
 Create a virtual environment:
@@ -186,14 +128,6 @@ Run the LLM calling test:
 ```bash
 .venv/bin/python -m llm.llm_caller
 ```
-
-Run the Requirement Clarifier:
-
-```bash
-.venv/bin/python -m sieves.requirements.requirement_clarifier
-```
-
----
 
 ## Current Design Principles
 

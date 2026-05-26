@@ -41,9 +41,6 @@ ForgeFlow 当前仍处于早期原型阶段。
 ```text
 llm/
   最小 OpenAI-compatible LLM 调用原语
-
-sieves/
-  Requirement Clarifier 原型
 ```
 
 当前已验证链路：
@@ -51,10 +48,7 @@ sieves/
 ```text
 用户输入
 → LLM JSON 输出
-→ requirement artifact
-→ 本地 schema 校验
-→ 单问题澄清循环
-→ refined requirement artifact
+→ JSON object
 ```
 
 ---
@@ -68,11 +62,6 @@ ForgeFlow/
 │   ├── llm_caller.py
 │   └── prompts/
 │       └── json_only_system.txt
-│
-├── sieves/
-│   ├── requirement_clarifier.py
-│   └── prompts/
-│       └── requirement_clarifier_system.txt
 │
 ├── README.md
 └── README_EN.md
@@ -111,53 +100,6 @@ call_llm_json(system_prompt: str, user_prompt: str) -> dict
 
 ---
 
-## Requirement Clarifier
-
-`Requirement Clarifier` 是 ForgeFlow 的第一个语义筛子。
-
-它负责：
-
-```text
-raw user intent
-→ validated requirement artifact
-```
-
-并通过 `unresolved_items` / `inconsistencies` 驱动单问题澄清循环。
-
-当前 requirement artifact schema：
-
-```json
-{
-  "goal": "string",
-  "target_users": ["string"],
-  "functional_requirements": ["string"],
-  "constraints": ["string"],
-  "acceptance_criteria": ["string"],
-  "unresolved_items": ["string"],
-  "inconsistencies": ["string"],
-  "assumptions": ["string"]
-}
-```
-
-当前本地校验只检查：
-
-- 必填字段存在
-- 不允许额外字段
-- 字段类型正确
-- list 元素必须是 string
-
-它暂时不做：
-
-- 语义验证
-- 合规检查
-- 安全策略判断
-- artifact 持久化
-- 历史记录
-- rollback
-- downstream design 生成
-
----
-
 ## 运行方式
 
 创建虚拟环境：
@@ -186,14 +128,6 @@ MODEL_NAME=your_model_name
 ```bash
 .venv/bin/python -m llm.llm_caller
 ```
-
-运行 Requirement Clarifier：
-
-```bash
-.venv/bin/python -m sieves.requirements.requirement_clarifier
-```
-
----
 
 ## 当前设计原则
 

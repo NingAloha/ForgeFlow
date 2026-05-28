@@ -91,11 +91,17 @@ Extraction rules:
 
 - Extract only information explicitly stated by the user's answer.
 - If a field is not clarified, return an empty array for that field.
+- If the user's answer is vague, evasive, placeholder-like, or does not clarify either application_type or target_platforms, return empty arrays and report:
+  {
+    "id": "unclear_application_boundary",
+    "message": "用户没有明确说明应用形态或目标平台，需要进一步澄清。"
+  }
 - Do not invent placeholder values.
 - Do not include duplicate values.
 - Use the allowed stable labels exactly.
 - Do not infer target platforms from application_type alone.
 - Do not infer application_type from platform names alone.
+- Do not infer application_type or target_platforms from product intent alone.
 - However, if the user's phrase explicitly combines form and platform, extract both.
 - Do not extract features.
 - Do not extract architecture.
@@ -154,6 +160,17 @@ Partial completion rules:
 - If the user says "先做 Mac 和 Windows 桌面端", set application_type to ["桌面应用"] and target_platforms to ["macOS", "Windows"].
 - If the user says "做 Chrome 插件", set application_type to ["浏览器扩展"] and target_platforms to ["Chrome"].
 - If the user says "做 VS Code 插件", set application_type to ["编辑器插件"] and target_platforms to ["VS Code"].
+
+Unclear / non-completing answers (must not be treated as successful completion):
+
+- 还没想好
+- 先这样
+- 都可以
+- 看情况
+- 暂时不确定
+- 以后再说
+- 先不管
+- 不知道
 
 Inconsistency detection:
 
@@ -339,6 +356,21 @@ Output:
     {
       "id": "editor_plugin_host_platform_ambiguity",
       "message": "编辑器插件通常需要明确宿主编辑器而不仅是操作系统，需要进一步澄清目标宿主平台。"
+    }
+  ]
+}
+
+User answer:
+还没想好
+
+Output:
+{
+  "application_type": [],
+  "target_platforms": [],
+  "detected_inconsistencies": [
+    {
+      "id": "unclear_application_boundary",
+      "message": "用户没有明确说明应用形态或目标平台，需要进一步澄清。"
     }
   ]
 }

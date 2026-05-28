@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
+use serde::Deserialize;
 
 use crate::llm;
 use crate::mutation::json_write::set_value_at_path;
-use crate::mutation::operations::{apply_operations, OperationSet};
 use crate::sieves::requirements::artifact::{
     PendingClarification,
     RequirementsArtifact,
@@ -12,32 +12,29 @@ use crate::sieves::requirements::validator::validate_requirements_artifact;
 
 const SYSTEM_PROMPT: &str = include_str!("prompts/capture_system.txt");
 
-const INTENT_CAPTURE_ALLOWED_PATHS: &[&[&str]] = &[
-    &["intent", "raw_input"],
-    &["intent", "goal"],
-    &["intent", "domain"],
-];
+#[derive(Debug, Deserialize)]
+struct IntentCaptureExtraction {
+    raw_input: String,
+    goal: String,
+    domain: String,
+}
 
 pub fn capture_intent(user_input: &str) -> Result<RequirementsArtifact> {
     if user_input.trim().is_empty() {
         anyhow::bail!("user_input must not be empty");
     }
 
-    let operation_value = llm::call_llm_json(SYSTEM_PROMPT, user_input)
-        .context("failed to capture requirements intent operations")?;
+    let extraction_value = llm::call_llm_json(SYSTEM_PROMPT, user_input)
+        .context("failed to capture requirements intent extraction")?;
 
-    let operation_set: OperationSet = serde_json::from_value(operation_value)
-        .context("LLM JSON does not match OperationSet schema")?;
+    let extraction: IntentCaptureExtraction = serde_json::from_value(extraction_value)
+        .context("LLM JSON does not match IntentCaptureExtraction schema")?;
+    validate_intent_capture_extraction(&extraction, user_input)?;
 
     let mut artifact_value = load_requirements_example_as_value()
         .context("failed to load requirements example template")?;
 
-    apply_operations(
-        &mut artifact_value,
-        &operation_set,
-        INTENT_CAPTURE_ALLOWED_PATHS,
-    )
-    .context("failed to apply intent capture operations")?;
+    apply_intent_capture_extraction(&mut artifact_value, &extraction)?;
 
     set_fixed_intent_fields(&mut artifact_value)?;
 
@@ -50,6 +47,54 @@ pub fn capture_intent(user_input: &str) -> Result<RequirementsArtifact> {
     validate_intent_capture_result(&artifact)?;
 
     Ok(artifact)
+}
+
+fn validate_intent_capture_extraction(
+    extraction: &IntentCaptureExtraction,
+    original_user_input: &str,
+) -> Result<()> {
+    if extraction.raw_input.trim().is_empty() {
+        anyhow::bail!("intent capture extraction raw_input must not be empty");
+    }
+    if extraction.goal.trim().is_empty() {
+        anyhow::bail!("intent capture extraction goal must not be empty");
+    }
+    if extraction.domain.trim().is_empty() {
+        anyhow::bail!("intent capture extraction domain must not be empty");
+    }
+    if extraction.raw_input != original_user_input {
+        anyhow::bail!("raw_input must match original user input");
+    }
+
+    Ok(())
+}
+
+fn apply_intent_capture_extraction(
+    artifact_value: &mut serde_json::Value,
+    extraction: &IntentCaptureExtraction,
+) -> Result<()> {
+    set_value_at_path(
+        artifact_value,
+        &["intent".to_string(), "raw_input".to_string()],
+        serde_json::Value::String(extraction.raw_input.clone()),
+    )
+    .context("failed to set intent.raw_input")?;
+
+    set_value_at_path(
+        artifact_value,
+        &["intent".to_string(), "goal".to_string()],
+        serde_json::Value::String(extraction.goal.clone()),
+    )
+    .context("failed to set intent.goal")?;
+
+    set_value_at_path(
+        artifact_value,
+        &["intent".to_string(), "domain".to_string()],
+        serde_json::Value::String(extraction.domain.clone()),
+    )
+    .context("failed to set intent.domain")?;
+
+    Ok(())
 }
 
 fn validate_intent_capture_result(artifact: &RequirementsArtifact) -> Result<()> {
@@ -145,45 +190,100 @@ fn build_scope_v0_pending_clarifications() -> Vec<PendingClarification> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mutation::operations::{
-        validate_operation_paths,
-        ArtifactOperation,
-        OperationSet,
-    };
     use crate::sieves::requirements::io::load_requirements_example_as_value;
 
     #[test]
-    fn rejects_pending_clarifications_path_in_intent_capture() {
-        let op_set = OperationSet {
-            operations: vec![ArtifactOperation::Set {
-                path: vec!["pending_clarifications".to_string()],
-                value: serde_json::json!([]),
-            }],
+    fn valid_typed_intent_extraction_accepted() {
+        let mut value =
+            load_requirements_example_as_value().expect("template should load");
+        let extraction = IntentCaptureExtraction {
+            raw_input: "设计一个ide".to_string(),
+            goal: "设计一个集成开发环境".to_string(),
+            domain: "软件开发工具".to_string(),
         };
 
-        let err = validate_operation_paths(&op_set, INTENT_CAPTURE_ALLOWED_PATHS)
-            .expect_err("path should be rejected");
+        validate_intent_capture_extraction(&extraction, "设计一个ide")
+            .expect("valid extraction should pass");
+        apply_intent_capture_extraction(&mut value, &extraction)
+            .expect("apply extraction should succeed");
+        set_fixed_intent_fields(&mut value).expect("fixed fields should be set");
+
+        let artifact: RequirementsArtifact =
+            serde_json::from_value(value).expect("value to artifact");
+        validate_intent_capture_result(&artifact).expect("result should be valid");
+
+        assert_eq!(artifact.intent.raw_input, "设计一个ide");
+        assert_eq!(artifact.intent.goal, "设计一个集成开发环境");
+        assert_eq!(artifact.intent.domain, "软件开发工具");
+        assert_eq!(artifact.maturity, "intent");
+        assert!(!artifact.pending_clarifications.is_empty());
+        assert!(artifact.product.target_users.is_empty());
+        assert!(artifact.product.application_type.is_empty());
+        assert!(artifact.product.target_platforms.is_empty());
+        assert!(artifact.scope.capability_categories.is_empty());
+        assert!(artifact.scope.mandatory_constraints.is_empty());
+        assert!(artifact.scope.scope_exclusions.is_empty());
+    }
+
+    #[test]
+    fn empty_raw_input_rejected() {
+        let extraction = IntentCaptureExtraction {
+            raw_input: "".to_string(),
+            goal: "设计一个集成开发环境".to_string(),
+            domain: "软件开发工具".to_string(),
+        };
+
+        let err = validate_intent_capture_extraction(&extraction, "设计一个ide")
+            .expect_err("empty raw_input should fail");
         assert_eq!(
             err.to_string(),
-            "operation path pending_clarifications is not allowed"
+            "intent capture extraction raw_input must not be empty"
         );
     }
 
     #[test]
-    fn rejects_product_target_users_path_in_intent_capture() {
-        let op_set = OperationSet {
-            operations: vec![ArtifactOperation::Set {
-                path: vec!["product".to_string(), "target_users".to_string()],
-                value: serde_json::json!(["学生"]),
-            }],
+    fn empty_goal_rejected() {
+        let extraction = IntentCaptureExtraction {
+            raw_input: "设计一个ide".to_string(),
+            goal: "".to_string(),
+            domain: "软件开发工具".to_string(),
         };
 
-        let err = validate_operation_paths(&op_set, INTENT_CAPTURE_ALLOWED_PATHS)
-            .expect_err("path should be rejected");
+        let err = validate_intent_capture_extraction(&extraction, "设计一个ide")
+            .expect_err("empty goal should fail");
         assert_eq!(
             err.to_string(),
-            "operation path product.target_users is not allowed"
+            "intent capture extraction goal must not be empty"
         );
+    }
+
+    #[test]
+    fn empty_domain_rejected() {
+        let extraction = IntentCaptureExtraction {
+            raw_input: "设计一个ide".to_string(),
+            goal: "设计一个集成开发环境".to_string(),
+            domain: "".to_string(),
+        };
+
+        let err = validate_intent_capture_extraction(&extraction, "设计一个ide")
+            .expect_err("empty domain should fail");
+        assert_eq!(
+            err.to_string(),
+            "intent capture extraction domain must not be empty"
+        );
+    }
+
+    #[test]
+    fn raw_input_mismatch_rejected() {
+        let extraction = IntentCaptureExtraction {
+            raw_input: "设计 IDE".to_string(),
+            goal: "设计一个集成开发环境".to_string(),
+            domain: "软件开发工具".to_string(),
+        };
+
+        let err = validate_intent_capture_extraction(&extraction, "设计一个ide")
+            .expect_err("mismatch should fail");
+        assert_eq!(err.to_string(), "raw_input must match original user input");
     }
 
     #[test]

@@ -11,7 +11,6 @@ src/
     mod.rs
     json_read.rs
     json_write.rs
-    operations.rs
   runtime/
     mod.rs
     paths.rs

@@ -1,8 +1,6 @@
 use anyhow::{anyhow, Result};
 use serde_json::Value;
 
-pub type JsonPath = Vec<String>;
-
 pub fn path_to_string(path: &[String]) -> String {
     if path.is_empty() {
         return "<root>".to_string();

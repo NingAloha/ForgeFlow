@@ -1,38 +1,21 @@
+# macOS
 .DS_Store
 .AppleDouble
 .LSOverride
+
+# Rust build output
+/target/
+
+# Rust/Cargo backups
+**/*.rs.bk
+
+# Env and local runtime files
+.env
 .runtime
 
-# Python caches
-__pycache__/
-*.py[cod]
-*$py.class
-
-# Test / lint caches
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
-
-# Virtualenvs
-.venv/
-venv/
-.env/
-
-# Packaging
-build/
-dist/
-*.egg-info/
-
-# Node (common)
-node_modules/
-
-# IDE/editor
+# Editor/IDE
 .idea/
 .vscode/
 
-
-# Local secrets
-.env
-
-# Runtime requirement artifact
-requirements.json
+# Optional frontend/tooling leftovers (if present)
+node_modules/

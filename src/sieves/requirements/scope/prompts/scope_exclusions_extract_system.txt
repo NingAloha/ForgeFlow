@@ -31,7 +31,7 @@ You must not return full Inconsistency system fields.
 Field meanings:
 scope_exclusions:
 Explicitly stated product scope exclusions, unsupported areas, deferred capabilities, or things the product will not do.
-Each non_goal item must include:
+Each scope_exclusion item must include:
 - kind: commitment strength of the scope-exclusion
 - text: concise scope-exclusion statement
 no_scope_exclusions_declared:
@@ -109,7 +109,7 @@ Use these inconsistency ids when applicable:
 Use when the answer says "不做 X" but does not clarify permanent/release/deferred commitment in current context.
 Message example:
 "用户没有说明该范围排除项是永久排除、当前版本排除，还是暂缓考虑，需要进一步澄清。"
-2. vague_non_goal
+2. vague_scope_exclusion
 Use when the answer contains vague exclusions that cannot guide later stages.
 Example:
 "不要太复杂"
@@ -247,7 +247,7 @@ Invalid outputs:
   "no_scope_exclusions_declared": true,
   "detected_inconsistencies": [
     {
-      "id": "vague_non_goal",
+      "id": "vague_scope_exclusion",
       "message": "..."
     }
   ]

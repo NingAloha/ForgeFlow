@@ -32,8 +32,8 @@ src/
         target_users.rs
         application_boundary.rs
         capability_categories.rs
-        explicit_constraints.rs
-        non_goals.rs
+        mandatory_constraints.rs
+        scope_exclusions.rs
         prompts/
           target_users_question_system.txt
           target_users_extract_system.txt
@@ -41,10 +41,10 @@ src/
           application_boundary_extract_system.txt
           capability_categories_question_system.txt
           capability_categories_extract_system.txt
-          explicit_constraints_question_system.txt
-          explicit_constraints_extract_system.txt
-          non_goals_question_system.txt
-          non_goals_extract_system.txt
+          mandatory_constraints_question_system.txt
+          mandatory_constraints_extract_system.txt
+          scope_exclusions_question_system.txt
+          scope_exclusions_extract_system.txt
 ```
 
 ## 设计原则
@@ -117,52 +117,52 @@ Question LLM -> Typed Extraction LLM -> Rust mutation authority
 - Rust 写字段
 - 若有 blocking inconsistency，则 pending 保留
 
-### 5. `requirements.scope.explicit_constraints`
+### 5. `requirements.scope.mandatory_constraints`
 
 - extraction prompt 返回：
 
 ```json
 {
-  "explicit_constraints": [
+  "mandatory_constraints": [
     {
       "kind": "technical",
       "text": "必须使用 React、PostgreSQL 和 Redis"
     }
   ],
-  "no_explicit_constraints_declared": false,
+  "no_mandatory_constraints_declared": false,
   "detected_inconsistencies": []
 }
 ```
 
 - 技术栈约束在该字段合法。
-- “暂无其他约束”是有效完成回答（`no_explicit_constraints_declared=true`）。
-- 重复一等字段（users/type/platform/capability/non-goals）不应作为 explicit constraints 完成结果。
+- “暂无其他约束”是有效完成回答（`no_mandatory_constraints_declared=true`）。
+- 重复一等字段（users/type/platform/capability/scope-exclusions）不应作为 mandatory constraints 完成结果。
 - 若存在 `detected_inconsistencies`，保持 pending，不视为完成。
 
-### 6. `requirements.scope.non_goals`
+### 6. `requirements.scope.scope_exclusions`
 
 - extraction prompt 返回：
 
 ```json
 {
-  "non_goals": [
+  "scope_exclusions": [
     {
       "kind": "release",
       "text": "首版不开发移动端应用"
     }
   ],
-  "no_non_goals_declared": false,
+  "no_scope_exclusions_declared": false,
   "detected_inconsistencies": []
 }
 ```
 
-- `scope.non_goals` 记录产品负向范围边界（明确不做/暂不支持/首版排除）。
-- `non_goals.kind` 表示承诺强度：`permanent` / `release` / `deferred`。
-- 禁止性 policy/security/data/compliance 约束不应落在 `non_goals`，应归入 `explicit_constraints`。
-- “暂无明确不做的范围”仅在明确声明时视为有效完成（`no_non_goals_declared=true`）。
-- 对未给上下文限定的“`不做 X`”，可产出 `ambiguous_non_goal_commitment` 并继续澄清。
+- `scope.scope_exclusions` 记录产品负向范围边界（明确不做/暂不支持/首版排除）。
+- `scope_exclusions.kind` 表示承诺强度：`permanent` / `release` / `deferred`。
+- 禁止性 policy/security/data/compliance 约束不应落在 `scope_exclusions`，应归入 `mandatory_constraints`。
+- “暂无明确不做的范围”仅在明确声明时视为有效完成（`no_scope_exclusions_declared=true`）。
+- 对未给上下文限定的“`不做 X`”，可产出 `ambiguous_scope_exclusion_commitment` 并继续澄清。
 - “先这样/不确定”等不明确缺省回答应产出 blocking inconsistency 并保留 pending。
-- mixed answer（有效 non-goal + misplaced explicit constraint）会写入有效 non-goal，但因 inconsistency 非空仍保留 pending。
+- mixed answer（有效 scope-exclusion + misplaced mandatory constraint）会写入有效 scope-exclusion，但因 inconsistency 非空仍保留 pending。
 
 ### 7. 未来层（未实现）
 

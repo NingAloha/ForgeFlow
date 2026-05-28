@@ -14,8 +14,8 @@
   },
   "scope": {
     "capability_categories": [],
-    "explicit_constraints": [],
-    "non_goals": []
+    "mandatory_constraints": [],
+    "scope_exclusions": []
   },
   "functional_requirements": [],
   "non_functional_requirements": [],

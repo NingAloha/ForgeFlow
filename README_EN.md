@@ -12,7 +12,7 @@ The current focus is a requirements sieve architecture: progressively refining v
 - Rust project skeleton
 - LLM JSON client
 - requirements artifact schema and validator
-- structured `pending_clarifications`, `inconsistencies`, and `explicit_constraints`
+- structured `pending_clarifications`, `inconsistencies`, and `mandatory_constraints`
 - intent / target-users / application-boundary / capability-categories sieves
 - manual development runner
 
@@ -20,8 +20,8 @@ The current focus is a requirements sieve architecture: progressively refining v
 
 - router / CLI
 - inconsistency review/resolution layer
-- `explicit_constraints` sieve
-- `non_goals` sieve
+- `mandatory_constraints` sieve
+- `scope_exclusions` sieve
 - end-to-end pipeline
 
 ## Quick run

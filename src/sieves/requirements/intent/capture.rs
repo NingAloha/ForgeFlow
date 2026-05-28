@@ -128,16 +128,16 @@ fn build_scope_v0_pending_clarifications() -> Vec<PendingClarification> {
             sieve: "requirements.scope.capability_categories".to_string(),
         },
         PendingClarification {
-            id: "scope.explicit_constraints".to_string(),
-            target_path: vec!["scope".to_string(), "explicit_constraints".to_string()],
-            question: "是否有其他明确约束？".to_string(),
-            sieve: "requirements.scope.explicit_constraints".to_string(),
+            id: "scope.mandatory_constraints".to_string(),
+            target_path: vec!["scope".to_string(), "mandatory_constraints".to_string()],
+            question: "是否有其他强制约束？".to_string(),
+            sieve: "requirements.scope.mandatory_constraints".to_string(),
         },
         PendingClarification {
-            id: "scope.non_goals".to_string(),
-            target_path: vec!["scope".to_string(), "non_goals".to_string()],
-            question: "是否有明确不做或暂不支持的范围？".to_string(),
-            sieve: "requirements.scope.non_goals".to_string(),
+            id: "scope.scope_exclusions".to_string(),
+            target_path: vec!["scope".to_string(), "scope_exclusions".to_string()],
+            question: "是否有明确排除在范围外的内容？".to_string(),
+            sieve: "requirements.scope.scope_exclusions".to_string(),
         },
     ]
 }

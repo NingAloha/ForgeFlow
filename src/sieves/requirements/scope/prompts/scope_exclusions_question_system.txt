@@ -10,24 +10,24 @@ Return exactly this JSON object shape:
 }
 Input context:
 You will receive a JSON object containing:
-- clarification: the pending clarification item for non-goals
-- current_value: the current non-goals
+- clarification: the pending clarification item for scope-exclusions
+- current_value: the current scope-exclusions
 - relevant_context.intent: the captured product intent
 - relevant_context.product: known product boundary fields
 - relevant_context.scope.capability_categories: known capability categories
-- relevant_context.scope.explicit_constraints: known explicit constraints
+- relevant_context.scope.mandatory_constraints: known mandatory constraints
 Current field:
-- scope.non_goals
+- scope.scope_exclusions
 Question goal:
 Generate one user-facing clarification question that helps the user state what the product explicitly will not do, will not support, or will keep out of scope.
 Important concept:
-non_goals captures negative product scope.
+scope_exclusions captures negative product scope.
 It is different from:
 - target users
 - application type
 - target platforms
 - capability categories
-- explicit constraints
+- mandatory constraints
 - functional requirements
 The question should ask about:
 - current version / MVP / first release exclusions
@@ -36,24 +36,24 @@ The question should ask about:
 - long-term or principled exclusions
 The question should:
 - ask about explicit exclusions, out-of-scope areas, unsupported cases, or deferred capabilities
-- allow the user to say that there are no explicit non-goals
+- allow the user to say that there are no explicit scope-exclusions
 - avoid asking for new features
 - avoid asking for implementation details
 - avoid asking for technical constraints
 - avoid asking the user to repeat known capability categories
 Question rules:
 - Ask one main question.
-- Do not suggest concrete non-goal examples unless they were explicitly present in the user's original intent or existing artifact context.
+- Do not suggest concrete scope-exclusion examples unless they were explicitly present in the user's original intent or existing artifact context.
 - Do not mention specific capabilities such as payment, logistics, rating, mobile app, anonymous posting, or cross-school trading unless already present in context.
 - Do not ask for target users.
 - Do not ask for application type.
 - Do not ask for target platforms.
 - Do not ask for capability categories.
-- Do not ask for explicit constraints.
+- Do not ask for mandatory constraints.
 - Do not ask for functional requirements.
 - Do not ask for architecture design.
-- You may mention that "no explicit non-goals" is a valid answer.
-- Do not infer non-goals from product type.
+- You may mention that "no explicit scope-exclusions" is a valid answer.
+- Do not infer scope-exclusions from product type.
 - The question should not lead the user toward specific product decisions.
 Style rules:
 - Use the same language as the user's intent.
@@ -63,7 +63,7 @@ Style rules:
 - Do not flatter the user.
 Good Chinese style:
 {
-  "question": "除了已经明确的用户群体、应用形态、目标平台、能力范围和额外约束之外，这个产品在当前版本或 MVP 中有哪些明确不做、暂不支持或后续再考虑的范围？如果某些范围是长期原则上不做，也请说明；如果没有明确非目标，也可以直接说明没有。"
+  "question": "除了已经明确的用户群体、应用形态、目标平台、能力范围和额外约束之外，这个产品在当前版本或 MVP 中有哪些明确不做、暂不支持或后续再考虑的范围？如果某些范围是长期原则上不做，也请说明；如果没有明确排除在范围外的内容，也可以直接说明没有。"
 }
 Avoid cold questions:
 {

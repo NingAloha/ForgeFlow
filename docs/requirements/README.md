@@ -11,7 +11,7 @@
   - [llm contract](./intent/llm-contract.md)
 - `scope/`
   - 对应 `src/sieves/requirements/scope/*`
-  - 包含 `target_users / application_boundary / capability_categories / explicit_constraints / non_goals` 原子 sieve
+  - 包含 `target_users / application_boundary / capability_categories / mandatory_constraints / scope_exclusions` 原子 sieve
   - [architecture](./scope/architecture.md)
   - [smoke tests](./scope/smoke-tests.md)
 - `runner/`

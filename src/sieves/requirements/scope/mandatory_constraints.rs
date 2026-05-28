@@ -15,13 +15,13 @@ use crate::sieves::requirements::io::{load_requirements, save_requirements};
 use crate::sieves::requirements::validator::validate_requirements_artifact;
 
 const QUESTION_SYSTEM_PROMPT: &str =
-    include_str!("prompts/explicit_constraints_question_system.txt");
+    include_str!("prompts/mandatory_constraints_question_system.txt");
 const EXTRACT_SYSTEM_PROMPT: &str =
-    include_str!("prompts/explicit_constraints_extract_system.txt");
-const EXPLICIT_CONSTRAINTS_CLARIFICATION_ID: &str =
-    "scope.explicit_constraints";
-const EXPLICIT_CONSTRAINTS_SIEVE_ID: &str =
-    "requirements.scope.explicit_constraints";
+    include_str!("prompts/mandatory_constraints_extract_system.txt");
+const MANDATORY_CONSTRAINTS_CLARIFICATION_ID: &str =
+    "scope.mandatory_constraints";
+const MANDATORY_CONSTRAINTS_SIEVE_ID: &str =
+    "requirements.scope.mandatory_constraints";
 
 const ALLOWED_CONSTRAINT_KINDS: &[&str] = &[
     "technical",
@@ -41,14 +41,14 @@ struct ClarificationQuestion {
 }
 
 #[derive(Debug, Deserialize)]
-struct ExplicitConstraintsExtraction {
-    explicit_constraints: Vec<ExtractedConstraint>,
-    no_explicit_constraints_declared: bool,
+struct MandatoryConstraintsExtraction {
+    mandatory_constraints: Vec<ExtractedMandatoryConstraint>,
+    no_mandatory_constraints_declared: bool,
     detected_inconsistencies: Vec<DetectedInconsistency>,
 }
 
 #[derive(Debug, Deserialize)]
-struct ExtractedConstraint {
+struct ExtractedMandatoryConstraint {
     kind: String,
     text: String,
 }
@@ -59,15 +59,15 @@ struct DetectedInconsistency {
     message: String,
 }
 
-pub fn run_explicit_constraints_scope() -> Result<()> {
+pub fn run_mandatory_constraints_scope() -> Result<()> {
     let artifact = load_requirements().context("failed to load requirements artifact")?;
 
     let clarification = find_pending_clarification(
         &artifact,
-        EXPLICIT_CONSTRAINTS_CLARIFICATION_ID,
+        MANDATORY_CONSTRAINTS_CLARIFICATION_ID,
     )?;
 
-    let question = generate_explicit_constraints_question(&artifact, &clarification)?;
+    let question = generate_mandatory_constraints_question(&artifact, &clarification)?;
 
     println!("Current question:");
     println!("{question}");
@@ -80,7 +80,7 @@ pub fn run_explicit_constraints_scope() -> Result<()> {
     io::stdin().read_line(&mut answer)?;
 
     let updated_artifact =
-        update_explicit_constraints(artifact, &clarification, answer.trim())?;
+        update_mandatory_constraints(artifact, &clarification, answer.trim())?;
 
     save_requirements(&updated_artifact).context("failed to save requirements artifact")?;
 
@@ -103,13 +103,13 @@ fn find_pending_clarification(
         .ok_or_else(|| anyhow!("pending clarification {:?} not found", id))
 }
 
-fn generate_explicit_constraints_question(
+fn generate_mandatory_constraints_question(
     artifact: &RequirementsArtifact,
     clarification: &PendingClarification,
 ) -> Result<String> {
     let prompt_input = json!({
         "clarification": clarification,
-        "current_value": artifact.scope.explicit_constraints,
+        "current_value": artifact.scope.mandatory_constraints,
         "relevant_context": {
             "intent": artifact.intent,
             "product": artifact.product,
@@ -123,25 +123,25 @@ fn generate_explicit_constraints_question(
         QUESTION_SYSTEM_PROMPT,
         &serde_json::to_string_pretty(&prompt_input)?,
     )
-    .context("failed to generate explicit constraints clarification question")?;
+    .context("failed to generate mandatory constraints clarification question")?;
 
     let generated: ClarificationQuestion = serde_json::from_value(question_value)
         .context("LLM JSON does not match ClarificationQuestion schema")?;
 
     if generated.question.trim().is_empty() {
-        anyhow::bail!("generated explicit constraints question must not be empty");
+        anyhow::bail!("generated mandatory constraints question must not be empty");
     }
 
     Ok(generated.question)
 }
 
-pub fn update_explicit_constraints(
+pub fn update_mandatory_constraints(
     artifact: RequirementsArtifact,
     clarification: &PendingClarification,
     user_answer: &str,
 ) -> Result<RequirementsArtifact> {
     validate_requirements_artifact(&artifact)
-        .context("invalid requirements artifact before explicit constraints update")?;
+        .context("invalid requirements artifact before mandatory constraints update")?;
 
     if user_answer.trim().is_empty() {
         anyhow::bail!("user_answer must not be empty");
@@ -150,7 +150,7 @@ pub fn update_explicit_constraints(
     let prompt_input = json!({
         "clarification": clarification,
         "user_answer": user_answer,
-        "current_value": artifact.scope.explicit_constraints,
+        "current_value": artifact.scope.mandatory_constraints,
         "relevant_context": {
             "intent": artifact.intent,
             "product": artifact.product,
@@ -164,35 +164,35 @@ pub fn update_explicit_constraints(
         EXTRACT_SYSTEM_PROMPT,
         &serde_json::to_string_pretty(&prompt_input)?,
     )
-    .context("failed to extract explicit constraints")?;
+    .context("failed to extract mandatory constraints")?;
 
-    let extraction: ExplicitConstraintsExtraction = serde_json::from_value(extraction_value)
-        .context("LLM JSON does not match ExplicitConstraintsExtraction schema")?;
+    let extraction: MandatoryConstraintsExtraction = serde_json::from_value(extraction_value)
+        .context("LLM JSON does not match MandatoryConstraintsExtraction schema")?;
 
-    apply_explicit_constraints_extraction(artifact, &extraction)
+    apply_mandatory_constraints_extraction(artifact, &extraction)
 }
 
-fn apply_explicit_constraints_extraction(
+fn apply_mandatory_constraints_extraction(
     artifact: RequirementsArtifact,
-    extraction: &ExplicitConstraintsExtraction,
+    extraction: &MandatoryConstraintsExtraction,
 ) -> Result<RequirementsArtifact> {
-    validate_explicit_constraints_extraction(extraction)?;
+    validate_mandatory_constraints_extraction(extraction)?;
 
-    if extraction.explicit_constraints.is_empty()
-        && !extraction.no_explicit_constraints_declared
+    if extraction.mandatory_constraints.is_empty()
+        && !extraction.no_mandatory_constraints_declared
         && extraction.detected_inconsistencies.is_empty()
     {
         anyhow::bail!(
-            "explicit constraints answer did not clarify explicit_constraints"
+            "mandatory constraints answer did not clarify mandatory_constraints"
         );
     }
 
     let mut artifact_value = serde_json::to_value(&artifact)
         .context("failed to convert requirements artifact to JSON value")?;
 
-    if !extraction.explicit_constraints.is_empty() {
+    if !extraction.mandatory_constraints.is_empty() {
         let constraints: Vec<Constraint> = extraction
-            .explicit_constraints
+            .mandatory_constraints
             .iter()
             .map(|item| Constraint {
                 kind: item.kind.clone(),
@@ -202,11 +202,11 @@ fn apply_explicit_constraints_extraction(
 
         set_value_at_path(
             &mut artifact_value,
-            &["scope".to_string(), "explicit_constraints".to_string()],
+            &["scope".to_string(), "mandatory_constraints".to_string()],
             serde_json::to_value(constraints)
-                .context("failed to serialize explicit_constraints")?,
+                .context("failed to serialize mandatory_constraints")?,
         )
-        .context("failed to set scope.explicit_constraints")?;
+        .context("failed to set scope.mandatory_constraints")?;
     }
 
     if !extraction.detected_inconsistencies.is_empty() {
@@ -216,7 +216,7 @@ fn apply_explicit_constraints_extraction(
             .ok_or_else(|| anyhow!("inconsistencies must be an array"))?;
 
         for detected in &extraction.detected_inconsistencies {
-            let built = build_explicit_constraints_inconsistency(detected)?;
+            let built = build_mandatory_constraints_inconsistency(detected)?;
             inconsistencies.push(
                 serde_json::to_value(built)
                     .context("failed to serialize inconsistency")?,
@@ -229,15 +229,15 @@ fn apply_explicit_constraints_extraction(
         &["maturity".to_string()],
         Value::String("scope".to_string()),
     )
-    .context("failed to set maturity after explicit constraints update")?;
+    .context("failed to set maturity after mandatory constraints update")?;
 
     if extraction.detected_inconsistencies.is_empty()
-        && (!extraction.explicit_constraints.is_empty()
-            || extraction.no_explicit_constraints_declared)
+        && (!extraction.mandatory_constraints.is_empty()
+            || extraction.no_mandatory_constraints_declared)
     {
         let _removed = remove_pending_clarification_by_id(
             &mut artifact_value,
-            EXPLICIT_CONSTRAINTS_CLARIFICATION_ID,
+            MANDATORY_CONSTRAINTS_CLARIFICATION_ID,
         )?;
     }
 
@@ -245,29 +245,29 @@ fn apply_explicit_constraints_extraction(
         .context("mutated JSON does not match RequirementsArtifact schema")?;
 
     validate_requirements_artifact(&updated_artifact)
-        .context("explicit constraints update produced invalid requirements artifact")?;
+        .context("mandatory constraints update produced invalid requirements artifact")?;
 
-    validate_explicit_constraints_result(&updated_artifact, extraction)?;
+    validate_mandatory_constraints_result(&updated_artifact, extraction)?;
 
     Ok(updated_artifact)
 }
 
-fn validate_explicit_constraints_extraction(
-    extraction: &ExplicitConstraintsExtraction,
+fn validate_mandatory_constraints_extraction(
+    extraction: &MandatoryConstraintsExtraction,
 ) -> Result<()> {
-    for (index, item) in extraction.explicit_constraints.iter().enumerate() {
+    for (index, item) in extraction.mandatory_constraints.iter().enumerate() {
         if item.kind.trim().is_empty() {
-            anyhow::bail!("explicit_constraints[{index}].kind must not be empty");
+            anyhow::bail!("mandatory_constraints[{index}].kind must not be empty");
         }
         if !ALLOWED_CONSTRAINT_KINDS.contains(&item.kind.as_str()) {
             anyhow::bail!(
-                "explicit_constraints[{index}].kind must be one of {:?}, got {:?}",
+                "mandatory_constraints[{index}].kind must be one of {:?}, got {:?}",
                 ALLOWED_CONSTRAINT_KINDS,
                 item.kind
             );
         }
         if item.text.trim().is_empty() {
-            anyhow::bail!("explicit_constraints[{index}].text must not be empty");
+            anyhow::bail!("mandatory_constraints[{index}].text must not be empty");
         }
     }
 
@@ -282,29 +282,29 @@ fn validate_explicit_constraints_extraction(
         }
     }
 
-    if extraction.no_explicit_constraints_declared {
-        if !extraction.explicit_constraints.is_empty() {
+    if extraction.no_mandatory_constraints_declared {
+        if !extraction.mandatory_constraints.is_empty() {
             anyhow::bail!(
-                "no_explicit_constraints_declared=true requires explicit_constraints to be empty"
+                "no_mandatory_constraints_declared=true requires mandatory_constraints to be empty"
             );
         }
         if !extraction.detected_inconsistencies.is_empty() {
             anyhow::bail!(
-                "no_explicit_constraints_declared=true requires detected_inconsistencies to be empty"
+                "no_mandatory_constraints_declared=true requires detected_inconsistencies to be empty"
             );
         }
     }
 
-    if !extraction.explicit_constraints.is_empty() && extraction.no_explicit_constraints_declared {
+    if !extraction.mandatory_constraints.is_empty() && extraction.no_mandatory_constraints_declared {
         anyhow::bail!(
-            "explicit_constraints non-empty requires no_explicit_constraints_declared=false"
+            "mandatory_constraints non-empty requires no_mandatory_constraints_declared=false"
         );
     }
 
     Ok(())
 }
 
-fn build_explicit_constraints_inconsistency(
+fn build_mandatory_constraints_inconsistency(
     detected: &DetectedInconsistency,
 ) -> Result<Inconsistency> {
     if detected.id.trim().is_empty() {
@@ -315,11 +315,11 @@ fn build_explicit_constraints_inconsistency(
     }
 
     Ok(Inconsistency {
-        id: format!("scope.explicit_constraints.{}", detected.id),
+        id: format!("scope.mandatory_constraints.{}", detected.id),
         stage: "scope".to_string(),
-        sieve: EXPLICIT_CONSTRAINTS_SIEVE_ID.to_string(),
+        sieve: MANDATORY_CONSTRAINTS_SIEVE_ID.to_string(),
         severity: "blocking".to_string(),
-        target_paths: vec![vec!["scope".to_string(), "explicit_constraints".to_string()]],
+        target_paths: vec![vec!["scope".to_string(), "mandatory_constraints".to_string()]],
         message: detected.message.clone(),
         requires_clarification: true,
     })
@@ -340,53 +340,53 @@ fn remove_pending_clarification_by_id(
     Ok(pending.len() != original_len)
 }
 
-fn validate_explicit_constraints_result(
+fn validate_mandatory_constraints_result(
     artifact: &RequirementsArtifact,
-    extraction: &ExplicitConstraintsExtraction,
+    extraction: &MandatoryConstraintsExtraction,
 ) -> Result<()> {
-    if !extraction.explicit_constraints.is_empty()
-        && artifact.scope.explicit_constraints.is_empty()
+    if !extraction.mandatory_constraints.is_empty()
+        && artifact.scope.mandatory_constraints.is_empty()
     {
         anyhow::bail!(
-            "explicit constraints update must populate scope.explicit_constraints"
+            "mandatory constraints update must populate scope.mandatory_constraints"
         );
     }
 
-    if extraction.no_explicit_constraints_declared
-        && !artifact.scope.explicit_constraints.is_empty()
+    if extraction.no_mandatory_constraints_declared
+        && !artifact.scope.mandatory_constraints.is_empty()
     {
         anyhow::bail!(
-            "no_explicit_constraints_declared=true requires scope.explicit_constraints to remain empty"
+            "no_mandatory_constraints_declared=true requires scope.mandatory_constraints to remain empty"
         );
     }
 
     let has_pending = artifact.pending_clarifications.iter().any(|item| {
-        item.id == EXPLICIT_CONSTRAINTS_CLARIFICATION_ID
+        item.id == MANDATORY_CONSTRAINTS_CLARIFICATION_ID
     });
 
     if extraction.detected_inconsistencies.is_empty()
-        && (!extraction.explicit_constraints.is_empty()
-            || extraction.no_explicit_constraints_declared)
+        && (!extraction.mandatory_constraints.is_empty()
+            || extraction.no_mandatory_constraints_declared)
         && has_pending
     {
         anyhow::bail!(
-            "explicit_constraints pending clarification must be removed after successful update"
+            "mandatory_constraints pending clarification must be removed after successful update"
         );
     }
 
     if !extraction.detected_inconsistencies.is_empty() {
         if !has_pending {
             anyhow::bail!(
-                "explicit_constraints pending clarification must remain when inconsistencies exist"
+                "mandatory_constraints pending clarification must remain when inconsistencies exist"
             );
         }
         if !artifact
             .inconsistencies
             .iter()
-            .any(|item| item.sieve == EXPLICIT_CONSTRAINTS_SIEVE_ID)
+            .any(|item| item.sieve == MANDATORY_CONSTRAINTS_SIEVE_ID)
         {
             anyhow::bail!(
-                "explicit constraints inconsistencies must be appended with matching sieve"
+                "mandatory constraints inconsistencies must be appended with matching sieve"
             );
         }
     }
@@ -416,21 +416,21 @@ mod tests {
             },
             scope: Scope {
                 capability_categories: vec!["商品交易".to_string()],
-                explicit_constraints: vec![],
-                non_goals: vec![],
+                mandatory_constraints: vec![],
+                scope_exclusions: vec![],
             },
             functional_requirements: vec![],
             non_functional_requirements: vec![],
             external_interfaces: vec![],
             data_requirements: vec![],
             pending_clarifications: vec![PendingClarification {
-                id: EXPLICIT_CONSTRAINTS_CLARIFICATION_ID.to_string(),
+                id: MANDATORY_CONSTRAINTS_CLARIFICATION_ID.to_string(),
                 target_path: vec![
                     "scope".to_string(),
-                    "explicit_constraints".to_string(),
+                    "mandatory_constraints".to_string(),
                 ],
                 question: "是否有其他明确约束？".to_string(),
-                sieve: EXPLICIT_CONSTRAINTS_SIEVE_ID.to_string(),
+                sieve: MANDATORY_CONSTRAINTS_SIEVE_ID.to_string(),
             }],
             inconsistencies: vec![],
         }
@@ -439,98 +439,98 @@ mod tests {
     #[test]
     fn technical_constraint_accepted() {
         let artifact = base_artifact();
-        let extraction = ExplicitConstraintsExtraction {
-            explicit_constraints: vec![ExtractedConstraint {
+        let extraction = MandatoryConstraintsExtraction {
+            mandatory_constraints: vec![ExtractedMandatoryConstraint {
                 kind: "technical".to_string(),
                 text: "必须使用 React、PostgreSQL 和 Redis".to_string(),
             }],
-            no_explicit_constraints_declared: false,
+            no_mandatory_constraints_declared: false,
             detected_inconsistencies: vec![],
         };
 
-        let updated = apply_explicit_constraints_extraction(artifact, &extraction)
+        let updated = apply_mandatory_constraints_extraction(artifact, &extraction)
             .expect("update should succeed");
 
-        assert_eq!(updated.scope.explicit_constraints.len(), 1);
-        assert_eq!(updated.scope.explicit_constraints[0].kind, "technical");
+        assert_eq!(updated.scope.mandatory_constraints.len(), 1);
+        assert_eq!(updated.scope.mandatory_constraints[0].kind, "technical");
         assert!(!updated
             .pending_clarifications
             .iter()
-            .any(|item| item.id == EXPLICIT_CONSTRAINTS_CLARIFICATION_ID));
+            .any(|item| item.id == MANDATORY_CONSTRAINTS_CLARIFICATION_ID));
         assert!(updated.inconsistencies.is_empty());
     }
 
     #[test]
     fn policy_and_data_constraints_accepted() {
         let artifact = base_artifact();
-        let extraction = ExplicitConstraintsExtraction {
-            explicit_constraints: vec![
-                ExtractedConstraint {
+        let extraction = MandatoryConstraintsExtraction {
+            mandatory_constraints: vec![
+                ExtractedMandatoryConstraint {
                     kind: "policy".to_string(),
                     text: "只能使用校内邮箱注册".to_string(),
                 },
-                ExtractedConstraint {
+                ExtractedMandatoryConstraint {
                     kind: "data".to_string(),
                     text: "交易记录至少保留一年".to_string(),
                 },
             ],
-            no_explicit_constraints_declared: false,
+            no_mandatory_constraints_declared: false,
             detected_inconsistencies: vec![],
         };
 
-        let updated = apply_explicit_constraints_extraction(artifact, &extraction)
+        let updated = apply_mandatory_constraints_extraction(artifact, &extraction)
             .expect("update should succeed");
 
-        assert_eq!(updated.scope.explicit_constraints.len(), 2);
+        assert_eq!(updated.scope.mandatory_constraints.len(), 2);
         assert!(!updated
             .pending_clarifications
             .iter()
-            .any(|item| item.id == EXPLICIT_CONSTRAINTS_CLARIFICATION_ID));
+            .any(|item| item.id == MANDATORY_CONSTRAINTS_CLARIFICATION_ID));
     }
 
     #[test]
-    fn no_explicit_constraints_declared_is_valid_completion() {
+    fn no_mandatory_constraints_declared_is_valid_completion() {
         let artifact = base_artifact();
-        let extraction = ExplicitConstraintsExtraction {
-            explicit_constraints: vec![],
-            no_explicit_constraints_declared: true,
+        let extraction = MandatoryConstraintsExtraction {
+            mandatory_constraints: vec![],
+            no_mandatory_constraints_declared: true,
             detected_inconsistencies: vec![],
         };
 
-        let updated = apply_explicit_constraints_extraction(artifact, &extraction)
+        let updated = apply_mandatory_constraints_extraction(artifact, &extraction)
             .expect("update should succeed");
 
-        assert!(updated.scope.explicit_constraints.is_empty());
+        assert!(updated.scope.mandatory_constraints.is_empty());
         assert!(!updated
             .pending_clarifications
             .iter()
-            .any(|item| item.id == EXPLICIT_CONSTRAINTS_CLARIFICATION_ID));
+            .any(|item| item.id == MANDATORY_CONSTRAINTS_CLARIFICATION_ID));
         assert!(updated.inconsistencies.is_empty());
     }
 
     #[test]
     fn vague_constraint_produces_blocking_inconsistency() {
         let artifact = base_artifact();
-        let extraction = ExplicitConstraintsExtraction {
-            explicit_constraints: vec![],
-            no_explicit_constraints_declared: false,
+        let extraction = MandatoryConstraintsExtraction {
+            mandatory_constraints: vec![],
+            no_mandatory_constraints_declared: false,
             detected_inconsistencies: vec![DetectedInconsistency {
                 id: "vague_explicit_constraint".to_string(),
                 message: "用户回答过于宽泛，无法形成可执行的明确约束。".to_string(),
             }],
         };
 
-        let updated = apply_explicit_constraints_extraction(artifact, &extraction)
+        let updated = apply_mandatory_constraints_extraction(artifact, &extraction)
             .expect("update should succeed");
 
         assert!(updated
             .pending_clarifications
             .iter()
-            .any(|item| item.id == EXPLICIT_CONSTRAINTS_CLARIFICATION_ID));
+            .any(|item| item.id == MANDATORY_CONSTRAINTS_CLARIFICATION_ID));
         let inconsistency = updated
             .inconsistencies
             .iter()
-            .find(|item| item.sieve == EXPLICIT_CONSTRAINTS_SIEVE_ID)
+            .find(|item| item.sieve == MANDATORY_CONSTRAINTS_SIEVE_ID)
             .expect("must have inconsistency");
         assert_eq!(inconsistency.severity, "blocking");
     }
@@ -538,57 +538,57 @@ mod tests {
     #[test]
     fn functional_requirement_answer_produces_blocking_inconsistency() {
         let artifact = base_artifact();
-        let extraction = ExplicitConstraintsExtraction {
-            explicit_constraints: vec![],
-            no_explicit_constraints_declared: false,
+        let extraction = MandatoryConstraintsExtraction {
+            mandatory_constraints: vec![],
+            no_mandatory_constraints_declared: false,
             detected_inconsistencies: vec![DetectedInconsistency {
                 id: "functional_requirement_instead_of_constraint".to_string(),
                 message: "用户回答主要描述功能或能力，而不是额外明确约束。".to_string(),
             }],
         };
 
-        let updated = apply_explicit_constraints_extraction(artifact, &extraction)
+        let updated = apply_mandatory_constraints_extraction(artifact, &extraction)
             .expect("update should succeed");
 
         assert!(updated
             .pending_clarifications
             .iter()
-            .any(|item| item.id == EXPLICIT_CONSTRAINTS_CLARIFICATION_ID));
+            .any(|item| item.id == MANDATORY_CONSTRAINTS_CLARIFICATION_ID));
         assert!(updated
             .inconsistencies
             .iter()
-            .any(|item| item.sieve == EXPLICIT_CONSTRAINTS_SIEVE_ID));
+            .any(|item| item.sieve == MANDATORY_CONSTRAINTS_SIEVE_ID));
     }
 
     #[test]
     fn non_goal_answer_produces_blocking_inconsistency_and_keeps_pending() {
         let artifact = base_artifact();
-        let extraction = ExplicitConstraintsExtraction {
-            explicit_constraints: vec![],
-            no_explicit_constraints_declared: false,
+        let extraction = MandatoryConstraintsExtraction {
+            mandatory_constraints: vec![],
+            no_mandatory_constraints_declared: false,
             detected_inconsistencies: vec![DetectedInconsistency {
-                id: "non_goal_instead_of_explicit_constraint".to_string(),
-                message: "用户回答更像产品非目标，而不是额外显式约束，需要在 non_goals 层澄清。".to_string(),
+                id: "scope_exclusion_instead_of_mandatory_constraint".to_string(),
+                message: "用户回答更像产品范围排除项，而不是额外强制约束，需要在 scope_exclusions 层澄清。".to_string(),
             }],
         };
 
-        let updated = apply_explicit_constraints_extraction(artifact, &extraction)
+        let updated = apply_mandatory_constraints_extraction(artifact, &extraction)
             .expect("update should succeed");
 
-        assert!(updated.scope.explicit_constraints.is_empty());
+        assert!(updated.scope.mandatory_constraints.is_empty());
         assert!(updated
             .pending_clarifications
             .iter()
-            .any(|item| item.id == EXPLICIT_CONSTRAINTS_CLARIFICATION_ID));
+            .any(|item| item.id == MANDATORY_CONSTRAINTS_CLARIFICATION_ID));
         let inconsistency = updated
             .inconsistencies
             .iter()
             .find(|item| {
                 item.id
-                    == "scope.explicit_constraints.non_goal_instead_of_explicit_constraint"
+                    == "scope.mandatory_constraints.scope_exclusion_instead_of_mandatory_constraint"
             })
-            .expect("must have non-goal inconsistency");
-        assert_eq!(inconsistency.sieve, EXPLICIT_CONSTRAINTS_SIEVE_ID);
+            .expect("must have scope-exclusion inconsistency");
+        assert_eq!(inconsistency.sieve, MANDATORY_CONSTRAINTS_SIEVE_ID);
         assert_eq!(inconsistency.severity, "blocking");
         assert!(inconsistency.requires_clarification);
     }
@@ -596,44 +596,44 @@ mod tests {
     #[test]
     fn uncertain_absence_produces_blocking_inconsistency_and_keeps_pending() {
         let artifact = base_artifact();
-        let extraction = ExplicitConstraintsExtraction {
-            explicit_constraints: vec![],
-            no_explicit_constraints_declared: false,
+        let extraction = MandatoryConstraintsExtraction {
+            mandatory_constraints: vec![],
+            no_mandatory_constraints_declared: false,
             detected_inconsistencies: vec![DetectedInconsistency {
-                id: "uncertain_explicit_constraints_absence".to_string(),
+                id: "uncertain_mandatory_constraints_absence".to_string(),
                 message: "用户没有明确声明是否存在其他约束，需要进一步确认。".to_string(),
             }],
         };
 
-        let updated = apply_explicit_constraints_extraction(artifact, &extraction)
+        let updated = apply_mandatory_constraints_extraction(artifact, &extraction)
             .expect("update should succeed");
 
         assert!(updated
             .pending_clarifications
             .iter()
-            .any(|item| item.id == EXPLICIT_CONSTRAINTS_CLARIFICATION_ID));
+            .any(|item| item.id == MANDATORY_CONSTRAINTS_CLARIFICATION_ID));
         let inconsistency = updated
             .inconsistencies
             .iter()
-            .find(|item| item.id == "scope.explicit_constraints.uncertain_explicit_constraints_absence")
+            .find(|item| item.id == "scope.mandatory_constraints.uncertain_mandatory_constraints_absence")
             .expect("must have uncertainty inconsistency");
         assert_eq!(inconsistency.severity, "blocking");
-        assert_eq!(inconsistency.sieve, EXPLICIT_CONSTRAINTS_SIEVE_ID);
+        assert_eq!(inconsistency.sieve, MANDATORY_CONSTRAINTS_SIEVE_ID);
     }
 
     #[test]
     fn invalid_kind_rejected() {
         let artifact = base_artifact();
-        let extraction = ExplicitConstraintsExtraction {
-            explicit_constraints: vec![ExtractedConstraint {
+        let extraction = MandatoryConstraintsExtraction {
+            mandatory_constraints: vec![ExtractedMandatoryConstraint {
                 kind: "random".to_string(),
                 text: "xxx".to_string(),
             }],
-            no_explicit_constraints_declared: false,
+            no_mandatory_constraints_declared: false,
             detected_inconsistencies: vec![],
         };
 
-        let err = apply_explicit_constraints_extraction(artifact, &extraction)
+        let err = apply_mandatory_constraints_extraction(artifact, &extraction)
             .expect_err("invalid kind should fail");
         assert!(err.to_string().contains("must be one of"));
     }
@@ -641,55 +641,55 @@ mod tests {
     #[test]
     fn no_declared_true_with_non_empty_constraints_rejected() {
         let artifact = base_artifact();
-        let extraction = ExplicitConstraintsExtraction {
-            explicit_constraints: vec![ExtractedConstraint {
+        let extraction = MandatoryConstraintsExtraction {
+            mandatory_constraints: vec![ExtractedMandatoryConstraint {
                 kind: "technical".to_string(),
                 text: "必须使用 React".to_string(),
             }],
-            no_explicit_constraints_declared: true,
+            no_mandatory_constraints_declared: true,
             detected_inconsistencies: vec![],
         };
 
-        let err = apply_explicit_constraints_extraction(artifact, &extraction)
+        let err = apply_mandatory_constraints_extraction(artifact, &extraction)
             .expect_err("conflicting no_declared should fail");
         assert!(err
             .to_string()
-            .contains("no_explicit_constraints_declared=true requires explicit_constraints to be empty"));
+            .contains("no_mandatory_constraints_declared=true requires mandatory_constraints to be empty"));
     }
 
     #[test]
     fn no_declared_true_with_inconsistencies_rejected() {
         let artifact = base_artifact();
-        let extraction = ExplicitConstraintsExtraction {
-            explicit_constraints: vec![],
-            no_explicit_constraints_declared: true,
+        let extraction = MandatoryConstraintsExtraction {
+            mandatory_constraints: vec![],
+            no_mandatory_constraints_declared: true,
             detected_inconsistencies: vec![DetectedInconsistency {
                 id: "vague_explicit_constraint".to_string(),
                 message: "x".to_string(),
             }],
         };
 
-        let err = apply_explicit_constraints_extraction(artifact, &extraction)
+        let err = apply_mandatory_constraints_extraction(artifact, &extraction)
             .expect_err("no_declared with inconsistency should fail");
         assert!(err
             .to_string()
-            .contains("no_explicit_constraints_declared=true requires detected_inconsistencies to be empty"));
+            .contains("no_mandatory_constraints_declared=true requires detected_inconsistencies to be empty"));
     }
 
     #[test]
     fn empty_extraction_rejected() {
         let artifact = base_artifact();
-        let extraction = ExplicitConstraintsExtraction {
-            explicit_constraints: vec![],
-            no_explicit_constraints_declared: false,
+        let extraction = MandatoryConstraintsExtraction {
+            mandatory_constraints: vec![],
+            no_mandatory_constraints_declared: false,
             detected_inconsistencies: vec![],
         };
 
-        let err = apply_explicit_constraints_extraction(artifact, &extraction)
+        let err = apply_mandatory_constraints_extraction(artifact, &extraction)
             .expect_err("empty extraction should fail");
         assert_eq!(
             err.to_string(),
-            "explicit constraints answer did not clarify explicit_constraints"
+            "mandatory constraints answer did not clarify mandatory_constraints"
         );
     }
 }

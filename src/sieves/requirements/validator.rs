@@ -3,7 +3,7 @@ use anyhow::{bail, Result};
 use crate::sieves::requirements::artifact::{
     Constraint,
     Inconsistency,
-    NonGoal,
+    ScopeExclusion,
     PendingClarification,
     RequirementsArtifact,
     ALLOWED_MATURITY,
@@ -53,13 +53,13 @@ pub fn validate_requirements_artifact(artifact: &RequirementsArtifact) -> Result
         &artifact.scope.capability_categories,
         "requirements artifact.scope.capability_categories",
     )?;
-    validate_explicit_constraints(
-        &artifact.scope.explicit_constraints,
-        "requirements artifact.scope.explicit_constraints",
+    validate_mandatory_constraints(
+        &artifact.scope.mandatory_constraints,
+        "requirements artifact.scope.mandatory_constraints",
     )?;
-    validate_non_goals(
-        &artifact.scope.non_goals,
-        "requirements artifact.scope.non_goals",
+    validate_scope_exclusions(
+        &artifact.scope.scope_exclusions,
+        "requirements artifact.scope.scope_exclusions",
     )?;
 
     validate_pending_clarifications(
@@ -115,7 +115,7 @@ fn validate_pending_clarifications(
     Ok(())
 }
 
-fn validate_explicit_constraints(values: &[Constraint], field_path: &str) -> Result<()> {
+fn validate_mandatory_constraints(values: &[Constraint], field_path: &str) -> Result<()> {
     const ALLOWED_CONSTRAINT_KINDS: &[&str] = &[
         "technical",
         "platform",
@@ -147,7 +147,7 @@ fn validate_explicit_constraints(values: &[Constraint], field_path: &str) -> Res
     Ok(())
 }
 
-fn validate_non_goals(values: &[NonGoal], field_path: &str) -> Result<()> {
+fn validate_scope_exclusions(values: &[ScopeExclusion], field_path: &str) -> Result<()> {
     const ALLOWED_NON_GOAL_KINDS: &[&str] = &["permanent", "release", "deferred"];
 
     for (index, value) in values.iter().enumerate() {
@@ -224,7 +224,7 @@ mod tests {
         Constraint,
         Inconsistency,
         Intent,
-        NonGoal,
+        ScopeExclusion,
         Product,
         RequirementsArtifact,
         Scope,
@@ -247,8 +247,8 @@ mod tests {
             },
             scope: Scope {
                 capability_categories: vec![],
-                explicit_constraints: vec![],
-                non_goals: vec![],
+                mandatory_constraints: vec![],
+                scope_exclusions: vec![],
             },
             functional_requirements: vec![],
             non_functional_requirements: vec![],
@@ -267,16 +267,16 @@ mod tests {
     }
 
     #[test]
-    fn allows_empty_explicit_constraints() {
+    fn allows_empty_mandatory_constraints() {
         let artifact = base_artifact();
         validate_requirements_artifact(&artifact)
-            .expect("empty explicit_constraints should be valid");
+            .expect("empty mandatory_constraints should be valid");
     }
 
     #[test]
     fn allows_valid_structured_constraint() {
         let mut artifact = base_artifact();
-        artifact.scope.explicit_constraints.push(Constraint {
+        artifact.scope.mandatory_constraints.push(Constraint {
             kind: "technical".to_string(),
             text: "必须使用 PostgreSQL".to_string(),
         });
@@ -288,7 +288,7 @@ mod tests {
     #[test]
     fn allows_multiple_valid_constraint_kinds() {
         let mut artifact = base_artifact();
-        artifact.scope.explicit_constraints = vec![
+        artifact.scope.mandatory_constraints = vec![
             Constraint {
                 kind: "technical".to_string(),
                 text: "必须使用 PostgreSQL".to_string(),
@@ -308,13 +308,13 @@ mod tests {
         ];
 
         validate_requirements_artifact(&artifact)
-            .expect("multiple valid explicit_constraints should pass");
+            .expect("multiple valid mandatory_constraints should pass");
     }
 
     #[test]
     fn rejects_scope_constraint_kind() {
         let mut artifact = base_artifact();
-        artifact.scope.explicit_constraints.push(Constraint {
+        artifact.scope.mandatory_constraints.push(Constraint {
             kind: "scope".to_string(),
             text: "首版不做社交功能".to_string(),
         });
@@ -327,7 +327,7 @@ mod tests {
     #[test]
     fn rejects_invalid_constraint_kind() {
         let mut artifact = base_artifact();
-        artifact.scope.explicit_constraints.push(Constraint {
+        artifact.scope.mandatory_constraints.push(Constraint {
             kind: "random".to_string(),
             text: "xxx".to_string(),
         });
@@ -340,7 +340,7 @@ mod tests {
     #[test]
     fn rejects_empty_constraint_kind() {
         let mut artifact = base_artifact();
-        artifact.scope.explicit_constraints.push(Constraint {
+        artifact.scope.mandatory_constraints.push(Constraint {
             kind: "".to_string(),
             text: "必须使用 PostgreSQL".to_string(),
         });
@@ -353,7 +353,7 @@ mod tests {
     #[test]
     fn rejects_empty_constraint_text() {
         let mut artifact = base_artifact();
-        artifact.scope.explicit_constraints.push(Constraint {
+        artifact.scope.mandatory_constraints.push(Constraint {
             kind: "technical".to_string(),
             text: "".to_string(),
         });
@@ -366,29 +366,29 @@ mod tests {
     #[test]
     fn allows_valid_non_goal_kinds() {
         let mut artifact = base_artifact();
-        artifact.scope.non_goals = vec![
-            NonGoal {
+        artifact.scope.scope_exclusions = vec![
+            ScopeExclusion {
                 kind: "release".to_string(),
                 text: "首版不开发移动端应用".to_string(),
             },
-            NonGoal {
+            ScopeExclusion {
                 kind: "deferred".to_string(),
                 text: "暂缓跨校交易".to_string(),
             },
-            NonGoal {
+            ScopeExclusion {
                 kind: "permanent".to_string(),
                 text: "原则上不支持校外用户交易".to_string(),
             },
         ];
 
         validate_requirements_artifact(&artifact)
-            .expect("valid non_goals should pass");
+            .expect("valid scope_exclusions should pass");
     }
 
     #[test]
     fn rejects_invalid_non_goal_kind() {
         let mut artifact = base_artifact();
-        artifact.scope.non_goals = vec![NonGoal {
+        artifact.scope.scope_exclusions = vec![ScopeExclusion {
             kind: "temporary".to_string(),
             text: "不开发移动端应用".to_string(),
         }];

@@ -10,15 +10,15 @@ Return exactly this JSON object shape:
 }
 Input context:
 You will receive a JSON object containing:
-- clarification: the pending clarification item for explicit constraints
-- current_value: the current explicit constraints
+- clarification: the pending clarification item for mandatory constraints
+- current_value: the current mandatory constraints
 - relevant_context.intent: the captured product intent
 - relevant_context.product: known product boundary fields
 - relevant_context.scope.capability_categories: known capability categories
 Current field:
-- scope.explicit_constraints
+- scope.mandatory_constraints
 Question goal:
-Generate one user-facing clarification question that helps the user state any additional explicit constraints not already captured by first-class fields.
+Generate one user-facing clarification question that helps the user state any additional mandatory constraints not already captured by first-class fields.
 Important concept:
 ForgeFlow treats requirements capture as progressive constraint formation.
 Some constraints are promoted into first-class artifact fields:
@@ -26,15 +26,15 @@ Some constraints are promoted into first-class artifact fields:
 - product.application_type
 - product.target_platforms
 - scope.capability_categories
-- scope.non_goals
-scope.explicit_constraints stores additional user-stated constraints that are not already represented by those first-class fields.
+- scope.scope_exclusions
+scope.mandatory_constraints stores additional user-stated constraints that are not already represented by those first-class fields.
 The question should:
-- explain that this is about additional explicit constraints
+- explain that this is about additional mandatory constraints
 - avoid asking the user to repeat target users, application type, platform, or capability categories
 - allow the user to say that there are no additional constraints
 - keep the question focused on constraints that future requirements/design/implementation should obey
-Explicit constraint meaning:
-An explicit constraint is a user-stated limitation, rule, requirement, or boundary that later stages must obey and that is not already represented by another first-class field.
+Mandatory constraint meaning:
+An mandatory constraint is a user-stated limitation, rule, requirement, or boundary that later stages must obey and that is not already represented by another first-class field.
 Examples of possible constraint types:
 - technical constraints
 - platform constraints not already captured by target_platforms
@@ -52,7 +52,7 @@ Question rules:
 - Do not ask for application type.
 - Do not ask for target platforms.
 - Do not ask for capability categories.
-- Do not ask for non-goals.
+- Do not ask for scope-exclusions.
 - Do not ask for functional requirements.
 - Do not ask for architecture design.
 - Do not ask for implementation details as a design request.

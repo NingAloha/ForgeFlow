@@ -42,12 +42,18 @@ fn main() -> Result<()> {
         {
             sieves::requirements::scope::capability_categories::run_capability_categories_scope()
         }
+        [_, domain, action]
+            if domain == "requirements" && action == "explicit-constraints" =>
+        {
+            sieves::requirements::scope::explicit_constraints::run_explicit_constraints_scope()
+        }
         _ => {
             eprintln!("Usage:");
             eprintln!("  cargo run -- requirements intent");
             eprintln!("  cargo run -- requirements target-users");
             eprintln!("  cargo run -- requirements application-boundary");
             eprintln!("  cargo run -- requirements capability-categories");
+            eprintln!("  cargo run -- requirements explicit-constraints");
             bail!("unknown command")
         }
     }

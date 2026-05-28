@@ -32,6 +32,7 @@ src/
         target_users.rs
         application_boundary.rs
         capability_categories.rs
+        explicit_constraints.rs
         prompts/
           target_users_question_system.txt
           target_users_extract_system.txt
@@ -39,6 +40,8 @@ src/
           application_boundary_extract_system.txt
           capability_categories_question_system.txt
           capability_categories_extract_system.txt
+          explicit_constraints_question_system.txt
+          explicit_constraints_extract_system.txt
 ```
 
 ## 设计原则
@@ -112,10 +115,31 @@ Question LLM -> Typed Extraction LLM -> Rust mutation authority
 
 ### 5. 未来层（未实现）
 
-- `requirements.scope.explicit_constraints`
 - `requirements.scope.non_goals`
 - review/inconsistency layer
 - router/CLI
+
+### 5. `requirements.scope.explicit_constraints`
+
+- extraction prompt 返回：
+
+```json
+{
+  "explicit_constraints": [
+    {
+      "kind": "technical",
+      "text": "必须使用 React、PostgreSQL 和 Redis"
+    }
+  ],
+  "no_explicit_constraints_declared": false,
+  "detected_inconsistencies": []
+}
+```
+
+- 技术栈约束在该字段合法。
+- “暂无其他约束”是有效完成回答（`no_explicit_constraints_declared=true`）。
+- 重复一等字段（users/type/platform/capability/non-goals）不应作为 explicit constraints 完成结果。
+- 若存在 `detected_inconsistencies`，保持 pending，不视为完成。
 
 ## 当前不做
 

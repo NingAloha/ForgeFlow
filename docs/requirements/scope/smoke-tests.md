@@ -86,3 +86,45 @@ cargo run -- requirements capability-categories
 
 - 产生 blocking inconsistency（capability categories 语义不充分）
 - `scope.capability_categories` pending 保留
+
+## 用例 6：explicit_constraints technical constraint
+
+```bash
+cargo run -- requirements explicit-constraints
+```
+
+输入：`必须用 React、PostgreSQL 和 Redis`
+
+预期：
+
+- `scope.explicit_constraints` 写入一条 `kind=technical` 约束
+- 对应 pending 被移除
+- 不产生 inconsistency
+
+## 用例 7：explicit_constraints no additional constraints
+
+```bash
+cargo run -- requirements explicit-constraints
+```
+
+输入：`暂无其他约束`
+
+预期：
+
+- `scope.explicit_constraints` 保持空数组
+- 对应 pending 被移除
+- 不产生 inconsistency
+
+## 用例 8：explicit_constraints repetition/vague blocking
+
+```bash
+cargo run -- requirements explicit-constraints
+```
+
+输入示例：`还是大学生，Web 应用，支持 Web` 或 `性能要好`
+
+预期：
+
+- 产生 blocking inconsistency
+- 对应 pending 保留
+- 不将一等字段重复项当作 explicit constraints 完成结果

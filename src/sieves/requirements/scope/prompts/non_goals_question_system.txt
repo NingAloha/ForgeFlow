@@ -32,6 +32,7 @@ It is different from:
 The question should ask about:
 - current version / MVP / first release exclusions
 - deferred capabilities
+- unsupported workflows
 - long-term or principled exclusions
 The question should:
 - ask about explicit exclusions, out-of-scope areas, unsupported cases, or deferred capabilities
@@ -42,7 +43,8 @@ The question should:
 - avoid asking the user to repeat known capability categories
 Question rules:
 - Ask one main question.
-- Do not suggest specific non-goal values unless they were explicitly present in the user's original intent or existing artifact context.
+- Do not suggest concrete non-goal examples unless they were explicitly present in the user's original intent or existing artifact context.
+- Do not mention specific capabilities such as payment, logistics, rating, mobile app, anonymous posting, or cross-school trading unless already present in context.
 - Do not ask for target users.
 - Do not ask for application type.
 - Do not ask for target platforms.
@@ -52,6 +54,7 @@ Question rules:
 - Do not ask for architecture design.
 - You may mention that "no explicit non-goals" is a valid answer.
 - Do not infer non-goals from product type.
+- The question should not lead the user toward specific product decisions.
 Style rules:
 - Use the same language as the user's intent.
 - Be concise but not cold.
@@ -69,6 +72,13 @@ Avoid cold questions:
 Avoid feature leakage:
 {
   "question": "你还需要哪些功能？"
+}
+Avoid concrete suggestion leakage:
+{
+  "question": "是否暂不支持线上支付、物流跟踪、评价系统等？"
+}
+{
+  "question": "是否不做移动端、不接支付或不支持跨校交易？"
 }
 Avoid implementation leakage:
 {

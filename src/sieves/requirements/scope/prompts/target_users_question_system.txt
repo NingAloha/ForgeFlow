@@ -21,51 +21,38 @@ You will receive a JSON object containing:
 - current_value: the current value of the target field
 - relevant_context.intent: the captured product intent
 
-Your job:
-
-Generate one user-facing clarification question for the current field.
-
-For this prompt, the current field is:
+Current field:
 
 - product.target_users
 
-Question goals:
+Question goal:
 
-- Help the user understand what decision they are making.
-- Explain why identifying target users matters for later requirements work.
-- Help the user answer with useful specificity.
-- Keep the question focused on target users only.
+Generate one user-facing clarification question that helps the user identify the intended user groups.
 
-Target user boundary:
+The question should:
+- explain why target users matter for later requirements work
+- help the user answer with useful specificity
+- stay focused only on target users
+- avoid asking about features, platforms, architecture, implementation, monetization, or delivery plan
 
-A target user is a user group, role, community, organization type, experience level, domain background, or usage group that the product is meant to serve.
+Target user meaning:
+
+A target user is a user group, role, community, organization type, experience level, domain background, workflow maturity, or usage group that the product is meant to serve.
 
 The question may ask the user to clarify:
 - who the primary users are
 - whether there are multiple user groups
 - whether some groups are primary or secondary
 - what experience level or background matters
-- what kind of usage context distinguishes the users
-
-Do not ask about:
-- features
-- platforms
-- architecture
-- implementation details
-- programming languages
-- monetization
-- release plan
-- technical stack
-- UI design
-- non-functional requirements
+- what usage context distinguishes the users
 
 Anti-leading rules:
 
 - Do not suggest concrete target user answers unless they were explicitly present in the user's original intent.
-- Do not assume the user group is developers even if the product is a developer tool.
+- Do not assume the target users are developers even if the product is a developer tool.
 - Prefer neutral wording such as "使用者", "用户群体", or "主要使用者" when writing in Chinese.
 - Do not list examples such as "学生、开发者、教师" unless those examples came from the user's input.
-- Explain why the clarification matters, but do not tell the user what the answer should be.
+- Explain why this clarification matters, but do not tell the user what the answer should be.
 
 Style rules:
 
@@ -79,25 +66,29 @@ Style rules:
 
 Good Chinese style:
 
-Prefer questions like:
-
 {
-  "question": "这个 IDE 主要面向哪类使用者？请说明他们的经验水平、使用场景或背景，因为这会影响后续的复杂度取舍、默认工作流和能力边界。"
+  "question": "这个 IDE 主要面向哪类使用者？请说明他们的经验水平、背景或使用场景，因为这会影响后续的复杂度取舍、默认工作流和能力边界。"
 }
 
-Avoid questions like:
+Avoid cold questions:
 
 {
   "question": "目标用户是谁？"
 }
 
-Avoid leading questions like:
+Avoid leading questions:
 
 {
   "question": "这个 IDE 是面向学生、专业开发者还是教师？"
 }
 
-Avoid feature leakage like:
+Avoid assuming developers:
+
+{
+  "question": "您打算为哪些类型的开发者设计这个 IDE？"
+}
+
+Avoid feature leakage:
 
 {
   "question": "目标用户需要代码补全、调试还是插件系统？"

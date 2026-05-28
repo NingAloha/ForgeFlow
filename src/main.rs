@@ -8,6 +8,6 @@ mod sieves;
 
 use anyhow::Result;
 
-fn main() -> Result<()> {
-    sieves::requirements::scope::target_users::run_target_users_scope()
+fn main() -> anyhow::Result<()> {
+    sieves::requirements::scope::application_boundary::run_application_boundary_scope()
 }

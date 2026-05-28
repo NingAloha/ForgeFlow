@@ -5,7 +5,6 @@ use std::io::{self, Write};
 
 use crate::llm;
 use crate::mutation::json_write::set_value_at_path;
-use crate::mutation::operations::{apply_operations, OperationSet};
 use crate::sieves::requirements::artifact::{
     PendingClarification,
     RequirementsArtifact,
@@ -24,13 +23,14 @@ const EXTRACT_SYSTEM_PROMPT: &str =
 
 const TARGET_USERS_CLARIFICATION_ID: &str = "product.target_users";
 
-const TARGET_USERS_ALLOWED_PATHS: &[&[&str]] = &[
-    &["product", "target_users"],
-];
-
 #[derive(Debug, Deserialize)]
 struct ClarificationQuestion {
     question: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct TargetUsersExtraction {
+    target_users: Vec<String>,
 }
 
 pub fn run_target_users_scope() -> Result<()> {
@@ -122,24 +122,27 @@ pub fn update_target_users(
         }
     });
 
-    let operation_value = llm::call_llm_json(
+    let extraction_value = llm::call_llm_json(
         EXTRACT_SYSTEM_PROMPT,
         &serde_json::to_string_pretty(&prompt_input)?,
     )
-    .context("failed to extract target users operations")?;
+    .context("failed to extract target users")?;
 
-    let operation_set: OperationSet = serde_json::from_value(operation_value)
-        .context("LLM JSON does not match OperationSet schema")?;
+    let extraction: TargetUsersExtraction = serde_json::from_value(extraction_value)
+        .context("LLM JSON does not match TargetUsersExtraction schema")?;
+
+    validate_target_users_extraction(&extraction)?;
 
     let mut artifact_value = serde_json::to_value(&artifact)
         .context("failed to convert requirements artifact to JSON value")?;
 
-    apply_operations(
+    set_value_at_path(
         &mut artifact_value,
-        &operation_set,
-        TARGET_USERS_ALLOWED_PATHS,
+        &["product".to_string(), "target_users".to_string()],
+        serde_json::to_value(&extraction.target_users)
+            .context("failed to serialize target_users")?,
     )
-    .context("failed to apply target users operations")?;
+    .context("failed to set product.target_users")?;
 
     remove_pending_clarification_by_id(
         &mut artifact_value,
@@ -160,7 +163,7 @@ pub fn update_target_users(
     validate_requirements_artifact(&updated_artifact)
         .context("target users update produced invalid requirements artifact")?;
 
-    validate_target_users_result(&updated_artifact)?;
+    validate_target_users_result(&updated_artifact, &extraction)?;
 
     Ok(updated_artifact)
 }
@@ -204,8 +207,25 @@ fn remove_pending_clarification_by_id(
     Ok(())
 }
 
-fn validate_target_users_result(artifact: &RequirementsArtifact) -> Result<()> {
-    if artifact.product.target_users.is_empty() {
+fn validate_target_users_extraction(extraction: &TargetUsersExtraction) -> Result<()> {
+    for (index, value) in extraction.target_users.iter().enumerate() {
+        if value.trim().is_empty() {
+            anyhow::bail!("target_users[{index}] must not be empty");
+        }
+    }
+
+    if extraction.target_users.is_empty() {
+        anyhow::bail!("target users extraction result must not be empty");
+    }
+
+    Ok(())
+}
+
+fn validate_target_users_result(
+    artifact: &RequirementsArtifact,
+    extraction: &TargetUsersExtraction,
+) -> Result<()> {
+    if !extraction.target_users.is_empty() && artifact.product.target_users.is_empty() {
         anyhow::bail!("target users update must populate product.target_users");
     }
 
@@ -220,4 +240,90 @@ fn validate_target_users_result(artifact: &RequirementsArtifact) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sieves::requirements::artifact::{Intent, Product, Scope};
+
+    fn base_artifact() -> RequirementsArtifact {
+        RequirementsArtifact {
+            artifact_type: "requirements".to_string(),
+            schema_version: "0.1".to_string(),
+            maturity: "intent".to_string(),
+            intent: Intent {
+                raw_input: "设计一个ide".to_string(),
+                goal: "设计一个集成开发环境".to_string(),
+                domain: "软件开发工具".to_string(),
+            },
+            product: Product {
+                target_users: vec![],
+                application_type: vec![],
+                target_platforms: vec![],
+            },
+            scope: Scope {
+                capability_categories: vec![],
+                constraints: vec![],
+                non_goals: vec![],
+            },
+            functional_requirements: vec![],
+            non_functional_requirements: vec![],
+            external_interfaces: vec![],
+            data_requirements: vec![],
+            pending_clarifications: vec![PendingClarification {
+                id: TARGET_USERS_CLARIFICATION_ID.to_string(),
+                target_path: vec!["product".to_string(), "target_users".to_string()],
+                question: "目标用户是谁？".to_string(),
+                sieve: "requirements.scope.target_users".to_string(),
+            }],
+            inconsistencies: vec![],
+        }
+    }
+
+    #[test]
+    fn extraction_allows_shared_qualifier_target_users() {
+        let extraction = TargetUsersExtraction {
+            target_users: vec![
+                "有一定开发经验并掌握工业化开发流程的学生".to_string(),
+                "有一定开发经验并掌握工业化开发流程的开发者".to_string(),
+            ],
+        };
+
+        validate_target_users_extraction(&extraction)
+            .expect("shared qualifier target users should be valid");
+    }
+
+    #[test]
+    fn extraction_rejects_empty_result() {
+        let extraction = TargetUsersExtraction {
+            target_users: vec![],
+        };
+
+        let err = validate_target_users_extraction(&extraction)
+            .expect_err("empty extraction should fail");
+        assert_eq!(
+            err.to_string(),
+            "target users extraction result must not be empty"
+        );
+    }
+
+    #[test]
+    fn removes_target_users_pending_clarification() {
+        let artifact = base_artifact();
+        let mut value = serde_json::to_value(&artifact).expect("artifact to value");
+
+        remove_pending_clarification_by_id(&mut value, TARGET_USERS_CLARIFICATION_ID)
+            .expect("remove should succeed");
+
+        let updated: RequirementsArtifact =
+            serde_json::from_value(value).expect("value to artifact");
+
+        assert!(
+            !updated
+                .pending_clarifications
+                .iter()
+                .any(|item| item.id == TARGET_USERS_CLARIFICATION_ID)
+        );
+    }
 }

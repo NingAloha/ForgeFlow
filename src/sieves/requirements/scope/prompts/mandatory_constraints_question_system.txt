@@ -44,7 +44,7 @@ Examples of possible constraint types:
 - external integration constraints
 - data handling constraints
 - business rule constraints
-- scope or release boundary constraints
+- other mandatory rules not already represented by first-class fields
 Question rules:
 - Ask one main question.
 - Do not suggest specific constraint values unless they were explicitly present in the user's original intent or existing artifact context.
@@ -67,7 +67,7 @@ Style rules:
 - Do not flatter the user.
 Good Chinese style:
 {
-  "question": "除了已经明确的用户群体、应用形态、目标平台和能力边界之外，这个产品还有哪些必须遵守的额外约束？可以包括技术、政策、资源、性能、集成、数据或业务规则等限制；如果暂时没有其他约束，也可以明确说明没有。"
+  "question": "除了已经明确的用户群体、应用形态、目标平台、能力边界和范围排除项之外，这个产品还有哪些必须遵守的额外约束？可以包括技术、政策、资源、性能、集成、数据或业务规则等限制；如果暂时没有其他约束，也可以明确说明没有。"
 }
 Avoid cold questions:
 {

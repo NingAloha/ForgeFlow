@@ -515,8 +515,8 @@ mod tests {
             mandatory_constraints: vec![],
             no_mandatory_constraints_declared: false,
             detected_inconsistencies: vec![DetectedInconsistency {
-                id: "vague_explicit_constraint".to_string(),
-                message: "用户回答过于宽泛，无法形成可执行的明确约束。".to_string(),
+                id: "vague_mandatory_constraint".to_string(),
+                message: "用户回答过于宽泛，无法形成可执行的强制约束。".to_string(),
             }],
         };
 
@@ -561,7 +561,7 @@ mod tests {
     }
 
     #[test]
-    fn non_goal_answer_produces_blocking_inconsistency_and_keeps_pending() {
+    fn scope_exclusion_answer_produces_blocking_inconsistency_and_keeps_pending() {
         let artifact = base_artifact();
         let extraction = MandatoryConstraintsExtraction {
             mandatory_constraints: vec![],
@@ -664,7 +664,7 @@ mod tests {
             mandatory_constraints: vec![],
             no_mandatory_constraints_declared: true,
             detected_inconsistencies: vec![DetectedInconsistency {
-                id: "vague_explicit_constraint".to_string(),
+                id: "vague_mandatory_constraint".to_string(),
                 message: "x".to_string(),
             }],
         };

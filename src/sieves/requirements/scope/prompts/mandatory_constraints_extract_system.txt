@@ -129,22 +129,22 @@ Do not extract.
 Example:
 "发布商品、搜索商品、私信沟通"
 Do not extract as mandatory constraints.
-5. Non-goals.
+5. Scope exclusions.
 Example:
 "不做移动端"
 This is a scope-exclusion and should not be extracted into mandatory_constraints.
 Inconsistency detection:
 Report detected_inconsistencies only for issues directly related to scope.mandatory_constraints.
 Use these inconsistency ids when applicable:
-1. vague_explicit_constraint
-Use when the answer contains vague constraints that cannot guide later stages.
+1. vague_mandatory_constraint
+Use when the answer contains vague mandatory constraints that cannot guide later stages.
 Example:
 "做得好一点"
 "尽量简单"
 "性能要好"
 "体验要好"
 Message example:
-"用户回答过于宽泛，无法形成可执行的明确约束。"
+"用户回答过于宽泛，无法形成可执行的强制约束。"
 2. first_class_field_repetition
 Use when the answer only repeats already captured first-class fields and does not provide additional mandatory constraints.
 Example:
@@ -237,8 +237,8 @@ Output:
   "no_mandatory_constraints_declared": false,
   "detected_inconsistencies": [
     {
-      "id": "vague_explicit_constraint",
-      "message": "用户回答过于宽泛，无法形成可执行的明确约束。"
+      "id": "vague_mandatory_constraint",
+      "message": "用户回答过于宽泛，无法形成可执行的强制约束。"
     }
   ]
 }
@@ -308,7 +308,7 @@ Invalid outputs:
   "no_mandatory_constraints_declared": true,
   "detected_inconsistencies": [
     {
-      "id": "vague_explicit_constraint",
+      "id": "vague_mandatory_constraint",
       "message": "..."
     }
   ]

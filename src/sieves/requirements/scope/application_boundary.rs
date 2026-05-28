@@ -389,11 +389,23 @@ fn validate_application_boundary_result(
             );
         }
     } else {
+        let has_application_type_pending = artifact
+            .pending_clarifications
+            .iter()
+            .any(|item| item.id == APPLICATION_TYPE_CLARIFICATION_ID);
+        let has_target_platforms_pending = artifact
+            .pending_clarifications
+            .iter()
+            .any(|item| item.id == TARGET_PLATFORMS_CLARIFICATION_ID);
+
+        if !has_application_type_pending && !has_target_platforms_pending {
+            anyhow::bail!(
+                "application boundary pending clarification must remain when inconsistencies exist"
+            );
+        }
+
         if !extraction.application_type.is_empty()
-            && !artifact
-                .pending_clarifications
-                .iter()
-                .any(|item| item.id == APPLICATION_TYPE_CLARIFICATION_ID)
+            && !has_application_type_pending
         {
             anyhow::bail!(
                 "application_type pending clarification must remain when inconsistencies exist"
@@ -401,10 +413,7 @@ fn validate_application_boundary_result(
         }
 
         if !extraction.target_platforms.is_empty()
-            && !artifact
-                .pending_clarifications
-                .iter()
-                .any(|item| item.id == TARGET_PLATFORMS_CLARIFICATION_ID)
+            && !has_target_platforms_pending
         {
             anyhow::bail!(
                 "target_platforms pending clarification must remain when inconsistencies exist"
@@ -658,5 +667,81 @@ mod tests {
             .pending_clarifications
             .iter()
             .any(|item| item.id == TARGET_PLATFORMS_CLARIFICATION_ID));
+    }
+
+    #[test]
+    fn unclear_application_boundary_keeps_pending_and_appends_blocking_inconsistency() {
+        let artifact = base_artifact();
+        let extraction = ApplicationBoundaryExtraction {
+            application_type: vec![],
+            target_platforms: vec![],
+            detected_inconsistencies: vec![DetectedInconsistency {
+                id: "unclear_application_boundary".to_string(),
+                message: "用户没有明确说明应用形态或目标平台，需要进一步澄清。".to_string(),
+            }],
+        };
+
+        let updated = apply_application_boundary_extraction(artifact, &extraction)
+            .expect("update should succeed");
+
+        assert!(updated.product.application_type.is_empty());
+        assert!(updated.product.target_platforms.is_empty());
+        assert!(updated
+            .pending_clarifications
+            .iter()
+            .any(|item| item.id == APPLICATION_TYPE_CLARIFICATION_ID));
+        assert!(updated
+            .pending_clarifications
+            .iter()
+            .any(|item| item.id == TARGET_PLATFORMS_CLARIFICATION_ID));
+        let inconsistency = updated
+            .inconsistencies
+            .iter()
+            .find(|item| {
+                item.id == "scope.application_boundary.unclear_application_boundary"
+            })
+            .expect("must have unclear inconsistency");
+        assert_eq!(inconsistency.sieve, APPLICATION_BOUNDARY_SIEVE_ID);
+        assert_eq!(inconsistency.severity, "blocking");
+        assert!(inconsistency.requires_clarification);
+        assert_eq!(inconsistency.target_paths.len(), 2);
+    }
+
+    #[test]
+    fn empty_application_boundary_extraction_without_inconsistency_rejected() {
+        let artifact = base_artifact();
+        let extraction = ApplicationBoundaryExtraction {
+            application_type: vec![],
+            target_platforms: vec![],
+            detected_inconsistencies: vec![],
+        };
+
+        let err = apply_application_boundary_extraction(artifact, &extraction)
+            .expect_err("empty extraction should fail");
+        assert_eq!(
+            err.to_string(),
+            "application boundary answer did not clarify application_type or target_platforms"
+        );
+    }
+
+    #[test]
+    fn detected_inconsistency_with_empty_fields_requires_boundary_pending() {
+        let mut artifact = base_artifact();
+        artifact.pending_clarifications.clear();
+        let extraction = ApplicationBoundaryExtraction {
+            application_type: vec![],
+            target_platforms: vec![],
+            detected_inconsistencies: vec![DetectedInconsistency {
+                id: "unclear_application_boundary".to_string(),
+                message: "用户没有明确说明应用形态或目标平台，需要进一步澄清。".to_string(),
+            }],
+        };
+
+        let err = apply_application_boundary_extraction(artifact, &extraction)
+            .expect_err("should fail when boundary pending is absent");
+        assert_eq!(
+            err.to_string(),
+            "application boundary pending clarification must remain when inconsistencies exist"
+        );
     }
 }

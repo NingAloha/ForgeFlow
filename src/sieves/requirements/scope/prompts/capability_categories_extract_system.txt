@@ -93,6 +93,32 @@ Message example:
 Use when the answer asks the system to infer typical product capabilities instead of stating actual capability boundaries.
 Message example:
 "用户没有明确说明能力类别，而是要求系统按常见产品能力推断，需要进一步澄清。"
+4. unclear_capability_categories
+Use when the user's answer is vague, evasive, placeholder-like, or does not clarify any capability category.
+Message example:
+"用户没有明确说明能力类别，需要进一步澄清能力边界。"
+Examples of unclear / non-completing answers:
+- 还没想好
+- 先这样
+- 都可以
+- 看情况
+- 暂时不确定
+- 不知道
+- 以后再说
+- 先不管
+Required output for such answers:
+{
+  "capability_categories": [],
+  "detected_inconsistencies": [
+    {
+      "id": "unclear_capability_categories",
+      "message": "用户没有明确说明能力类别，需要进一步澄清能力边界。"
+    }
+  ]
+}
+Do not treat these answers as successful completion.
+Do not infer capability categories from product intent, product type, target users, application type, or common product knowledge.
+Do not invent placeholder categories.
 If there is no clear inconsistency, return:
 "detected_inconsistencies": []
 Good outputs:
@@ -150,6 +176,18 @@ Output:
     {
       "id": "ambiguous_capability_category",
       "message": "用户回答中的能力类别过于宽泛，需要进一步澄清具体能力边界。"
+    }
+  ]
+}
+User answer:
+还没想好
+Output:
+{
+  "capability_categories": [],
+  "detected_inconsistencies": [
+    {
+      "id": "unclear_capability_categories",
+      "message": "用户没有明确说明能力类别，需要进一步澄清能力边界。"
     }
   ]
 }

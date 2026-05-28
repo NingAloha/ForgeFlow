@@ -233,16 +233,16 @@ fn apply_scope_exclusions_extraction(
 }
 
 fn validate_scope_exclusions_extraction(extraction: &ScopeExclusionsExtraction) -> Result<()> {
-    const ALLOWED_NON_GOAL_KINDS: &[&str] = &["permanent", "release", "deferred"];
+    const ALLOWED_SCOPE_EXCLUSION_KINDS: &[&str] = &["permanent", "release", "deferred"];
 
     for (index, item) in extraction.scope_exclusions.iter().enumerate() {
         if item.kind.trim().is_empty() {
             anyhow::bail!("scope_exclusions[{index}].kind must not be empty");
         }
-        if !ALLOWED_NON_GOAL_KINDS.contains(&item.kind.as_str()) {
+        if !ALLOWED_SCOPE_EXCLUSION_KINDS.contains(&item.kind.as_str()) {
             anyhow::bail!(
                 "scope_exclusions[{index}].kind must be one of {:?}, got {:?}",
-                ALLOWED_NON_GOAL_KINDS,
+                ALLOWED_SCOPE_EXCLUSION_KINDS,
                 item.kind
             );
         }
@@ -533,7 +533,7 @@ mod tests {
     }
 
     #[test]
-    fn mixed_valid_non_goal_and_inconsistency_keeps_pending() {
+    fn mixed_valid_scope_exclusion_and_inconsistency_keeps_pending() {
         let artifact = base_artifact();
         let extraction = ScopeExclusionsExtraction {
             scope_exclusions: vec![ExtractedScopeExclusion {
@@ -563,7 +563,7 @@ mod tests {
     }
 
     #[test]
-    fn permanent_non_goal_accepted() {
+    fn permanent_scope_exclusion_accepted() {
         let artifact = base_artifact();
         let extraction = ScopeExclusionsExtraction {
             scope_exclusions: vec![ExtractedScopeExclusion {
@@ -585,7 +585,7 @@ mod tests {
     }
 
     #[test]
-    fn deferred_non_goal_accepted() {
+    fn deferred_scope_exclusion_accepted() {
         let artifact = base_artifact();
         let extraction = ScopeExclusionsExtraction {
             scope_exclusions: vec![ExtractedScopeExclusion {
@@ -708,7 +708,7 @@ mod tests {
             scope_exclusions: vec![],
             no_scope_exclusions_declared: true,
             detected_inconsistencies: vec![DetectedInconsistency {
-                id: "vague_non_goal".to_string(),
+                id: "vague_scope_exclusion".to_string(),
                 message: "用户回答过于宽泛，无法形成可执行的范围排除项边界。".to_string(),
             }],
         };

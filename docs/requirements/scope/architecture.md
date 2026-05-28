@@ -102,6 +102,7 @@ Question LLM -> Typed Extraction LLM -> Rust mutation authority
 - Rust 写入 `product.application_type` / `product.target_platforms`
 - `detected_inconsistencies` 为空时，移除对应 pending
 - `detected_inconsistencies` 非空时，保留对应 pending，并转换追加 blocking inconsistency
+- 若回答模糊/占位且未澄清 application_type 与 target_platforms，sieve 仍应保留 application boundary pending，并追加 blocking inconsistency，而不是仅以普通错误退出。
 
 ### 4. `requirements.scope.capability_categories`
 
@@ -116,6 +117,7 @@ Question LLM -> Typed Extraction LLM -> Rust mutation authority
 
 - Rust 写字段
 - 若有 blocking inconsistency，则 pending 保留
+- 若回答模糊/占位且未澄清任何 capability category，sieve 应保留 `scope.capability_categories` pending，并追加 blocking inconsistency。
 
 ### 5. `requirements.scope.mandatory_constraints`
 

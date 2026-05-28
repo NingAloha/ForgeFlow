@@ -295,6 +295,30 @@ mod tests {
     }
 
     #[test]
+    fn extraction_allows_propagated_reading_context_qualifier() {
+        let extraction = TargetUsersExtraction {
+            target_users: vec![
+                "经常读书、写摘录和整理想法的个人用户".to_string(),
+                "有读书摘录和想法整理需求的学生".to_string(),
+                "有读书摘录和想法整理需求的研究者".to_string(),
+            ],
+        };
+
+        validate_target_users_extraction(&extraction)
+            .expect("propagated shared qualifier should be valid");
+    }
+
+    #[test]
+    fn extraction_allows_identity_groups_without_forced_qualifier_merge() {
+        let extraction = TargetUsersExtraction {
+            target_users: vec!["程序员".to_string(), "老师".to_string()],
+        };
+
+        validate_target_users_extraction(&extraction)
+            .expect("identity labels should remain independent user groups");
+    }
+
+    #[test]
     fn extraction_rejects_empty_result() {
         let extraction = TargetUsersExtraction {
             target_users: vec![],

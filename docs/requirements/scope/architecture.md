@@ -96,8 +96,9 @@ Question LLM -> Typed Extraction LLM -> Rust mutation authority
 }
 ```
 
-- Rust 写字段、按完成字段移除 pending
-- Rust 转换并追加 structured inconsistency
+- Rust 写入 `product.application_type` / `product.target_platforms`
+- `detected_inconsistencies` 为空时，移除对应 pending
+- `detected_inconsistencies` 非空时，保留对应 pending，并转换追加 blocking inconsistency
 
 ### 4. `requirements.scope.capability_categories`
 
@@ -113,13 +114,7 @@ Question LLM -> Typed Extraction LLM -> Rust mutation authority
 - Rust 写字段
 - 若有 blocking inconsistency，则 pending 保留
 
-### 5. 未来层（未实现）
-
-- `requirements.scope.non_goals`
-- review/inconsistency layer
-- router/CLI
-
-### 6. `requirements.scope.explicit_constraints`
+### 5. `requirements.scope.explicit_constraints`
 
 - extraction prompt 返回：
 
@@ -141,13 +136,19 @@ Question LLM -> Typed Extraction LLM -> Rust mutation authority
 - 重复一等字段（users/type/platform/capability/non-goals）不应作为 explicit constraints 完成结果。
 - 若存在 `detected_inconsistencies`，保持 pending，不视为完成。
 
+### 6. 未来层（未实现）
+
+- `requirements.scope.non_goals`
+- review/inconsistency layer
+- router/CLI
+
 ### 7. Scope sieve 与 inconsistency review/resolution 的职责边界
 
 Scope sieve responsibilities（may）：
 
 - 生成面向用户的澄清问题
 - 从当前用户回答提取 typed result
-- mutation 自己负责的目标 artifact 字段
+- 修改自己负责的目标 artifact 字段
 - 基于当前提取结果新增 inconsistency
 - 基于当前提取结果移除或保留本 sieve 的 pending clarification
 

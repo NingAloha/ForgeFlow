@@ -117,7 +117,7 @@ cargo run -- requirements explicit-constraints
 
 说明：
 
-- 若测试目标是验证“暂无其他约束”的 clean path，应从干净 runtime 开始，且不存在预先写入的 `scope.explicit_constraints` blocking inconsistency。
+- clean “暂无其他约束” path 需要从无旧 explicit_constraints inconsistency 的 runtime 开始。
 - 若先产生 `scope.explicit_constraints.uncertain_explicit_constraints_absence`，再回答“暂无其他约束”，该场景验证的是未来 review/resolution 语义，而非 explicit_constraints sieve 自身职责。
 
 ## 用例 8：explicit_constraints repetition/vague blocking

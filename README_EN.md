@@ -184,6 +184,29 @@ Allowed `kind` values:
 
 Note: the example template at `examples/sieves/requirements/requirements.example.json` still keeps `"explicit_constraints": []` because it is an empty template.
 
+### Constraint model
+
+ForgeFlow treats requirements capture as progressive constraint formation.
+Some constraints are promoted into first-class artifact fields because they are stable, high-frequency, and heavily consumed by later agents:
+
+- `product.target_users`
+- `product.application_type`
+- `product.target_platforms`
+- `scope.capability_categories`
+- `scope.non_goals`
+
+`scope.explicit_constraints` is not a container for every constraint in the system.
+It stores additional user-stated constraints that are not already represented by those first-class fields.
+
+For example:
+
+- target users constrain interaction complexity, permissions, language, and capability priority.
+- application type constrains interaction model, deployment, and system integration.
+- target platforms constrain compatibility and technical choices.
+- capability categories constrain positive product scope.
+- non-goals constrain negative product scope.
+- explicit constraints store remaining technical, policy, resource, performance, integration, data, business, or scope constraints explicitly stated by the user.
+
 ## Requirements Sieve Architecture
 
 ### 1) Intent capture

@@ -186,6 +186,29 @@ examples/
 
 说明：`examples/sieves/requirements/requirements.example.json` 仍保持 `"explicit_constraints": []`，因为它是空模板。
 
+### 约束模型
+
+ForgeFlow 将 requirements capture 视为“逐步形成约束”的过程。
+其中一部分约束因为稳定、高频、且被后续 agent 高强度消费，被提升为一等字段：
+
+- `product.target_users`
+- `product.application_type`
+- `product.target_platforms`
+- `scope.capability_categories`
+- `scope.non_goals`
+
+`scope.explicit_constraints` 不是“系统内所有约束”的总容器。
+它只存放尚未被上述一等字段表达的、用户明确声明的额外约束。
+
+例如：
+
+- 目标用户约束交互复杂度、权限、语言和能力优先级。
+- 应用形态约束交互模型、部署方式和系统集成方式。
+- 目标平台约束兼容性边界与技术选择空间。
+- 能力类别约束正向产品范围。
+- 非目标约束负向产品范围。
+- 显式约束字段承载其余由用户明确声明的 technical/platform/policy/resource/performance/integration/data/business/scope 约束。
+
 ## Requirements Sieve Architecture
 
 ### 1. Intent Capture

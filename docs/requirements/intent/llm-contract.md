@@ -52,15 +52,23 @@
 
 ## 3) Intent Prompt Contract
 
-intent 目前仍使用 operation-limited 形式，但只允许写：
+intent 输出 typed payload：
 
-- `intent.raw_input`
-- `intent.goal`
-- `intent.domain`
+```json
+{
+  "raw_input": "...",
+  "goal": "...",
+  "domain": "..."
+}
+```
+
+并遵循：
+
+- 不返回 `operations`
+- 不返回 artifact paths
+- 不返回完整 artifact
+- 不控制 `pending_clarifications`
+- 不控制 `maturity`
+- 不控制 `inconsistencies`
 
 流程字段由 Rust 固定注入。
-
-## 4) 关于 `mutation::operations`
-
-`mutation::operations` 是内部 mutation primitive / legacy support。
-它不是新 scope sieve 的 LLM-facing contract。

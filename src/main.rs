@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+#![allow(unused_imports)]
+
 use anyhow::{bail, Result};
 use std::io::{self, Write};
 

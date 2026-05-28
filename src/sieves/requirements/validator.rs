@@ -148,16 +148,16 @@ fn validate_mandatory_constraints(values: &[Constraint], field_path: &str) -> Re
 }
 
 fn validate_scope_exclusions(values: &[ScopeExclusion], field_path: &str) -> Result<()> {
-    const ALLOWED_NON_GOAL_KINDS: &[&str] = &["permanent", "release", "deferred"];
+    const ALLOWED_SCOPE_EXCLUSION_KINDS: &[&str] = &["permanent", "release", "deferred"];
 
     for (index, value) in values.iter().enumerate() {
         if value.kind.trim().is_empty() {
             bail!("{field_path}[{index}].kind must not be empty");
         }
-        if !ALLOWED_NON_GOAL_KINDS.contains(&value.kind.as_str()) {
+        if !ALLOWED_SCOPE_EXCLUSION_KINDS.contains(&value.kind.as_str()) {
             bail!(
                 "{field_path}[{index}].kind must be one of {:?}, got {:?}",
-                ALLOWED_NON_GOAL_KINDS,
+                ALLOWED_SCOPE_EXCLUSION_KINDS,
                 value.kind
             );
         }
@@ -364,7 +364,7 @@ mod tests {
     }
 
     #[test]
-    fn allows_valid_non_goal_kinds() {
+    fn allows_valid_scope_exclusion_kinds() {
         let mut artifact = base_artifact();
         artifact.scope.scope_exclusions = vec![
             ScopeExclusion {
@@ -386,7 +386,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_invalid_non_goal_kind() {
+    fn rejects_invalid_scope_exclusion_kind() {
         let mut artifact = base_artifact();
         artifact.scope.scope_exclusions = vec![ScopeExclusion {
             kind: "temporary".to_string(),
@@ -394,7 +394,7 @@ mod tests {
         }];
 
         let err = validate_requirements_artifact(&artifact)
-            .expect_err("invalid non_goal kind should fail");
+            .expect_err("invalid scope_exclusion kind should fail");
         assert!(err.to_string().contains(".kind must be one of"));
     }
 

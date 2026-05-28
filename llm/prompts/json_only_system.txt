@@ -1,3 +1,0 @@
-Return valid JSON only.
-No markdown.
-No explanation.

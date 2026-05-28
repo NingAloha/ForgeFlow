@@ -33,6 +33,7 @@ src/
         application_boundary.rs
         capability_categories.rs
         explicit_constraints.rs
+        non_goals.rs
         prompts/
           target_users_question_system.txt
           target_users_extract_system.txt
@@ -42,6 +43,8 @@ src/
           capability_categories_extract_system.txt
           explicit_constraints_question_system.txt
           explicit_constraints_extract_system.txt
+          non_goals_question_system.txt
+          non_goals_extract_system.txt
 ```
 
 ## 设计原则
@@ -136,13 +139,37 @@ Question LLM -> Typed Extraction LLM -> Rust mutation authority
 - 重复一等字段（users/type/platform/capability/non-goals）不应作为 explicit constraints 完成结果。
 - 若存在 `detected_inconsistencies`，保持 pending，不视为完成。
 
-### 6. 未来层（未实现）
+### 6. `requirements.scope.non_goals`
 
-- `requirements.scope.non_goals`
+- extraction prompt 返回：
+
+```json
+{
+  "non_goals": [
+    {
+      "kind": "release",
+      "text": "首版不开发移动端应用"
+    }
+  ],
+  "no_non_goals_declared": false,
+  "detected_inconsistencies": []
+}
+```
+
+- `scope.non_goals` 记录产品负向范围边界（明确不做/暂不支持/首版排除）。
+- `non_goals.kind` 表示承诺强度：`permanent` / `release` / `deferred`。
+- 禁止性 policy/security/data/compliance 约束不应落在 `non_goals`，应归入 `explicit_constraints`。
+- “暂无明确不做的范围”仅在明确声明时视为有效完成（`no_non_goals_declared=true`）。
+- 对未给上下文限定的“`不做 X`”，可产出 `ambiguous_non_goal_commitment` 并继续澄清。
+- “先这样/不确定”等不明确缺省回答应产出 blocking inconsistency 并保留 pending。
+- mixed answer（有效 non-goal + misplaced explicit constraint）会写入有效 non-goal，但因 inconsistency 非空仍保留 pending。
+
+### 7. 未来层（未实现）
+
 - review/inconsistency layer
 - router/CLI
 
-### 7. Scope sieve 与 inconsistency review/resolution 的职责边界
+### 8. Scope sieve 与 inconsistency review/resolution 的职责边界
 
 Scope sieve responsibilities（may）：
 

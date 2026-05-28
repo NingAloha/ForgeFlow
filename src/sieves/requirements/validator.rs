@@ -3,6 +3,7 @@ use anyhow::{bail, Result};
 use crate::sieves::requirements::artifact::{
     Constraint,
     Inconsistency,
+    NonGoal,
     PendingClarification,
     RequirementsArtifact,
     ALLOWED_MATURITY,
@@ -56,7 +57,7 @@ pub fn validate_requirements_artifact(artifact: &RequirementsArtifact) -> Result
         &artifact.scope.explicit_constraints,
         "requirements artifact.scope.explicit_constraints",
     )?;
-    validate_string_list(
+    validate_non_goals(
         &artifact.scope.non_goals,
         "requirements artifact.scope.non_goals",
     )?;
@@ -147,6 +148,28 @@ fn validate_explicit_constraints(values: &[Constraint], field_path: &str) -> Res
     Ok(())
 }
 
+fn validate_non_goals(values: &[NonGoal], field_path: &str) -> Result<()> {
+    const ALLOWED_NON_GOAL_KINDS: &[&str] = &["permanent", "release", "deferred"];
+
+    for (index, value) in values.iter().enumerate() {
+        if value.kind.trim().is_empty() {
+            bail!("{field_path}[{index}].kind must not be empty");
+        }
+        if !ALLOWED_NON_GOAL_KINDS.contains(&value.kind.as_str()) {
+            bail!(
+                "{field_path}[{index}].kind must be one of {:?}, got {:?}",
+                ALLOWED_NON_GOAL_KINDS,
+                value.kind
+            );
+        }
+        if value.text.trim().is_empty() {
+            bail!("{field_path}[{index}].text must not be empty");
+        }
+    }
+
+    Ok(())
+}
+
 fn validate_inconsistencies(
     values: &[Inconsistency],
     field_path: &str,
@@ -202,6 +225,7 @@ mod tests {
         Constraint,
         Inconsistency,
         Intent,
+        NonGoal,
         Product,
         RequirementsArtifact,
         Scope,
@@ -325,6 +349,41 @@ mod tests {
         let err = validate_requirements_artifact(&artifact)
             .expect_err("empty constraint text should fail");
         assert!(err.to_string().contains(".text must not be empty"));
+    }
+
+    #[test]
+    fn allows_valid_non_goal_kinds() {
+        let mut artifact = base_artifact();
+        artifact.scope.non_goals = vec![
+            NonGoal {
+                kind: "release".to_string(),
+                text: "首版不开发移动端应用".to_string(),
+            },
+            NonGoal {
+                kind: "deferred".to_string(),
+                text: "暂缓跨校交易".to_string(),
+            },
+            NonGoal {
+                kind: "permanent".to_string(),
+                text: "原则上不支持校外用户交易".to_string(),
+            },
+        ];
+
+        validate_requirements_artifact(&artifact)
+            .expect("valid non_goals should pass");
+    }
+
+    #[test]
+    fn rejects_invalid_non_goal_kind() {
+        let mut artifact = base_artifact();
+        artifact.scope.non_goals = vec![NonGoal {
+            kind: "temporary".to_string(),
+            text: "不开发移动端应用".to_string(),
+        }];
+
+        let err = validate_requirements_artifact(&artifact)
+            .expect_err("invalid non_goal kind should fail");
+        assert!(err.to_string().contains(".kind must be one of"));
     }
 
     #[test]

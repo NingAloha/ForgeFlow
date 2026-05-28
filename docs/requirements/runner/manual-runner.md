@@ -10,6 +10,7 @@ cargo run -- requirements target-users
 cargo run -- requirements application-boundary
 cargo run -- requirements capability-categories
 cargo run -- requirements explicit-constraints
+cargo run -- requirements non-goals
 ```
 
 ## 设计边界
@@ -40,6 +41,9 @@ cargo run -- requirements explicit-constraints
 
 - `requirements explicit-constraints`
   - 调用 `run_explicit_constraints_scope()`
+
+- `requirements non-goals`
+  - 调用 `run_non_goals_scope()`
 
 ## 验证命令
 

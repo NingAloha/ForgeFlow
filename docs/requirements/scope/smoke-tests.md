@@ -133,3 +133,46 @@ cargo run -- requirements explicit-constraints
 - 产生 blocking inconsistency
 - 对应 pending 保留
 - 不将一等字段重复项当作 explicit constraints 完成结果
+
+## 用例 9：non_goals normal
+
+```bash
+cargo run -- requirements non-goals
+```
+
+输入：`不做移动端，暂不支持跨校交易`
+
+预期：
+
+- `scope.non_goals` 写入结构化负向范围边界（含 `kind=text`，例如 `release/deferred/permanent`）
+- 对应 pending 被移除
+- 不产生 inconsistency
+
+## 用例 10：non_goals no explicit non-goals
+
+```bash
+cargo run -- requirements non-goals
+```
+
+输入：`暂无明确不做的范围`
+
+预期：
+
+- `scope.non_goals` 保持空数组
+- 对应 pending 被移除
+- 不产生 inconsistency
+
+## 用例 11：non_goals vague/mixed blocking
+
+```bash
+cargo run -- requirements non-goals
+```
+
+输入示例：`先这样`、`不做移动端` 或 `不做移动端，禁止公开学生手机号`
+
+预期：
+
+- 产生 blocking inconsistency
+- 对应 pending 保留
+- 未限定语境的“`不做 X`”可产生 `ambiguous_non_goal_commitment`
+- mixed answer 场景可写入有效 non-goal，但不会在该轮移除 pending

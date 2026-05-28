@@ -67,11 +67,17 @@ pub struct Product {
 pub struct Scope {
     pub capability_categories: Vec<String>,
     pub explicit_constraints: Vec<Constraint>,
-    pub non_goals: Vec<String>,
+    pub non_goals: Vec<NonGoal>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Constraint {
+    pub kind: String,
+    pub text: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct NonGoal {
     pub kind: String,
     pub text: String,
 }

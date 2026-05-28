@@ -43,7 +43,7 @@
 
 - `scope.capability_categories: string[]`
 - `scope.explicit_constraints: Constraint[]`
-- `scope.non_goals: string[]`
+- `scope.non_goals: NonGoal[]`
 
 ### Constraint
 
@@ -72,6 +72,21 @@
 ```json
 "explicit_constraints": []
 ```
+
+### NonGoal
+
+```json
+{
+  "kind": "release",
+  "text": "首版不开发移动端应用"
+}
+```
+
+允许的 `kind`：
+
+- `permanent`
+- `release`
+- `deferred`
 
 ## Pending Clarification
 

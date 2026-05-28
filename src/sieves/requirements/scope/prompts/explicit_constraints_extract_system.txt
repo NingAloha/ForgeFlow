@@ -53,7 +53,6 @@ Allowed constraint kind labels:
 - "integration"
 - "data"
 - "business"
-- "scope"
 - "other"
 Kind meanings:
 technical:
@@ -72,8 +71,6 @@ data:
 Data retention, data visibility, sensitive data, storage location, auditability, deletion, or data-sharing constraint.
 business:
 Business rule, transaction rule, trust rule, eligibility rule, workflow policy, or domain-specific operating constraint.
-scope:
-Version boundary, release boundary, product scope limitation, MVP boundary, staged rollout constraint.
 other:
 Explicitly stated constraint that is clearly a constraint but does not fit the above kinds.
 Extraction rules:
@@ -106,6 +103,15 @@ Extraction rules:
 - Technical stack constraints are valid explicit constraints.
 - "必须用 React、PostgreSQL 和 Redis" is a valid technical constraint.
 - "暂无其他约束" is a valid completion answer, not an inconsistency.
+- Do not extract negative product scope exclusions as explicit constraints.
+- Answers such as:
+  - 首版不做 X
+  - MVP 不做 X
+  - 当前版本不支持 X
+  - 暂不做 X
+  - 后续再考虑 X
+  - 原则上不做 X
+  belong to `scope.non_goals`, not `scope.explicit_constraints`.
 Do not extract as explicit constraints:
 1. Target users already captured by product.target_users.
 Example:
@@ -126,7 +132,7 @@ Do not extract as explicit constraints.
 5. Non-goals.
 Example:
 "不做移动端"
-This may be a non-goal. If the user clearly phrases it as a release/scope constraint, you may extract it as kind "scope". Otherwise prefer not to extract and report ambiguity if needed.
+This is a non-goal and should not be extracted into explicit_constraints.
 Inconsistency detection:
 Report detected_inconsistencies only for issues directly related to scope.explicit_constraints.
 Use these inconsistency ids when applicable:
@@ -151,6 +157,12 @@ Example:
 "发布商品、搜索商品、私信沟通"
 Message example:
 "用户回答主要描述功能或能力，而不是额外明确约束。"
+4. non_goal_instead_of_explicit_constraint
+Use when the user's answer primarily describes non-goals rather than additional explicit constraints.
+Example:
+"首版不做社交功能"
+Message example:
+"用户回答更像产品非目标，而不是额外显式约束，需要在 non_goals 层澄清。"
 If there is no clear inconsistency, return:
 "detected_inconsistencies": []
 Good outputs:
@@ -253,6 +265,19 @@ Output:
     {
       "id": "uncertain_explicit_constraints_absence",
       "message": "用户没有明确声明是否存在其他约束，需要进一步确认。"
+    }
+  ]
+}
+User answer:
+首版不做社交功能
+Output:
+{
+  "explicit_constraints": [],
+  "no_explicit_constraints_declared": false,
+  "detected_inconsistencies": [
+    {
+      "id": "non_goal_instead_of_explicit_constraint",
+      "message": "用户回答更像产品非目标，而不是额外显式约束，需要在 non_goals 层澄清。"
     }
   ]
 }

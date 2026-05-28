@@ -32,7 +32,6 @@ const ALLOWED_CONSTRAINT_KINDS: &[&str] = &[
     "integration",
     "data",
     "business",
-    "scope",
     "other",
 ];
 
@@ -559,6 +558,39 @@ mod tests {
             .inconsistencies
             .iter()
             .any(|item| item.sieve == EXPLICIT_CONSTRAINTS_SIEVE_ID));
+    }
+
+    #[test]
+    fn non_goal_answer_produces_blocking_inconsistency_and_keeps_pending() {
+        let artifact = base_artifact();
+        let extraction = ExplicitConstraintsExtraction {
+            explicit_constraints: vec![],
+            no_explicit_constraints_declared: false,
+            detected_inconsistencies: vec![DetectedInconsistency {
+                id: "non_goal_instead_of_explicit_constraint".to_string(),
+                message: "用户回答更像产品非目标，而不是额外显式约束，需要在 non_goals 层澄清。".to_string(),
+            }],
+        };
+
+        let updated = apply_explicit_constraints_extraction(artifact, &extraction)
+            .expect("update should succeed");
+
+        assert!(updated.scope.explicit_constraints.is_empty());
+        assert!(updated
+            .pending_clarifications
+            .iter()
+            .any(|item| item.id == EXPLICIT_CONSTRAINTS_CLARIFICATION_ID));
+        let inconsistency = updated
+            .inconsistencies
+            .iter()
+            .find(|item| {
+                item.id
+                    == "scope.explicit_constraints.non_goal_instead_of_explicit_constraint"
+            })
+            .expect("must have non-goal inconsistency");
+        assert_eq!(inconsistency.sieve, EXPLICIT_CONSTRAINTS_SIEVE_ID);
+        assert_eq!(inconsistency.severity, "blocking");
+        assert!(inconsistency.requires_clarification);
     }
 
     #[test]

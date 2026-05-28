@@ -125,7 +125,6 @@ fn validate_explicit_constraints(values: &[Constraint], field_path: &str) -> Res
         "integration",
         "data",
         "business",
-        "scope",
         "other",
     ];
 
@@ -303,13 +302,26 @@ mod tests {
                 text: "首版由一人维护".to_string(),
             },
             Constraint {
-                kind: "scope".to_string(),
-                text: "首版只服务本校用户".to_string(),
+                kind: "other".to_string(),
+                text: "仅在校内场景试点".to_string(),
             },
         ];
 
         validate_requirements_artifact(&artifact)
             .expect("multiple valid explicit_constraints should pass");
+    }
+
+    #[test]
+    fn rejects_scope_constraint_kind() {
+        let mut artifact = base_artifact();
+        artifact.scope.explicit_constraints.push(Constraint {
+            kind: "scope".to_string(),
+            text: "首版不做社交功能".to_string(),
+        });
+
+        let err = validate_requirements_artifact(&artifact)
+            .expect_err("scope kind should fail");
+        assert!(err.to_string().contains(".kind must be one of"));
     }
 
     #[test]

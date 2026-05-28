@@ -64,7 +64,6 @@
 - `integration`
 - `data`
 - `business`
-- `scope`
 - `other`
 
 说明：`examples/sieves/requirements/requirements.example.json` 保持空模板，即：

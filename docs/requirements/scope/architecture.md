@@ -117,6 +117,7 @@ Question LLM -> Typed Extraction LLM -> Rust mutation authority
 
 - Rust 写字段
 - 若有 blocking inconsistency，则 pending 保留
+- 若回答模糊/占位且未澄清任何 capability category，sieve 应保留 `scope.capability_categories` pending，并追加 blocking inconsistency。
 
 ### 5. `requirements.scope.mandatory_constraints`
 

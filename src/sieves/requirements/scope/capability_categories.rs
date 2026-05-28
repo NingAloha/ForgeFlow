@@ -459,6 +459,39 @@ mod tests {
     }
 
     #[test]
+    fn unclear_capability_categories_produces_blocking_inconsistency_and_keeps_pending() {
+        let artifact = base_artifact();
+        let extraction = CapabilityCategoriesExtraction {
+            capability_categories: vec![],
+            detected_inconsistencies: vec![DetectedInconsistency {
+                id: "unclear_capability_categories".to_string(),
+                message: "用户没有明确说明能力类别，需要进一步澄清能力边界。".to_string(),
+            }],
+        };
+
+        let updated = apply_capability_categories_extraction(artifact, &extraction)
+            .expect("update should succeed");
+
+        assert!(updated.scope.capability_categories.is_empty());
+        assert!(updated
+            .pending_clarifications
+            .iter()
+            .any(|item| item.id == CAPABILITY_CATEGORIES_CLARIFICATION_ID));
+        let inconsistency = updated
+            .inconsistencies
+            .iter()
+            .find(|item| item.id == "scope.capability_categories.unclear_capability_categories")
+            .expect("must have unclear inconsistency");
+        assert_eq!(inconsistency.sieve, CAPABILITY_CATEGORIES_SIEVE_ID);
+        assert_eq!(inconsistency.severity, "blocking");
+        assert!(inconsistency.requires_clarification);
+        assert_eq!(
+            inconsistency.target_paths,
+            vec![vec!["scope".to_string(), "capability_categories".to_string()]]
+        );
+    }
+
+    #[test]
     fn mixed_extraction_keeps_pending_when_inconsistency_exists() {
         let artifact = base_artifact();
         let extraction = CapabilityCategoriesExtraction {

@@ -43,9 +43,12 @@ fn main() -> Result<()> {
             sieves::requirements::scope::capability_categories::run_capability_categories_scope()
         }
         [_, domain, action]
-            if domain == "requirements" && action == "explicit-constraints" =>
+            if domain == "requirements" && action == "mandatory-constraints" =>
         {
-            sieves::requirements::scope::explicit_constraints::run_explicit_constraints_scope()
+            sieves::requirements::scope::mandatory_constraints::run_mandatory_constraints_scope()
+        }
+        [_, domain, action] if domain == "requirements" && action == "scope-exclusions" => {
+            sieves::requirements::scope::scope_exclusions::run_scope_exclusions_scope()
         }
         _ => {
             eprintln!("Usage:");
@@ -53,7 +56,8 @@ fn main() -> Result<()> {
             eprintln!("  cargo run -- requirements target-users");
             eprintln!("  cargo run -- requirements application-boundary");
             eprintln!("  cargo run -- requirements capability-categories");
-            eprintln!("  cargo run -- requirements explicit-constraints");
+            eprintln!("  cargo run -- requirements mandatory-constraints");
+            eprintln!("  cargo run -- requirements scope-exclusions");
             bail!("unknown command")
         }
     }

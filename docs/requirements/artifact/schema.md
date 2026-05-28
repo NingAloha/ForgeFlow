@@ -21,8 +21,8 @@
   },
   "scope": {
     "capability_categories": [],
-    "explicit_constraints": [],
-    "non_goals": []
+    "mandatory_constraints": [],
+    "scope_exclusions": []
   },
   "functional_requirements": [],
   "non_functional_requirements": [],
@@ -42,8 +42,8 @@
 ## Scope
 
 - `scope.capability_categories: string[]`
-- `scope.explicit_constraints: Constraint[]`
-- `scope.non_goals: string[]`
+- `scope.mandatory_constraints: Constraint[]`
+- `scope.scope_exclusions: ScopeExclusion[]`
 
 ### Constraint
 
@@ -64,23 +64,37 @@
 - `integration`
 - `data`
 - `business`
-- `scope`
 - `other`
 
 说明：`examples/sieves/requirements/requirements.example.json` 保持空模板，即：
 
 ```json
-"explicit_constraints": []
+"mandatory_constraints": []
 ```
+
+### ScopeExclusion
+
+```json
+{
+  "kind": "release",
+  "text": "首版不开发移动端应用"
+}
+```
+
+允许的 `kind`：
+
+- `permanent`
+- `release`
+- `deferred`
 
 ## Pending Clarification
 
 ```json
 {
-  "id": "scope.explicit_constraints",
-  "target_path": ["scope", "explicit_constraints"],
+  "id": "scope.mandatory_constraints",
+  "target_path": ["scope", "mandatory_constraints"],
   "question": "是否有其他明确约束？",
-  "sieve": "requirements.scope.explicit_constraints"
+  "sieve": "requirements.scope.mandatory_constraints"
 }
 ```
 

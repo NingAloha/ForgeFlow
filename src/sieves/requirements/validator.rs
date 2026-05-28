@@ -3,6 +3,7 @@ use anyhow::{bail, Result};
 use crate::sieves::requirements::artifact::{
     Constraint,
     Inconsistency,
+    ScopeExclusion,
     PendingClarification,
     RequirementsArtifact,
     ALLOWED_MATURITY,
@@ -52,13 +53,13 @@ pub fn validate_requirements_artifact(artifact: &RequirementsArtifact) -> Result
         &artifact.scope.capability_categories,
         "requirements artifact.scope.capability_categories",
     )?;
-    validate_explicit_constraints(
-        &artifact.scope.explicit_constraints,
-        "requirements artifact.scope.explicit_constraints",
+    validate_mandatory_constraints(
+        &artifact.scope.mandatory_constraints,
+        "requirements artifact.scope.mandatory_constraints",
     )?;
-    validate_string_list(
-        &artifact.scope.non_goals,
-        "requirements artifact.scope.non_goals",
+    validate_scope_exclusions(
+        &artifact.scope.scope_exclusions,
+        "requirements artifact.scope.scope_exclusions",
     )?;
 
     validate_pending_clarifications(
@@ -114,7 +115,7 @@ fn validate_pending_clarifications(
     Ok(())
 }
 
-fn validate_explicit_constraints(values: &[Constraint], field_path: &str) -> Result<()> {
+fn validate_mandatory_constraints(values: &[Constraint], field_path: &str) -> Result<()> {
     const ALLOWED_CONSTRAINT_KINDS: &[&str] = &[
         "technical",
         "platform",
@@ -124,7 +125,6 @@ fn validate_explicit_constraints(values: &[Constraint], field_path: &str) -> Res
         "integration",
         "data",
         "business",
-        "scope",
         "other",
     ];
 
@@ -136,6 +136,28 @@ fn validate_explicit_constraints(values: &[Constraint], field_path: &str) -> Res
             bail!(
                 "{field_path}[{index}].kind must be one of {:?}, got {:?}",
                 ALLOWED_CONSTRAINT_KINDS,
+                value.kind
+            );
+        }
+        if value.text.trim().is_empty() {
+            bail!("{field_path}[{index}].text must not be empty");
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_scope_exclusions(values: &[ScopeExclusion], field_path: &str) -> Result<()> {
+    const ALLOWED_NON_GOAL_KINDS: &[&str] = &["permanent", "release", "deferred"];
+
+    for (index, value) in values.iter().enumerate() {
+        if value.kind.trim().is_empty() {
+            bail!("{field_path}[{index}].kind must not be empty");
+        }
+        if !ALLOWED_NON_GOAL_KINDS.contains(&value.kind.as_str()) {
+            bail!(
+                "{field_path}[{index}].kind must be one of {:?}, got {:?}",
+                ALLOWED_NON_GOAL_KINDS,
                 value.kind
             );
         }
@@ -202,6 +224,7 @@ mod tests {
         Constraint,
         Inconsistency,
         Intent,
+        ScopeExclusion,
         Product,
         RequirementsArtifact,
         Scope,
@@ -224,8 +247,8 @@ mod tests {
             },
             scope: Scope {
                 capability_categories: vec![],
-                explicit_constraints: vec![],
-                non_goals: vec![],
+                mandatory_constraints: vec![],
+                scope_exclusions: vec![],
             },
             functional_requirements: vec![],
             non_functional_requirements: vec![],
@@ -244,16 +267,16 @@ mod tests {
     }
 
     #[test]
-    fn allows_empty_explicit_constraints() {
+    fn allows_empty_mandatory_constraints() {
         let artifact = base_artifact();
         validate_requirements_artifact(&artifact)
-            .expect("empty explicit_constraints should be valid");
+            .expect("empty mandatory_constraints should be valid");
     }
 
     #[test]
     fn allows_valid_structured_constraint() {
         let mut artifact = base_artifact();
-        artifact.scope.explicit_constraints.push(Constraint {
+        artifact.scope.mandatory_constraints.push(Constraint {
             kind: "technical".to_string(),
             text: "必须使用 PostgreSQL".to_string(),
         });
@@ -265,7 +288,7 @@ mod tests {
     #[test]
     fn allows_multiple_valid_constraint_kinds() {
         let mut artifact = base_artifact();
-        artifact.scope.explicit_constraints = vec![
+        artifact.scope.mandatory_constraints = vec![
             Constraint {
                 kind: "technical".to_string(),
                 text: "必须使用 PostgreSQL".to_string(),
@@ -279,19 +302,32 @@ mod tests {
                 text: "首版由一人维护".to_string(),
             },
             Constraint {
-                kind: "scope".to_string(),
-                text: "首版只服务本校用户".to_string(),
+                kind: "other".to_string(),
+                text: "仅在校内场景试点".to_string(),
             },
         ];
 
         validate_requirements_artifact(&artifact)
-            .expect("multiple valid explicit_constraints should pass");
+            .expect("multiple valid mandatory_constraints should pass");
+    }
+
+    #[test]
+    fn rejects_scope_constraint_kind() {
+        let mut artifact = base_artifact();
+        artifact.scope.mandatory_constraints.push(Constraint {
+            kind: "scope".to_string(),
+            text: "首版不做社交功能".to_string(),
+        });
+
+        let err = validate_requirements_artifact(&artifact)
+            .expect_err("scope kind should fail");
+        assert!(err.to_string().contains(".kind must be one of"));
     }
 
     #[test]
     fn rejects_invalid_constraint_kind() {
         let mut artifact = base_artifact();
-        artifact.scope.explicit_constraints.push(Constraint {
+        artifact.scope.mandatory_constraints.push(Constraint {
             kind: "random".to_string(),
             text: "xxx".to_string(),
         });
@@ -304,7 +340,7 @@ mod tests {
     #[test]
     fn rejects_empty_constraint_kind() {
         let mut artifact = base_artifact();
-        artifact.scope.explicit_constraints.push(Constraint {
+        artifact.scope.mandatory_constraints.push(Constraint {
             kind: "".to_string(),
             text: "必须使用 PostgreSQL".to_string(),
         });
@@ -317,7 +353,7 @@ mod tests {
     #[test]
     fn rejects_empty_constraint_text() {
         let mut artifact = base_artifact();
-        artifact.scope.explicit_constraints.push(Constraint {
+        artifact.scope.mandatory_constraints.push(Constraint {
             kind: "technical".to_string(),
             text: "".to_string(),
         });
@@ -325,6 +361,41 @@ mod tests {
         let err = validate_requirements_artifact(&artifact)
             .expect_err("empty constraint text should fail");
         assert!(err.to_string().contains(".text must not be empty"));
+    }
+
+    #[test]
+    fn allows_valid_non_goal_kinds() {
+        let mut artifact = base_artifact();
+        artifact.scope.scope_exclusions = vec![
+            ScopeExclusion {
+                kind: "release".to_string(),
+                text: "首版不开发移动端应用".to_string(),
+            },
+            ScopeExclusion {
+                kind: "deferred".to_string(),
+                text: "暂缓跨校交易".to_string(),
+            },
+            ScopeExclusion {
+                kind: "permanent".to_string(),
+                text: "原则上不支持校外用户交易".to_string(),
+            },
+        ];
+
+        validate_requirements_artifact(&artifact)
+            .expect("valid scope_exclusions should pass");
+    }
+
+    #[test]
+    fn rejects_invalid_non_goal_kind() {
+        let mut artifact = base_artifact();
+        artifact.scope.scope_exclusions = vec![ScopeExclusion {
+            kind: "temporary".to_string(),
+            text: "不开发移动端应用".to_string(),
+        }];
+
+        let err = validate_requirements_artifact(&artifact)
+            .expect_err("invalid non_goal kind should fail");
+        assert!(err.to_string().contains(".kind must be one of"));
     }
 
     #[test]

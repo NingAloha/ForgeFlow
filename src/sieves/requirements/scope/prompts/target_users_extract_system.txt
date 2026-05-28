@@ -90,6 +90,66 @@ Output:
   ]
 }
 
+Shared qualifier propagation:
+
+When the user's answer contains a shared qualifier such as:
+- usage scenario
+- experience level
+- behavior pattern
+- domain background
+- need profile
+- workflow context
+
+and then lists multiple user groups, preserve that qualifier for every applicable group.
+
+Examples of shared qualifiers:
+- 经常读书、写摘录和整理想法的
+- 有工程开发经验并掌握工业化开发流程的
+- 需要管理论文阅读和知识卡片的
+- 经常在终端中工作的
+
+Do not strip the qualifier from later groups.
+
+Good example:
+
+User answer:
+主要给经常读书、写摘录和整理想法的个人用户使用，也包括学生和研究者
+
+Output:
+{
+  "target_users": [
+    "经常读书、写摘录和整理想法的个人用户",
+    "有读书摘录和想法整理需求的学生",
+    "有读书摘录和想法整理需求的研究者"
+  ]
+}
+
+Bad output:
+{
+  "target_users": [
+    "经常读书、写摘录和整理想法的个人用户",
+    "学生",
+    "研究者"
+  ]
+}
+
+Boundary:
+Do not propagate identity labels as qualifiers.
+
+Example:
+User answer:
+主要给程序员使用，也包括老师
+
+Do not output:
+"程序员老师"
+
+Because "程序员" is itself a user group, not a shared qualifier.
+
+But if the answer is:
+主要给经常写代码、做项目管理的人使用，包括程序员、学生和老师
+
+Then "经常写代码、做项目管理" is a shared qualifier and should be preserved for all applicable groups.
+
 Splitting rules:
 
 - Split clearly separable user groups into separate strings.

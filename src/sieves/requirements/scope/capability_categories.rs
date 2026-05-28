@@ -344,8 +344,8 @@ mod tests {
             },
             scope: Scope {
                 capability_categories: vec![],
-                explicit_constraints: vec![],
-                non_goals: vec![],
+                mandatory_constraints: vec![],
+                scope_exclusions: vec![],
             },
             functional_requirements: vec![],
             non_functional_requirements: vec![],

@@ -15,7 +15,7 @@ ForgeFlow 是一个面向软件工程语义稳定化的 Rust 实验项目。
 - requirements validator
 - structured `pending_clarifications` queue
 - structured `inconsistencies` queue
-- structured `explicit_constraints` model
+- structured `mandatory_constraints` model
 - intent capture sieve
 - `target_users` scope sieve
 - `application_boundary` scope sieve
@@ -26,8 +26,8 @@ ForgeFlow 是一个面向软件工程语义稳定化的 Rust 实验项目。
 
 - router / CLI
 - inconsistency review/resolution layer
-- `explicit_constraints` sieve
-- `non_goals` sieve
+- `mandatory_constraints` sieve
+- `scope_exclusions` sieve
 - functional requirements generation
 - design / implementation stages
 - end-to-end automated pipeline

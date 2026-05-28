@@ -9,7 +9,8 @@ cargo run -- requirements intent
 cargo run -- requirements target-users
 cargo run -- requirements application-boundary
 cargo run -- requirements capability-categories
-cargo run -- requirements explicit-constraints
+cargo run -- requirements mandatory-constraints
+cargo run -- requirements scope-exclusions
 ```
 
 ## 设计边界
@@ -38,8 +39,11 @@ cargo run -- requirements explicit-constraints
 - `requirements capability-categories`
   - 调用 `run_capability_categories_scope()`
 
-- `requirements explicit-constraints`
-  - 调用 `run_explicit_constraints_scope()`
+- `requirements mandatory-constraints`
+  - 调用 `run_mandatory_constraints_scope()`
+
+- `requirements scope-exclusions`
+  - 调用 `run_scope_exclusions_scope()`
 
 ## 验证命令
 

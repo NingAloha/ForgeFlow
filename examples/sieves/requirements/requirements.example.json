@@ -14,7 +14,7 @@
   },
   "scope": {
     "capability_categories": [],
-    "constraints": [],
+    "explicit_constraints": [],
     "non_goals": []
   },
   "functional_requirements": [],

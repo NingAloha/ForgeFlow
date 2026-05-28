@@ -27,7 +27,7 @@ ForgeFlow 是一个面向软件工程语义稳定化的 Rust 实验项目。
 - router / CLI
 - inconsistency review/resolution layer
 - `capability_categories` sieve
-- `constraints` sieve
+- `explicit_constraints` sieve
 - `non_goals` sieve
 - functional requirements generation
 - design / implementation stages
@@ -94,7 +94,12 @@ examples/
   },
   "scope": {
     "capability_categories": [],
-    "constraints": [],
+    "explicit_constraints": [
+      {
+        "kind": "technical",
+        "text": "必须使用 PostgreSQL"
+      }
+    ],
     "non_goals": []
   },
   "functional_requirements": [],
@@ -155,6 +160,32 @@ examples/
 - 不使用 `resolution_log`
 - 存在 `blocking` inconsistency 时，不应推进到下一阶段（后续由 review layer 负责）
 
+### `explicit_constraints`
+
+`scope.explicit_constraints` 现在是 typed list，而不是 string list。结构：
+
+```json
+{
+  "kind": "technical",
+  "text": "必须使用 PostgreSQL"
+}
+```
+
+允许的 `kind`：
+
+- `technical`
+- `platform`
+- `policy`
+- `resource`
+- `performance`
+- `integration`
+- `data`
+- `business`
+- `scope`
+- `other`
+
+说明：`examples/sieves/requirements/requirements.example.json` 仍保持 `"explicit_constraints": []`，因为它是空模板。
+
 ## Requirements Sieve Architecture
 
 ### 1. Intent Capture
@@ -176,7 +207,7 @@ examples/
 - `product.application_type -> requirements.scope.application_boundary`
 - `product.target_platforms -> requirements.scope.application_boundary`
 - `scope.capability_categories -> requirements.scope.capability_categories`
-- `scope.constraints -> requirements.scope.constraints`
+- `scope.explicit_constraints -> requirements.scope.explicit_constraints`
 - `scope.non_goals -> requirements.scope.non_goals`
 
 边界：

@@ -1,6 +1,7 @@
 use anyhow::{bail, Result};
 
 use crate::sieves::requirements::artifact::{
+    Constraint,
     Inconsistency,
     PendingClarification,
     RequirementsArtifact,
@@ -51,9 +52,9 @@ pub fn validate_requirements_artifact(artifact: &RequirementsArtifact) -> Result
         &artifact.scope.capability_categories,
         "requirements artifact.scope.capability_categories",
     )?;
-    validate_string_list(
-        &artifact.scope.constraints,
-        "requirements artifact.scope.constraints",
+    validate_explicit_constraints(
+        &artifact.scope.explicit_constraints,
+        "requirements artifact.scope.explicit_constraints",
     )?;
     validate_string_list(
         &artifact.scope.non_goals,
@@ -113,6 +114,39 @@ fn validate_pending_clarifications(
     Ok(())
 }
 
+fn validate_explicit_constraints(values: &[Constraint], field_path: &str) -> Result<()> {
+    const ALLOWED_CONSTRAINT_KINDS: &[&str] = &[
+        "technical",
+        "platform",
+        "policy",
+        "resource",
+        "performance",
+        "integration",
+        "data",
+        "business",
+        "scope",
+        "other",
+    ];
+
+    for (index, value) in values.iter().enumerate() {
+        if value.kind.trim().is_empty() {
+            bail!("{field_path}[{index}].kind must not be empty");
+        }
+        if !ALLOWED_CONSTRAINT_KINDS.contains(&value.kind.as_str()) {
+            bail!(
+                "{field_path}[{index}].kind must be one of {:?}, got {:?}",
+                ALLOWED_CONSTRAINT_KINDS,
+                value.kind
+            );
+        }
+        if value.text.trim().is_empty() {
+            bail!("{field_path}[{index}].text must not be empty");
+        }
+    }
+
+    Ok(())
+}
+
 fn validate_inconsistencies(
     values: &[Inconsistency],
     field_path: &str,
@@ -165,6 +199,7 @@ fn validate_inconsistencies(
 mod tests {
     use super::*;
     use crate::sieves::requirements::artifact::{
+        Constraint,
         Inconsistency,
         Intent,
         Product,
@@ -189,7 +224,7 @@ mod tests {
             },
             scope: Scope {
                 capability_categories: vec![],
-                constraints: vec![],
+                explicit_constraints: vec![],
                 non_goals: vec![],
             },
             functional_requirements: vec![],
@@ -206,6 +241,90 @@ mod tests {
         let artifact = base_artifact();
         validate_requirements_artifact(&artifact)
             .expect("empty inconsistencies should be valid");
+    }
+
+    #[test]
+    fn allows_empty_explicit_constraints() {
+        let artifact = base_artifact();
+        validate_requirements_artifact(&artifact)
+            .expect("empty explicit_constraints should be valid");
+    }
+
+    #[test]
+    fn allows_valid_structured_constraint() {
+        let mut artifact = base_artifact();
+        artifact.scope.explicit_constraints.push(Constraint {
+            kind: "technical".to_string(),
+            text: "必须使用 PostgreSQL".to_string(),
+        });
+
+        validate_requirements_artifact(&artifact)
+            .expect("valid structured constraint should pass");
+    }
+
+    #[test]
+    fn allows_multiple_valid_constraint_kinds() {
+        let mut artifact = base_artifact();
+        artifact.scope.explicit_constraints = vec![
+            Constraint {
+                kind: "technical".to_string(),
+                text: "必须使用 PostgreSQL".to_string(),
+            },
+            Constraint {
+                kind: "policy".to_string(),
+                text: "必须使用校内邮箱认证".to_string(),
+            },
+            Constraint {
+                kind: "resource".to_string(),
+                text: "首版由一人维护".to_string(),
+            },
+            Constraint {
+                kind: "scope".to_string(),
+                text: "首版只服务本校用户".to_string(),
+            },
+        ];
+
+        validate_requirements_artifact(&artifact)
+            .expect("multiple valid explicit_constraints should pass");
+    }
+
+    #[test]
+    fn rejects_invalid_constraint_kind() {
+        let mut artifact = base_artifact();
+        artifact.scope.explicit_constraints.push(Constraint {
+            kind: "random".to_string(),
+            text: "xxx".to_string(),
+        });
+
+        let err = validate_requirements_artifact(&artifact)
+            .expect_err("invalid constraint kind should fail");
+        assert!(err.to_string().contains(".kind must be one of"));
+    }
+
+    #[test]
+    fn rejects_empty_constraint_kind() {
+        let mut artifact = base_artifact();
+        artifact.scope.explicit_constraints.push(Constraint {
+            kind: "".to_string(),
+            text: "必须使用 PostgreSQL".to_string(),
+        });
+
+        let err = validate_requirements_artifact(&artifact)
+            .expect_err("empty constraint kind should fail");
+        assert!(err.to_string().contains(".kind must not be empty"));
+    }
+
+    #[test]
+    fn rejects_empty_constraint_text() {
+        let mut artifact = base_artifact();
+        artifact.scope.explicit_constraints.push(Constraint {
+            kind: "technical".to_string(),
+            text: "".to_string(),
+        });
+
+        let err = validate_requirements_artifact(&artifact)
+            .expect_err("empty constraint text should fail");
+        assert!(err.to_string().contains(".text must not be empty"));
     }
 
     #[test]

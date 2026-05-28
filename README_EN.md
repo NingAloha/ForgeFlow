@@ -27,7 +27,7 @@ Its current focus is the requirements sieve architecture: progressively refining
 - router / CLI
 - inconsistency review/resolution layer
 - `capability_categories` sieve
-- `constraints` sieve
+- `explicit_constraints` sieve
 - `non_goals` sieve
 - functional requirements generation
 - design / implementation stages
@@ -92,7 +92,12 @@ Note: router/CLI is not implemented yet. Development currently runs one sieve at
   },
   "scope": {
     "capability_categories": [],
-    "constraints": [],
+    "explicit_constraints": [
+      {
+        "kind": "technical",
+        "text": "必须使用 PostgreSQL"
+      }
+    ],
     "non_goals": []
   },
   "functional_requirements": [],
@@ -153,6 +158,32 @@ Rules:
 - No `resolution_log`
 - With any `blocking` inconsistency, the next stage should not proceed (future review layer)
 
+### `explicit_constraints`
+
+`scope.explicit_constraints` is now a typed list (not a string list). Shape:
+
+```json
+{
+  "kind": "technical",
+  "text": "必须使用 PostgreSQL"
+}
+```
+
+Allowed `kind` values:
+
+- `technical`
+- `platform`
+- `policy`
+- `resource`
+- `performance`
+- `integration`
+- `data`
+- `business`
+- `scope`
+- `other`
+
+Note: the example template at `examples/sieves/requirements/requirements.example.json` still keeps `"explicit_constraints": []` because it is an empty template.
+
 ## Requirements Sieve Architecture
 
 ### 1) Intent capture
@@ -174,7 +205,7 @@ Fixed six clarifications:
 - `product.application_type -> requirements.scope.application_boundary`
 - `product.target_platforms -> requirements.scope.application_boundary`
 - `scope.capability_categories -> requirements.scope.capability_categories`
-- `scope.constraints -> requirements.scope.constraints`
+- `scope.explicit_constraints -> requirements.scope.explicit_constraints`
 - `scope.non_goals -> requirements.scope.non_goals`
 
 ### 2) `target_users` scope sieve

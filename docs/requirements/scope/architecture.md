@@ -181,6 +181,8 @@ Scope sieve responsibilities（may）：
 - 基于当前提取结果新增 inconsistency
 - 基于当前提取结果移除或保留本 sieve 的 pending clarification
 
+关于各 scope sieve 的统一澄清行为矩阵，见 [behavior-matrix.md](./behavior-matrix.md)。
+
 Scope sieve non-responsibilities（must not）：
 
 - 清理历史 inconsistency

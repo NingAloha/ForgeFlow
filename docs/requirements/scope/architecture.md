@@ -119,7 +119,7 @@ Question LLM -> Typed Extraction LLM -> Rust mutation authority
 - review/inconsistency layer
 - router/CLI
 
-### 5. `requirements.scope.explicit_constraints`
+### 6. `requirements.scope.explicit_constraints`
 
 - extraction prompt 返回：
 
@@ -140,6 +140,31 @@ Question LLM -> Typed Extraction LLM -> Rust mutation authority
 - “暂无其他约束”是有效完成回答（`no_explicit_constraints_declared=true`）。
 - 重复一等字段（users/type/platform/capability/non-goals）不应作为 explicit constraints 完成结果。
 - 若存在 `detected_inconsistencies`，保持 pending，不视为完成。
+
+### 7. Scope sieve 与 inconsistency review/resolution 的职责边界
+
+Scope sieve responsibilities（may）：
+
+- 生成面向用户的澄清问题
+- 从当前用户回答提取 typed result
+- mutation 自己负责的目标 artifact 字段
+- 基于当前提取结果新增 inconsistency
+- 基于当前提取结果移除或保留本 sieve 的 pending clarification
+
+Scope sieve non-responsibilities（must not）：
+
+- 清理历史 inconsistency
+- 判定历史 inconsistency 是否已 resolved
+- 实现 review 或 resolution 逻辑
+- 将后续一次成功澄清视为此前 blocking inconsistency 的隐式 resolution
+
+Historical inconsistency handling 属于未来 inconsistency review/resolution layer。该层负责：
+
+- 检查当前 artifact state
+- 检查 active blocking inconsistencies
+- 判定 inconsistency 仍有效、已 resolved、或已 stale
+- 当 unresolved blocking inconsistency 存在时阻止流程推进
+- 在 schema 支持时记录 resolution 语义
 
 ## 当前不做
 

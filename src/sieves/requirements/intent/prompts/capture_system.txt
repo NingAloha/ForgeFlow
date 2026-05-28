@@ -45,7 +45,7 @@ Intent boundary:
 - Do not infer application type.
 - Do not infer target platforms.
 - Do not infer capability categories.
-- Do not infer constraints.
+- Do not infer explicit constraints.
 - Do not infer non-goals.
 - Do not generate functional requirements.
 - Do not generate non-functional requirements.

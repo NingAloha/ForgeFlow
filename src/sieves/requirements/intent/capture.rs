@@ -128,10 +128,10 @@ fn build_scope_v0_pending_clarifications() -> Vec<PendingClarification> {
             sieve: "requirements.scope.capability_categories".to_string(),
         },
         PendingClarification {
-            id: "scope.constraints".to_string(),
-            target_path: vec!["scope".to_string(), "constraints".to_string()],
-            question: "是否有明确约束？".to_string(),
-            sieve: "requirements.scope.constraints".to_string(),
+            id: "scope.explicit_constraints".to_string(),
+            target_path: vec!["scope".to_string(), "explicit_constraints".to_string()],
+            question: "是否有其他明确约束？".to_string(),
+            sieve: "requirements.scope.explicit_constraints".to_string(),
         },
         PendingClarification {
             id: "scope.non_goals".to_string(),

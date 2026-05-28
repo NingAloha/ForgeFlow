@@ -27,7 +27,7 @@ pub struct RequirementsArtifact {
     pub data_requirements: Vec<serde_json::Value>,
 
     pub pending_clarifications: Vec<PendingClarification>,
-    pub inconsistencies: Vec<String>,
+    pub inconsistencies: Vec<Inconsistency>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -36,6 +36,17 @@ pub struct PendingClarification {
     pub target_path: Vec<String>,
     pub question: String,
     pub sieve: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Inconsistency {
+    pub id: String,
+    pub stage: String,
+    pub sieve: String,
+    pub severity: String,
+    pub target_paths: Vec<Vec<String>>,
+    pub message: String,
+    pub requires_clarification: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

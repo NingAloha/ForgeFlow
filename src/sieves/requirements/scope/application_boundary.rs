@@ -194,6 +194,13 @@ pub fn update_application_boundary(
     let extraction: ApplicationBoundaryExtraction = serde_json::from_value(extraction_value)
         .context("LLM JSON does not match ApplicationBoundaryExtraction schema")?;
 
+    apply_application_boundary_extraction(artifact, &extraction)
+}
+
+fn apply_application_boundary_extraction(
+    artifact: RequirementsArtifact,
+    extraction: &ApplicationBoundaryExtraction,
+) -> Result<RequirementsArtifact> {
     validate_application_boundary_extraction(&extraction)?;
 
     if extraction.application_type.is_empty()
@@ -216,11 +223,6 @@ pub fn update_application_boundary(
                 .context("failed to serialize application_type")?,
         )
         .context("failed to set product.application_type")?;
-
-        let _removed = remove_pending_clarification_by_id(
-            &mut artifact_value,
-            APPLICATION_TYPE_CLARIFICATION_ID,
-        )?;
     }
 
     if !extraction.target_platforms.is_empty() {
@@ -231,11 +233,22 @@ pub fn update_application_boundary(
                 .context("failed to serialize target_platforms")?,
         )
         .context("failed to set product.target_platforms")?;
+    }
 
-        let _removed = remove_pending_clarification_by_id(
-            &mut artifact_value,
-            TARGET_PLATFORMS_CLARIFICATION_ID,
-        )?;
+    if extraction.detected_inconsistencies.is_empty() {
+        if !extraction.application_type.is_empty() {
+            let _removed = remove_pending_clarification_by_id(
+                &mut artifact_value,
+                APPLICATION_TYPE_CLARIFICATION_ID,
+            )?;
+        }
+
+        if !extraction.target_platforms.is_empty() {
+            let _removed = remove_pending_clarification_by_id(
+                &mut artifact_value,
+                TARGET_PLATFORMS_CLARIFICATION_ID,
+            )?;
+        }
     }
 
     let mut updated_artifact: RequirementsArtifact = serde_json::from_value(artifact_value)
@@ -353,26 +366,50 @@ fn validate_application_boundary_result(
         anyhow::bail!("application boundary update must populate product.target_platforms");
     }
 
-    if !extraction.application_type.is_empty()
-        && artifact
-            .pending_clarifications
-            .iter()
-            .any(|item| item.id == APPLICATION_TYPE_CLARIFICATION_ID)
-    {
-        anyhow::bail!(
-            "application_type pending clarification must be removed after successful update"
-        );
-    }
+    if extraction.detected_inconsistencies.is_empty() {
+        if !extraction.application_type.is_empty()
+            && artifact
+                .pending_clarifications
+                .iter()
+                .any(|item| item.id == APPLICATION_TYPE_CLARIFICATION_ID)
+        {
+            anyhow::bail!(
+                "application_type pending clarification must be removed after successful update"
+            );
+        }
 
-    if !extraction.target_platforms.is_empty()
-        && artifact
-            .pending_clarifications
-            .iter()
-            .any(|item| item.id == TARGET_PLATFORMS_CLARIFICATION_ID)
-    {
-        anyhow::bail!(
-            "target_platforms pending clarification must be removed after successful update"
-        );
+        if !extraction.target_platforms.is_empty()
+            && artifact
+                .pending_clarifications
+                .iter()
+                .any(|item| item.id == TARGET_PLATFORMS_CLARIFICATION_ID)
+        {
+            anyhow::bail!(
+                "target_platforms pending clarification must be removed after successful update"
+            );
+        }
+    } else {
+        if !extraction.application_type.is_empty()
+            && !artifact
+                .pending_clarifications
+                .iter()
+                .any(|item| item.id == APPLICATION_TYPE_CLARIFICATION_ID)
+        {
+            anyhow::bail!(
+                "application_type pending clarification must remain when inconsistencies exist"
+            );
+        }
+
+        if !extraction.target_platforms.is_empty()
+            && !artifact
+                .pending_clarifications
+                .iter()
+                .any(|item| item.id == TARGET_PLATFORMS_CLARIFICATION_ID)
+        {
+            anyhow::bail!(
+                "target_platforms pending clarification must remain when inconsistencies exist"
+            );
+        }
     }
 
     if !extraction.detected_inconsistencies.is_empty() && artifact.inconsistencies.is_empty() {
@@ -514,6 +551,110 @@ mod tests {
             .iter()
             .any(|item| item.id == APPLICATION_TYPE_CLARIFICATION_ID));
         assert!(updated
+            .pending_clarifications
+            .iter()
+            .any(|item| item.id == TARGET_PLATFORMS_CLARIFICATION_ID));
+    }
+
+    #[test]
+    fn keeps_pending_when_inconsistency_exists_even_if_fields_written() {
+        let artifact = base_artifact();
+        let extraction = ApplicationBoundaryExtraction {
+            application_type: vec!["CLI 工具".to_string()],
+            target_platforms: vec!["iOS".to_string(), "Android".to_string()],
+            detected_inconsistencies: vec![DetectedInconsistency {
+                id: "cli_mobile_platform_conflict".to_string(),
+                message: "CLI 工具通常不以 iOS/Android 作为直接运行平台，需要进一步澄清目标运行环境。".to_string(),
+            }],
+        };
+
+        let updated = apply_application_boundary_extraction(artifact, &extraction)
+            .expect("update should succeed");
+
+        assert_eq!(
+            updated.product.application_type,
+            vec!["CLI 工具".to_string()]
+        );
+        assert_eq!(
+            updated.product.target_platforms,
+            vec!["iOS".to_string(), "Android".to_string()]
+        );
+        assert!(updated
+            .inconsistencies
+            .iter()
+            .any(|item| item.sieve == APPLICATION_BOUNDARY_SIEVE_ID
+                && item.severity == "blocking"));
+        assert!(updated
+            .pending_clarifications
+            .iter()
+            .any(|item| item.id == APPLICATION_TYPE_CLARIFICATION_ID));
+        assert!(updated
+            .pending_clarifications
+            .iter()
+            .any(|item| item.id == TARGET_PLATFORMS_CLARIFICATION_ID));
+    }
+
+    #[test]
+    fn removes_only_application_type_pending_when_only_application_type_clarified_without_inconsistency() {
+        let artifact = base_artifact();
+        let extraction = ApplicationBoundaryExtraction {
+            application_type: vec!["桌面应用".to_string()],
+            target_platforms: vec![],
+            detected_inconsistencies: vec![],
+        };
+
+        let updated = apply_application_boundary_extraction(artifact, &extraction)
+            .expect("update should succeed");
+
+        assert!(!updated
+            .pending_clarifications
+            .iter()
+            .any(|item| item.id == APPLICATION_TYPE_CLARIFICATION_ID));
+        assert!(updated
+            .pending_clarifications
+            .iter()
+            .any(|item| item.id == TARGET_PLATFORMS_CLARIFICATION_ID));
+    }
+
+    #[test]
+    fn removes_only_target_platforms_pending_when_only_target_platforms_clarified_without_inconsistency() {
+        let artifact = base_artifact();
+        let extraction = ApplicationBoundaryExtraction {
+            application_type: vec![],
+            target_platforms: vec!["Windows".to_string(), "macOS".to_string()],
+            detected_inconsistencies: vec![],
+        };
+
+        let updated = apply_application_boundary_extraction(artifact, &extraction)
+            .expect("update should succeed");
+
+        assert!(updated
+            .pending_clarifications
+            .iter()
+            .any(|item| item.id == APPLICATION_TYPE_CLARIFICATION_ID));
+        assert!(!updated
+            .pending_clarifications
+            .iter()
+            .any(|item| item.id == TARGET_PLATFORMS_CLARIFICATION_ID));
+    }
+
+    #[test]
+    fn removes_both_pending_when_both_fields_clarified_without_inconsistency() {
+        let artifact = base_artifact();
+        let extraction = ApplicationBoundaryExtraction {
+            application_type: vec!["桌面应用".to_string()],
+            target_platforms: vec!["Windows".to_string(), "macOS".to_string()],
+            detected_inconsistencies: vec![],
+        };
+
+        let updated = apply_application_boundary_extraction(artifact, &extraction)
+            .expect("update should succeed");
+
+        assert!(!updated
+            .pending_clarifications
+            .iter()
+            .any(|item| item.id == APPLICATION_TYPE_CLARIFICATION_ID));
+        assert!(!updated
             .pending_clarifications
             .iter()
             .any(|item| item.id == TARGET_PLATFORMS_CLARIFICATION_ID));

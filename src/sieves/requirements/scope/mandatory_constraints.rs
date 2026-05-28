@@ -561,7 +561,7 @@ mod tests {
     }
 
     #[test]
-    fn non_goal_answer_produces_blocking_inconsistency_and_keeps_pending() {
+    fn scope_exclusion_answer_produces_blocking_inconsistency_and_keeps_pending() {
         let artifact = base_artifact();
         let extraction = MandatoryConstraintsExtraction {
             mandatory_constraints: vec![],

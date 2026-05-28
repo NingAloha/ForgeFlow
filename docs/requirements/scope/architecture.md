@@ -80,7 +80,8 @@ Question LLM -> Typed Extraction LLM -> Rust mutation authority
 ```
 
 - Rust 写入 `product.target_users`
-- Rust 移除对应 pending
+- 若提取到有效 `target_users` 且无 inconsistency，Rust 移除对应 pending
+- 若回答模糊、占位或无法识别目标用户群体，sieve 保留 `product.target_users` pending，并追加 blocking inconsistency；不应以普通错误退出而丢失澄清状态。
 - Rust 设置 `maturity = "scope"`
 
 ### 3. `requirements.scope.application_boundary`

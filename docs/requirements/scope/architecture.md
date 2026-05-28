@@ -1,0 +1,124 @@
+# Requirements Sieve Architecture
+
+## 当前代码层级（与 `src/` 对齐）
+
+```text
+src/
+  llm/
+    mod.rs
+    client.rs
+  mutation/
+    mod.rs
+    json_read.rs
+    json_write.rs
+    operations.rs
+  runtime/
+    mod.rs
+    paths.rs
+  sieves/
+    mod.rs
+    requirements/
+      mod.rs
+      artifact.rs
+      io.rs
+      validator.rs
+      intent/
+        mod.rs
+        capture.rs
+        prompts/
+          capture_system.txt
+      scope/
+        mod.rs
+        target_users.rs
+        application_boundary.rs
+        capability_categories.rs
+        prompts/
+          target_users_question_system.txt
+          target_users_extract_system.txt
+          application_boundary_question_system.txt
+          application_boundary_extract_system.txt
+          capability_categories_question_system.txt
+          capability_categories_extract_system.txt
+```
+
+## 设计原则
+
+- 每个 sieve 原子化、可单独运行、可单独验证。
+- Question LLM 只生成澄清问题。
+- Extraction LLM 只返回 typed extraction result。
+- Rust 是 artifact mutation authority。
+- 全部原子 sieve 稳定后，再接 router/CLI。
+
+核心链路：
+
+```text
+Question LLM -> Typed Extraction LLM -> Rust mutation authority
+```
+
+## 当前层次
+
+### 1. Intent capture
+
+- 输入：用户原始意图
+- LLM：只允许 `intent.raw_input / intent.goal / intent.domain`
+- Rust 固定注入：
+  - `maturity = "intent"`
+  - scope v0 的 `pending_clarifications`
+
+### 2. `requirements.scope.target_users`
+
+- question prompt 生成上下文化问题
+- extraction prompt 返回：
+
+```json
+{ "target_users": ["..."] }
+```
+
+- Rust 写入 `product.target_users`
+- Rust 移除对应 pending
+- Rust 设置 `maturity = "scope"`
+
+### 3. `requirements.scope.application_boundary`
+
+- 同时处理：
+  - `product.application_type`
+  - `product.target_platforms`
+- extraction prompt 返回：
+
+```json
+{
+  "application_type": ["..."],
+  "target_platforms": ["..."],
+  "detected_inconsistencies": []
+}
+```
+
+- Rust 写字段、按完成字段移除 pending
+- Rust 转换并追加 structured inconsistency
+
+### 4. `requirements.scope.capability_categories`
+
+- extraction prompt 返回：
+
+```json
+{
+  "capability_categories": ["..."],
+  "detected_inconsistencies": []
+}
+```
+
+- Rust 写字段
+- 若有 blocking inconsistency，则 pending 保留
+
+### 5. 未来层（未实现）
+
+- `requirements.scope.explicit_constraints`
+- `requirements.scope.non_goals`
+- review/inconsistency layer
+- router/CLI
+
+## 当前不做
+
+- 不自动串联 sieve
+- 不自动判断 next step
+- 不做 end-to-end pipeline

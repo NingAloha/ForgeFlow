@@ -11,6 +11,11 @@ pub fn write_requirements_capture_output(capture_output: &Value) -> Result<()> {
     write_runtime_json(&runtime)
 }
 
+pub fn read_requirements_context_slice(paths: &[&str]) -> Result<Value> {
+    let runtime = read_runtime_json()?;
+    build_context_slice_from_runtime(&runtime, paths)
+}
+
 fn load_runtime_or_example_json() -> Result<Value> {
     let runtime_path = Path::new(REQUIREMENTS_RUNTIME_PATH);
     let source_path = if runtime_path.exists() {
@@ -48,6 +53,91 @@ fn write_runtime_json(value: &Value) -> Result<()> {
 
     fs::write(runtime_path, content)
         .with_context(|| format!("failed to write JSON file: {}", runtime_path.display()))?;
+
+    Ok(())
+}
+
+fn read_runtime_json() -> Result<Value> {
+    let content = fs::read_to_string(REQUIREMENTS_RUNTIME_PATH)
+        .with_context(|| format!("failed to read JSON file: {REQUIREMENTS_RUNTIME_PATH}"))?;
+    let value: Value = serde_json::from_str(&content)
+        .with_context(|| format!("failed to parse JSON file: {REQUIREMENTS_RUNTIME_PATH}"))?;
+    if !value.is_object() {
+        return Err(anyhow!("requirements runtime JSON must be an object"));
+    }
+    Ok(value)
+}
+
+fn build_context_slice_from_runtime(runtime: &Value, paths: &[&str]) -> Result<Value> {
+    if paths.is_empty() {
+        return Err(anyhow!("context slice paths must not be empty"));
+    }
+
+    let mut slice = json!({});
+    for raw_path in paths {
+        let path = raw_path.trim();
+        if path.is_empty() {
+            return Err(anyhow!("context slice path must not be empty"));
+        }
+
+        let value = get_value_by_dot_path(runtime, path)?;
+        insert_value_by_dot_path(&mut slice, path, value.clone())?;
+    }
+
+    Ok(slice)
+}
+
+fn get_value_by_dot_path<'a>(root: &'a Value, path: &str) -> Result<&'a Value> {
+    let mut current = root;
+    let parts: Vec<&str> = path.split('.').collect();
+    for (idx, key) in parts.iter().enumerate() {
+        if key.is_empty() {
+            return Err(anyhow!("context slice path must not be empty"));
+        }
+
+        let obj = current
+            .as_object()
+            .ok_or_else(|| anyhow!("context slice path is not traversable: {path}"))?;
+        let next = obj
+            .get(*key)
+            .ok_or_else(|| anyhow!("missing context slice path: {path}"))?;
+
+        if idx + 1 < parts.len() && !next.is_object() {
+            return Err(anyhow!("context slice path is not traversable: {path}"));
+        }
+        current = next;
+    }
+    Ok(current)
+}
+
+fn insert_value_by_dot_path(target: &mut Value, path: &str, value: Value) -> Result<()> {
+    let parts: Vec<&str> = path.split('.').collect();
+    if parts.is_empty() {
+        return Err(anyhow!("context slice path must not be empty"));
+    }
+
+    let mut current = target;
+    for (idx, key) in parts.iter().enumerate() {
+        if key.is_empty() {
+            return Err(anyhow!("context slice path must not be empty"));
+        }
+
+        let is_last = idx + 1 == parts.len();
+        let obj = current
+            .as_object_mut()
+            .ok_or_else(|| anyhow!("context slice path is not traversable: {path}"))?;
+
+        if is_last {
+            obj.insert((*key).to_string(), value.clone());
+            return Ok(());
+        }
+
+        let entry = obj.entry((*key).to_string()).or_insert_with(|| json!({}));
+        if !entry.is_object() {
+            return Err(anyhow!("context slice path is not traversable: {path}"));
+        }
+        current = entry;
+    }
 
     Ok(())
 }
@@ -126,7 +216,10 @@ fn apply_capture_output(runtime: &mut Value, capture_output: &Value) -> Result<(
 
 #[cfg(test)]
 mod tests {
-    use super::apply_capture_output;
+    use super::{
+        apply_capture_output, build_context_slice_from_runtime, get_value_by_dot_path,
+        insert_value_by_dot_path,
+    };
     use serde_json::json;
 
     #[test]
@@ -239,6 +332,101 @@ mod tests {
         assert!(
             err.to_string()
                 .contains("capture_output.boundary fields must be exactly: domain")
+        );
+    }
+
+    #[test]
+    fn context_slice_extracts_single_top_level_field() {
+        let runtime = json!({
+            "artifact_type": "requirements",
+            "schema_version": "0.1",
+            "origin": { "raw_input": "做一个 IDE" },
+            "boundary": { "domain": "软件开发工具" }
+        });
+        let slice =
+            build_context_slice_from_runtime(&runtime, &["artifact_type"]).expect("should build");
+        assert_eq!(slice, json!({ "artifact_type": "requirements" }));
+    }
+
+    #[test]
+    fn context_slice_extracts_nested_field() {
+        let runtime = json!({
+            "origin": { "raw_input": "做一个 IDE" }
+        });
+        let slice = build_context_slice_from_runtime(&runtime, &["origin.raw_input"])
+            .expect("should build");
+        assert_eq!(slice, json!({ "origin": { "raw_input": "做一个 IDE" } }));
+    }
+
+    #[test]
+    fn context_slice_extracts_multiple_shared_prefix_fields() {
+        let runtime = json!({
+            "origin": { "raw_input": "做一个 IDE" },
+            "boundary": { "domain": "软件开发工具" }
+        });
+        let slice =
+            build_context_slice_from_runtime(&runtime, &["origin.raw_input", "boundary.domain"])
+                .expect("should build");
+        assert_eq!(
+            slice,
+            json!({
+                "origin": { "raw_input": "做一个 IDE" },
+                "boundary": { "domain": "软件开发工具" }
+            })
+        );
+    }
+
+    #[test]
+    fn context_slice_rejects_empty_paths() {
+        let runtime = json!({ "origin": { "raw_input": "x" } });
+        let err = build_context_slice_from_runtime(&runtime, &[]).expect_err("should fail");
+        assert_eq!(err.to_string(), "context slice paths must not be empty");
+    }
+
+    #[test]
+    fn context_slice_rejects_empty_path() {
+        let runtime = json!({ "origin": { "raw_input": "x" } });
+        let err = build_context_slice_from_runtime(&runtime, &[" "]).expect_err("should fail");
+        assert_eq!(err.to_string(), "context slice path must not be empty");
+    }
+
+    #[test]
+    fn context_slice_rejects_missing_path() {
+        let runtime = json!({ "boundary": { "domain": "软件开发工具" } });
+        let err = get_value_by_dot_path(&runtime, "boundary.problem").expect_err("should fail");
+        assert_eq!(
+            err.to_string(),
+            "missing context slice path: boundary.problem"
+        );
+    }
+
+    #[test]
+    fn context_slice_rejects_non_traversable_path() {
+        let runtime = json!({ "origin": { "raw_input": "做一个 IDE" } });
+        let err =
+            get_value_by_dot_path(&runtime, "origin.raw_input.text").expect_err("should fail");
+        assert_eq!(
+            err.to_string(),
+            "context slice path is not traversable: origin.raw_input.text"
+        );
+    }
+
+    #[test]
+    fn context_slice_preserves_nested_structure() {
+        let runtime = json!({
+            "artifact_type": "requirements",
+            "origin": { "raw_input": "做一个 IDE" },
+            "boundary": { "domain": "软件开发工具" }
+        });
+        let slice =
+            build_context_slice_from_runtime(&runtime, &["origin.raw_input", "boundary.domain"])
+                .expect("should build");
+        assert_eq!(
+            slice,
+            json!({
+                "origin": { "raw_input": "做一个 IDE" },
+                "boundary": { "domain": "软件开发工具" }
+            })
         );
     }
 }

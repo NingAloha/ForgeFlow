@@ -13,15 +13,13 @@ The current focus is a requirements sieve architecture: progressively refining v
 - LLM JSON client
 - requirements artifact schema and validator
 - structured `pending_clarifications`, `inconsistencies`, and `mandatory_constraints`
-- intent / target-users / application-boundary / capability-categories sieves
+- intent / target-users / application-boundary / capability-categories / mandatory-constraints / scope-exclusions sieves
 - manual development runner
 
 ### Not done yet
 
 - router / CLI
 - inconsistency review/resolution layer
-- `mandatory_constraints` sieve
-- `scope_exclusions` sieve
 - end-to-end pipeline
 
 ## Quick run
@@ -31,6 +29,8 @@ cargo run -- requirements intent
 cargo run -- requirements target-users
 cargo run -- requirements application-boundary
 cargo run -- requirements capability-categories
+cargo run -- requirements mandatory-constraints
+cargo run -- requirements scope-exclusions
 ```
 
 ## Documentation
@@ -42,5 +42,6 @@ Requirements docs are currently Chinese-first:
 - [Constraint model](docs/requirements/artifact/constraint-model.md)
 - [LLM contract](docs/requirements/intent/llm-contract.md)
 - [Requirements sieve architecture](docs/requirements/scope/architecture.md)
+- [Scope behavior matrix](docs/requirements/scope/behavior-matrix.md)
 - [Smoke tests](docs/requirements/scope/smoke-tests.md)
 - [Manual runner](docs/requirements/runner/manual-runner.md)

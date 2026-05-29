@@ -20,14 +20,14 @@ ForgeFlow 是一个面向软件工程语义稳定化的 Rust 实验项目。
 - `target_users` scope sieve
 - `application_boundary` scope sieve
 - `capability_categories` scope sieve
+- `mandatory_constraints` scope sieve
+- `scope_exclusions` scope sieve
 - manual development runner
 
 ### 未完成
 
 - router / CLI
 - inconsistency review/resolution layer
-- `mandatory_constraints` sieve
-- `scope_exclusions` sieve
 - functional requirements generation
 - design / implementation stages
 - end-to-end automated pipeline
@@ -39,6 +39,8 @@ cargo run -- requirements intent
 cargo run -- requirements target-users
 cargo run -- requirements application-boundary
 cargo run -- requirements capability-categories
+cargo run -- requirements mandatory-constraints
+cargo run -- requirements scope-exclusions
 ```
 
 ## 文档导航
@@ -48,5 +50,6 @@ cargo run -- requirements capability-categories
 - [Constraint model](docs/requirements/artifact/constraint-model.md)
 - [LLM contract](docs/requirements/intent/llm-contract.md)
 - [Requirements sieve architecture](docs/requirements/scope/architecture.md)
+- [Scope behavior matrix](docs/requirements/scope/behavior-matrix.md)
 - [Smoke tests](docs/requirements/scope/smoke-tests.md)
 - [Manual runner](docs/requirements/runner/manual-runner.md)

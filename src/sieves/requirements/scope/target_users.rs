@@ -10,6 +10,10 @@ use crate::sieves::requirements::artifact::{
     PendingClarification,
     RequirementsArtifact,
 };
+use crate::sieves::requirements::scope::context::{
+    require_pending_clarification_trigger,
+    ScopeSieveRunContext,
+};
 use crate::sieves::requirements::io::{
     load_requirements,
     save_requirements,
@@ -43,6 +47,19 @@ struct DetectedInconsistency {
 }
 
 pub fn run_target_users_scope() -> Result<()> {
+    run_target_users_scope_with_context(
+        ScopeSieveRunContext::pending_clarification(TARGET_USERS_CLARIFICATION_ID),
+    )
+}
+
+pub fn run_target_users_scope_with_context(
+    context: ScopeSieveRunContext,
+) -> Result<()> {
+    require_pending_clarification_trigger(
+        &context,
+        TARGET_USERS_CLARIFICATION_ID,
+    )?;
+
     let artifact = load_requirements()
         .context("failed to load requirements artifact")?;
 

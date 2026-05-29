@@ -402,15 +402,12 @@ mod tests {
     fn allows_valid_structured_inconsistency() {
         let mut artifact = base_artifact();
         artifact.inconsistencies.push(Inconsistency {
-            id: "scope.application_boundary.cli_mobile_platform_conflict".to_string(),
+            id: "scope.application_type.unclear_application_type".to_string(),
             stage: "scope".to_string(),
-            sieve: "requirements.scope.application_boundary".to_string(),
+            sieve: "requirements.scope.application_type".to_string(),
             severity: "blocking".to_string(),
-            target_paths: vec![
-                vec!["product".to_string(), "application_type".to_string()],
-                vec!["product".to_string(), "target_platforms".to_string()],
-            ],
-            message: "CLI 工具通常不以 iOS/Android 作为直接运行平台，需要进一步澄清目标运行环境。".to_string(),
+            target_paths: vec![vec!["product".to_string(), "application_type".to_string()]],
+            message: "用户没有明确说明应用形态，需要进一步澄清。".to_string(),
             requires_clarification: true,
         });
 
@@ -422,9 +419,9 @@ mod tests {
     fn rejects_invalid_severity() {
         let mut artifact = base_artifact();
         artifact.inconsistencies.push(Inconsistency {
-            id: "scope.application_boundary.cli_mobile_platform_conflict".to_string(),
+            id: "scope.application_type.unclear_application_type".to_string(),
             stage: "scope".to_string(),
-            sieve: "requirements.scope.application_boundary".to_string(),
+            sieve: "requirements.scope.application_type".to_string(),
             severity: "critical".to_string(),
             target_paths: vec![vec![
                 "product".to_string(),
@@ -443,9 +440,9 @@ mod tests {
     fn rejects_empty_target_paths() {
         let mut artifact = base_artifact();
         artifact.inconsistencies.push(Inconsistency {
-            id: "scope.application_boundary.cli_mobile_platform_conflict".to_string(),
+            id: "scope.application_type.unclear_application_type".to_string(),
             stage: "scope".to_string(),
-            sieve: "requirements.scope.application_boundary".to_string(),
+            sieve: "requirements.scope.application_type".to_string(),
             severity: "blocking".to_string(),
             target_paths: vec![],
             message: "x".to_string(),
@@ -463,7 +460,7 @@ mod tests {
         artifact.inconsistencies.push(Inconsistency {
             id: "".to_string(),
             stage: "scope".to_string(),
-            sieve: "requirements.scope.application_boundary".to_string(),
+            sieve: "requirements.scope.application_type".to_string(),
             severity: "warning".to_string(),
             target_paths: vec![vec![
                 "product".to_string(),

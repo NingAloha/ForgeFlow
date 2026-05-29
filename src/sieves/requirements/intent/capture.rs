@@ -158,13 +158,13 @@ fn build_scope_v0_pending_clarifications() -> Vec<PendingClarification> {
             id: "product.application_type".to_string(),
             target_path: vec!["product".to_string(), "application_type".to_string()],
             question: "应用类型是什么？".to_string(),
-            sieve: "requirements.scope.application_boundary".to_string(),
+            sieve: "requirements.scope.application_type".to_string(),
         },
         PendingClarification {
             id: "product.target_platforms".to_string(),
             target_path: vec!["product".to_string(), "target_platforms".to_string()],
             question: "目标平台有哪些？".to_string(),
-            sieve: "requirements.scope.application_boundary".to_string(),
+            sieve: "requirements.scope.target_platforms".to_string(),
         },
         PendingClarification {
             id: "scope.capability_categories".to_string(),

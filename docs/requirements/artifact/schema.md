@@ -108,15 +108,14 @@
 
 ```json
 {
-  "id": "scope.application_boundary.cli_mobile_platform_conflict",
+  "id": "scope.application_type.unclear_application_type",
   "stage": "scope",
-  "sieve": "requirements.scope.application_boundary",
+  "sieve": "requirements.scope.application_type",
   "severity": "blocking",
   "target_paths": [
-    ["product", "application_type"],
-    ["product", "target_platforms"]
+    ["product", "application_type"]
   ],
-  "message": "CLI 工具通常不以 iOS/Android 作为直接运行平台，需要进一步澄清目标运行环境。",
+  "message": "用户没有明确说明应用形态，需要进一步澄清。",
   "requires_clarification": true
 }
 ```

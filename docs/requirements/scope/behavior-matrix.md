@@ -45,15 +45,18 @@ LLM 只返回 typed extraction result；Rust 负责写入 artifact。
 
 Scope sieves 不清理、不 resolved、不 stale、不重写历史 inconsistencies。
 
+用户回答可能包含多个语义片段；各 sieve 只处理属于自己目标字段的片段。若同一回答中同时包含有效片段与错层/模糊片段，可写入明确部分，同时保留 pending 并追加 blocking inconsistency。
+
 ## 3. 行为矩阵
 
 | Sieve | 目标字段 | 有效回答行为 | 明确缺省声明行为 | 模糊 / 占位回答行为 | 错层 / 放错层回答行为 | 空提取结果行为 | Pending 移除条件 |
 |---|---|---|---|---|---|---|---|
-| `target_users` | `product.target_users` | 写入 `product.target_users`；移除 `product.target_users` pending；设置 `maturity = "scope"` | 不适用；不能通过 absence 完成 | 保留 pending；追加 blocking inconsistency（如 `product.target_users.unclear_target_users`） | 若无法提取目标用户且被 extraction 判定为错层，转 blocking inconsistency | `target_users=[]` 且 `detected_inconsistencies=[]` 为 contract violation | `target_users` 非空且 `detected_inconsistencies` 为空 |
-| `application_boundary` | `product.application_type`、`product.target_platforms` | 写入非空提取字段；仅移除已完成字段对应 pending；支持 partial completion | 不适用 | 保留 application boundary pending；追加 blocking inconsistency（如 `scope.application_boundary.unclear_application_boundary`） | 可写入已观测字段；保留 pending；追加 blocking inconsistency（如 CLI/mobile conflict） | 两数组都空且 `detected_inconsistencies=[]` 为 contract violation | 对每个字段，只有该字段非空且 `detected_inconsistencies` 为空时才移除对应 pending |
-| `capability_categories` | `scope.capability_categories` | 写入 categories；移除 pending | 不适用；不能通过 absence 完成 | 保留 pending；追加 `scope.capability_categories.unclear_capability_categories` | 实现细节错层、类别过宽、要求推断等应保留 pending 并追加 blocking inconsistency | `capability_categories=[]` 且 `detected_inconsistencies=[]` 为 contract violation | categories 非空且 `detected_inconsistencies` 为空 |
-| `mandatory_constraints` | `scope.mandatory_constraints` | 写入 mandatory constraints；移除 pending | 仅 `no_mandatory_constraints_declared=true` 时允许；保持 `mandatory_constraints=[]`；移除 pending | 保留 pending；追加 blocking inconsistency（如 `uncertain_mandatory_constraints_absence`） | 重复一等字段、功能回答、scope exclusion 回答都应转 blocking inconsistency | `mandatory_constraints=[]` 且 `no_mandatory_constraints_declared=false` 且 `detected_inconsistencies=[]` 为 contract violation | constraints 非空且无 inconsistency；或 `no_mandatory_constraints_declared=true` 且无 inconsistency |
-| `scope_exclusions` | `scope.scope_exclusions` | 写入 scope exclusions；移除 pending | 仅 `no_scope_exclusions_declared=true` 时允许；保持 `scope_exclusions=[]`；移除 pending | 保留 pending；追加 blocking inconsistency（如 `uncertain_scope_exclusions_absence`） | mandatory constraint 错层、功能回答错层、承诺强度不明确都应转 blocking inconsistency | `scope_exclusions=[]` 且 `no_scope_exclusions_declared=false` 且 `detected_inconsistencies=[]` 为 contract violation | exclusions 非空且无 inconsistency；或 `no_scope_exclusions_declared=true` 且无 inconsistency |
+| `target_users` | `product.target_users` | 写入 `product.target_users`；移除 `product.target_users` pending；设置 `maturity = "scope"` | 不适用（不能通过“无目标用户”完成） | 保留 pending；追加 blocking inconsistency（如 `product.target_users.unclear_target_users`） | 错层且无法提取有效目标用户时：保留 pending；追加 blocking inconsistency | `target_users=[]` 且 `detected_inconsistencies=[]` 视为 contract violation | `target_users` 非空且 `detected_inconsistencies` 为空 |
+| `application_type` | `product.application_type` | 写入 `product.application_type`；移除 `product.application_type` pending；设置 `maturity = "scope"` | 不适用（不能通过“无应用形态”完成） | 保留 pending；追加 blocking inconsistency（如 `scope.application_type.unclear_application_type`） | 错层（目标平台回答）时：保留 pending；追加 blocking inconsistency（如 `scope.application_type.target_platforms_instead_of_application_type`） | `application_type=[]` 且 `detected_inconsistencies=[]` 视为 contract violation | `application_type` 非空且 `detected_inconsistencies` 为空 |
+| `target_platforms` | `product.target_platforms` | 写入 `product.target_platforms`；移除 `product.target_platforms` pending；设置 `maturity = "scope"` | 不适用（不能通过“无目标平台”完成） | 保留 pending；追加 blocking inconsistency（如 `scope.target_platforms.unclear_target_platforms`） | 错层（应用形态回答）时：保留 pending；追加 blocking inconsistency（如 `scope.target_platforms.application_type_instead_of_target_platforms`） | `target_platforms=[]` 且 `detected_inconsistencies=[]` 视为 contract violation | `target_platforms` 非空且 `detected_inconsistencies` 为空 |
+| `capability_categories` | `scope.capability_categories` | 写入 `scope.capability_categories`；移除 pending；设置 `maturity = "scope"` | 不适用（不能通过“无能力类别”完成） | 保留 pending；追加 blocking inconsistency（如 `scope.capability_categories.unclear_capability_categories`） | 错层（实现细节、类别过宽、要求推断）时：保留 pending；追加 blocking inconsistency | `capability_categories=[]` 且 `detected_inconsistencies=[]` 视为 contract violation | `capability_categories` 非空且 `detected_inconsistencies` 为空 |
+| `mandatory_constraints` | `scope.mandatory_constraints` | 写入 `scope.mandatory_constraints`；移除 pending；设置 `maturity = "scope"` | 仅 `no_mandatory_constraints_declared=true` 时允许；保持空数组；移除 pending；设置 `maturity = "scope"` | 保留 pending；追加 blocking inconsistency（如 `scope.mandatory_constraints.uncertain_mandatory_constraints_absence`） | 错层（一等字段重复、功能回答、scope exclusion）时：保留 pending；追加 blocking inconsistency | `mandatory_constraints=[]` 且 `no_mandatory_constraints_declared=false` 且 `detected_inconsistencies=[]` 视为 contract violation | `mandatory_constraints` 非空且无 inconsistency；或 `no_mandatory_constraints_declared=true` 且无 inconsistency |
+| `scope_exclusions` | `scope.scope_exclusions` | 写入 `scope.scope_exclusions`；移除 pending；设置 `maturity = "scope"` | 仅 `no_scope_exclusions_declared=true` 时允许；保持空数组；移除 pending；设置 `maturity = "scope"` | 保留 pending；追加 blocking inconsistency（如 `scope.scope_exclusions.uncertain_scope_exclusions_absence`） | 错层（mandatory constraint、功能回答）或承诺强度不明确时：保留 pending；追加 blocking inconsistency | `scope_exclusions=[]` 且 `no_scope_exclusions_declared=false` 且 `detected_inconsistencies=[]` 视为 contract violation | `scope_exclusions` 非空且无 inconsistency；或 `no_scope_exclusions_declared=true` 且无 inconsistency |
 
 ## 4. 各 Sieve 说明
 
@@ -62,11 +65,15 @@ Scope sieves 不清理、不 resolved、不 stale、不重写历史 inconsistenc
 - Shared qualifiers 应在适用的用户组中保留与传播。
 - Identity labels 不应被错误传播为 shared qualifiers。
 
-### application_boundary
+### application_type
 
-- 支持 partial completion。
-- 当 inconsistency 存在时采用 write-observed-but-block-progress。
-- 语义冲突检测当前主要由 prompt 驱动，不由 Rust 硬编码全量规则。
+- 只处理 `product.application_type`。
+- 不推断 `target_platforms`，目标平台错层回答应产出 blocking inconsistency 并保留 pending。
+
+### target_platforms
+
+- 只处理 `product.target_platforms`。
+- 不推断 `application_type`，应用形态错层回答应产出 blocking inconsistency 并保留 pending。
 
 ### capability_categories
 
@@ -99,6 +106,7 @@ Scope sieves 不清理、不 resolved、不 stale、不重写历史 inconsistenc
 - router：根据 pending/inconsistencies/user intent 决定下一步动作
 - review/resolution：判定历史 inconsistencies 是 active/resolved/stale
 - amendment layer：处理 initial clarification 完成后的补充/修正
+- `application_type × target_platforms` 的跨字段一致性评审由未来 reviewer 处理
 
 ## 6. 验证清单
 

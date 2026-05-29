@@ -34,10 +34,10 @@ cargo run -- requirements target-users
   - `有一定开发经验并掌握工业化开发流程的开发者`
 - `pending_clarifications` 中不再包含 `product.target_users`
 
-## 用例 2：application_boundary Web compound
+## 用例 2：application_type normal
 
 ```bash
-cargo run -- requirements application-boundary
+cargo run -- requirements application-type
 ```
 
 输入：`做 Web 应用`
@@ -45,21 +45,24 @@ cargo run -- requirements application-boundary
 预期：
 
 - `product.application_type = ["Web 应用"]`
-- `product.target_platforms = ["Web"]`
+- `product.application_type` 对应 pending 被移除
 
-## 用例 3：application_boundary inconsistency
+## 用例 3：target_platforms normal
 
 ```bash
-cargo run -- requirements application-boundary
+cargo run -- requirements target-platforms
 ```
 
-输入：`做 CLI 工具，支持 iOS 和 Android`
+输入：`Web`
 
 预期：
 
-- 写入 `application_type` / `target_platforms`
-- `inconsistencies` 新增 `scope.application_boundary.cli_mobile_platform_conflict`
-- `severity = "blocking"`
+- `product.target_platforms = ["Web"]`
+- `product.target_platforms` 对应 pending 被移除
+
+说明：
+
+- `application_type × target_platforms` 的跨字段一致性检查属于未来 reviewer 层，不在当前 atomic sieve 中处理。
 
 ## 用例 4：capability_categories normal
 

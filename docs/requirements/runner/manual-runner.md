@@ -7,7 +7,8 @@
 ```bash
 cargo run -- requirements intent
 cargo run -- requirements target-users
-cargo run -- requirements application-boundary
+cargo run -- requirements application-type
+cargo run -- requirements target-platforms
 cargo run -- requirements capability-categories
 cargo run -- requirements mandatory-constraints
 cargo run -- requirements scope-exclusions
@@ -33,8 +34,11 @@ cargo run -- requirements scope-exclusions
 - `requirements target-users`
   - 调用 `run_target_users_scope()`
 
-- `requirements application-boundary`
-  - 调用 `run_application_boundary_scope()`
+- `requirements application-type`
+  - 调用 `run_application_type_scope()`
+
+- `requirements target-platforms`
+  - 调用 `run_target_platforms_scope()`
 
 - `requirements capability-categories`
   - 调用 `run_capability_categories_scope()`

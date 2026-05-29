@@ -2,8 +2,7 @@
 
 任务：
 根据用户的软件需求描述：
-1. 保留用户原始输入
-2. 识别该需求所属的工具领域(domain)
+识别该需求所属的工具领域(domain)
 
 domain 规则：
 - domain 是工具领域标签，不是产品名。
@@ -35,9 +34,6 @@ Photoshop
 
 只允许输出：
 {
-  "origin": {
-    "raw_input": "..."
-  },
   "boundary": {
     "domain": "..."
   }

@@ -18,29 +18,9 @@ fn validate_capture_domain_response(raw_input: &str, response: Value) -> Result<
         .as_object()
         .ok_or_else(|| anyhow!("capture response must be a JSON object"))?;
 
-    if top.len() != 2 || !top.contains_key("origin") || !top.contains_key("boundary") {
+    if top.len() != 1 || !top.contains_key("boundary") {
         return Err(anyhow!(
-            "capture response top-level fields must be exactly: origin, boundary"
-        ));
-    }
-
-    let origin = top
-        .get("origin")
-        .and_then(Value::as_object)
-        .ok_or_else(|| anyhow!("origin must be an object"))?;
-
-    if origin.len() != 1 || !origin.contains_key("raw_input") {
-        return Err(anyhow!("origin fields must be exactly: raw_input"));
-    }
-
-    let origin_raw_input = origin
-        .get("raw_input")
-        .and_then(Value::as_str)
-        .ok_or_else(|| anyhow!("origin.raw_input must be a string"))?;
-
-    if origin_raw_input != raw_input {
-        return Err(anyhow!(
-            "origin.raw_input must exactly match the input raw_input"
+            "capture response top-level fields must be exactly: boundary"
         ));
     }
 
@@ -62,7 +42,14 @@ fn validate_capture_domain_response(raw_input: &str, response: Value) -> Result<
         return Err(anyhow!("boundary.domain must be a non-empty string"));
     }
 
-    Ok(response)
+    Ok(serde_json::json!({
+        "origin": {
+            "raw_input": raw_input
+        },
+        "boundary": {
+            "domain": domain
+        }
+    }))
 }
 
 #[cfg(test)]
@@ -74,9 +61,6 @@ mod tests {
     fn validate_capture_domain_response_accepts_valid_payload() {
         let raw_input = "做一个 IDE";
         let response = json!({
-            "origin": {
-                "raw_input": "做一个 IDE"
-            },
             "boundary": {
                 "domain": "软件开发工具"
             }
@@ -84,15 +68,25 @@ mod tests {
 
         let validated = validate_capture_domain_response(raw_input, response.clone())
             .expect("expected valid payload");
-        assert_eq!(validated, response);
+        assert_eq!(
+            validated,
+            json!({
+                "origin": {
+                    "raw_input": "做一个 IDE"
+                },
+                "boundary": {
+                    "domain": "软件开发工具"
+                }
+            })
+        );
     }
 
     #[test]
-    fn validate_capture_domain_response_rejects_mismatched_origin_raw_input() {
+    fn validate_capture_domain_response_rejects_extra_top_level_origin() {
         let raw_input = "做一个 IDE";
         let response = json!({
             "origin": {
-                "raw_input": "做一个 Notion"
+                "raw_input": "做一个 IDE"
             },
             "boundary": {
                 "domain": "软件开发工具"
@@ -103,7 +97,7 @@ mod tests {
             validate_capture_domain_response(raw_input, response).expect_err("expected error");
         assert!(
             err.to_string()
-                .contains("origin.raw_input must exactly match the input raw_input")
+                .contains("capture response top-level fields must be exactly: boundary")
         );
     }
 
@@ -111,9 +105,6 @@ mod tests {
     fn validate_capture_domain_response_rejects_empty_boundary_domain() {
         let raw_input = "做一个 IDE";
         let response = json!({
-            "origin": {
-                "raw_input": "做一个 IDE"
-            },
             "boundary": {
                 "domain": "   "
             }
@@ -131,9 +122,6 @@ mod tests {
     fn validate_capture_domain_response_rejects_missing_boundary_domain() {
         let raw_input = "做一个 IDE";
         let response = json!({
-            "origin": {
-                "raw_input": "做一个 IDE"
-            },
             "boundary": {}
         });
 
@@ -149,9 +137,6 @@ mod tests {
     fn validate_capture_domain_response_rejects_extra_top_level_field() {
         let raw_input = "做一个 IDE";
         let response = json!({
-            "origin": {
-                "raw_input": "做一个 IDE"
-            },
             "boundary": {
                 "domain": "软件开发工具"
             },
@@ -162,7 +147,7 @@ mod tests {
             validate_capture_domain_response(raw_input, response).expect_err("expected error");
         assert!(
             err.to_string()
-                .contains("capture response top-level fields must be exactly: origin, boundary")
+                .contains("capture response top-level fields must be exactly: boundary")
         );
     }
 }

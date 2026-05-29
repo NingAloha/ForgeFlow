@@ -29,15 +29,18 @@ src/
       scope/
         mod.rs
         target_users.rs
-        application_boundary.rs
+        application_type.rs
+        target_platforms.rs
         capability_categories.rs
         mandatory_constraints.rs
         scope_exclusions.rs
         prompts/
           target_users_question_system.txt
           target_users_extract_system.txt
-          application_boundary_question_system.txt
-          application_boundary_extract_system.txt
+          application_type_question_system.txt
+          application_type_extract_system.txt
+          target_platforms_question_system.txt
+          target_platforms_extract_system.txt
           capability_categories_question_system.txt
           capability_categories_extract_system.txt
           mandatory_constraints_question_system.txt
@@ -84,27 +87,45 @@ Question LLM -> Typed Extraction LLM -> Rust mutation authority
 - 若回答模糊、占位或无法识别目标用户群体，sieve 保留 `product.target_users` pending，并追加 blocking inconsistency；不应以普通错误退出而丢失澄清状态。
 - Rust 设置 `maturity = "scope"`
 
-### 3. `requirements.scope.application_boundary`
+### 3. `requirements.scope.application_type`
 
-- 同时处理：
-  - `product.application_type`
-  - `product.target_platforms`
+- 只处理：`product.application_type`
 - extraction prompt 返回：
 
 ```json
 {
   "application_type": ["..."],
+  "detected_inconsistencies": []
+}
+```
+
+- Rust 写入 `product.application_type`
+- `detected_inconsistencies` 为空时，移除 `product.application_type` pending
+- `detected_inconsistencies` 非空时，保留 pending，并转换追加 blocking inconsistency
+- 若回答模糊/占位且未澄清 application_type，应保留 pending 并追加 blocking inconsistency，而不是仅以普通错误退出。
+
+### 4. `requirements.scope.target_platforms`
+
+- 只处理：`product.target_platforms`
+- extraction prompt 返回：
+
+```json
+{
   "target_platforms": ["..."],
   "detected_inconsistencies": []
 }
 ```
 
-- Rust 写入 `product.application_type` / `product.target_platforms`
-- `detected_inconsistencies` 为空时，移除对应 pending
-- `detected_inconsistencies` 非空时，保留对应 pending，并转换追加 blocking inconsistency
-- 若回答模糊/占位且未澄清 application_type 与 target_platforms，sieve 仍应保留 application boundary pending，并追加 blocking inconsistency，而不是仅以普通错误退出。
+- Rust 写入 `product.target_platforms`
+- `detected_inconsistencies` 为空时，移除 `product.target_platforms` pending
+- `detected_inconsistencies` 非空时，保留 pending，并转换追加 blocking inconsistency
+- 若回答模糊/占位且未澄清 target_platforms，应保留 pending 并追加 blocking inconsistency，而不是仅以普通错误退出。
 
-### 4. `requirements.scope.capability_categories`
+说明：
+
+- `application_type × target_platforms` 的跨字段一致性评审属于未来 reviewer layer。
+
+### 5. `requirements.scope.capability_categories`
 
 - extraction prompt 返回：
 
@@ -119,7 +140,7 @@ Question LLM -> Typed Extraction LLM -> Rust mutation authority
 - 若有 blocking inconsistency，则 pending 保留
 - 若回答模糊/占位且未澄清任何 capability category，sieve 应保留 `scope.capability_categories` pending，并追加 blocking inconsistency。
 
-### 5. `requirements.scope.mandatory_constraints`
+### 6. `requirements.scope.mandatory_constraints`
 
 - extraction prompt 返回：
 
@@ -141,7 +162,7 @@ Question LLM -> Typed Extraction LLM -> Rust mutation authority
 - 重复一等字段（users/type/platform/capability/scope-exclusions）不应作为 mandatory constraints 完成结果。
 - 若存在 `detected_inconsistencies`，保持 pending，不视为完成。
 
-### 6. `requirements.scope.scope_exclusions`
+### 7. `requirements.scope.scope_exclusions`
 
 - extraction prompt 返回：
 
@@ -166,12 +187,12 @@ Question LLM -> Typed Extraction LLM -> Rust mutation authority
 - “先这样/不确定”等不明确缺省回答应产出 blocking inconsistency 并保留 pending。
 - mixed answer（有效 scope-exclusion + misplaced mandatory constraint）会写入有效 scope-exclusion，但因 inconsistency 非空仍保留 pending。
 
-### 7. 未来层（未实现）
+### 8. 未来层（未实现）
 
 - review/inconsistency layer
 - router/CLI
 
-### 8. Scope sieve 与 inconsistency review/resolution 的职责边界
+### 9. Scope sieve 与 inconsistency review/resolution 的职责边界
 
 Scope sieve responsibilities（may）：
 

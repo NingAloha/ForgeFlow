@@ -13,7 +13,7 @@ The current focus is a requirements sieve architecture: progressively refining v
 - LLM JSON client
 - requirements artifact schema and validator
 - structured `pending_clarifications`, `inconsistencies`, and `mandatory_constraints`
-- intent / target-users / application-boundary / capability-categories / mandatory-constraints / scope-exclusions sieves
+- intent / target-users / application-type / target-platforms / capability-categories / mandatory-constraints / scope-exclusions sieves
 - manual development runner
 
 ### Not done yet
@@ -27,7 +27,8 @@ The current focus is a requirements sieve architecture: progressively refining v
 ```bash
 cargo run -- requirements intent
 cargo run -- requirements target-users
-cargo run -- requirements application-boundary
+cargo run -- requirements application-type
+cargo run -- requirements target-platforms
 cargo run -- requirements capability-categories
 cargo run -- requirements mandatory-constraints
 cargo run -- requirements scope-exclusions

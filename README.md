@@ -18,7 +18,8 @@ ForgeFlow 是一个面向软件工程语义稳定化的 Rust 实验项目。
 - structured `mandatory_constraints` model
 - intent capture sieve
 - `target_users` scope sieve
-- `application_boundary` scope sieve
+- `application_type` scope sieve
+- `target_platforms` scope sieve
 - `capability_categories` scope sieve
 - `mandatory_constraints` scope sieve
 - `scope_exclusions` scope sieve
@@ -37,7 +38,8 @@ ForgeFlow 是一个面向软件工程语义稳定化的 Rust 实验项目。
 ```bash
 cargo run -- requirements intent
 cargo run -- requirements target-users
-cargo run -- requirements application-boundary
+cargo run -- requirements application-type
+cargo run -- requirements target-platforms
 cargo run -- requirements capability-categories
 cargo run -- requirements mandatory-constraints
 cargo run -- requirements scope-exclusions

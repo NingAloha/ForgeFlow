@@ -33,9 +33,14 @@ fn main() -> Result<()> {
             sieves::requirements::scope::target_users::run_target_users_scope()
         }
         [_, domain, action]
-            if domain == "requirements" && action == "application-boundary" =>
+            if domain == "requirements" && action == "application-type" =>
         {
-            sieves::requirements::scope::application_boundary::run_application_boundary_scope()
+            sieves::requirements::scope::application_type::run_application_type_scope()
+        }
+        [_, domain, action]
+            if domain == "requirements" && action == "target-platforms" =>
+        {
+            sieves::requirements::scope::target_platforms::run_target_platforms_scope()
         }
         [_, domain, action]
             if domain == "requirements" && action == "capability-categories" =>
@@ -54,7 +59,8 @@ fn main() -> Result<()> {
             eprintln!("Usage:");
             eprintln!("  cargo run -- requirements intent");
             eprintln!("  cargo run -- requirements target-users");
-            eprintln!("  cargo run -- requirements application-boundary");
+            eprintln!("  cargo run -- requirements application-type");
+            eprintln!("  cargo run -- requirements target-platforms");
             eprintln!("  cargo run -- requirements capability-categories");
             eprintln!("  cargo run -- requirements mandatory-constraints");
             eprintln!("  cargo run -- requirements scope-exclusions");

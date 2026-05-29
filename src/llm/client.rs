@@ -1,6 +1,6 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use reqwest::blocking::Client;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::env;
 use std::time::Duration;
 
@@ -64,14 +64,20 @@ pub fn call_llm_json(system_prompt: &str, user_prompt: &str) -> Result<Value> {
         );
     }
 
-    let response: Value = serde_json::from_str(&response_body)
-        .context("failed to parse LLM HTTP response JSON")?;
+    let response: Value =
+        serde_json::from_str(&response_body).context("failed to parse LLM HTTP response JSON")?;
 
     parse_llm_message_content(&response)
 }
 
 fn read_non_empty_env(name: &str) -> Result<String> {
-    let raw = env::var(name).with_context(|| format!("missing {name}"))?;
+    let raw = match env::var(name) {
+        Ok(raw) => raw,
+        Err(env::VarError::NotPresent) => return Err(anyhow!("missing {name}")),
+        Err(env::VarError::NotUnicode(_)) => {
+            return Err(anyhow!("{name} is not valid unicode"));
+        }
+    };
     let value = raw.trim();
     if value.is_empty() {
         anyhow::bail!("{name} must not be empty");
@@ -89,7 +95,7 @@ fn read_optional_api_base() -> Result<String> {
             Ok(value.to_string())
         }
         Err(env::VarError::NotPresent) => Ok(DEFAULT_API_BASE.to_string()),
-        Err(env::VarError::NotUnicode(_)) => Err(anyhow!("missing MODEL_BASE_URL")),
+        Err(env::VarError::NotUnicode(_)) => Err(anyhow!("MODEL_BASE_URL is not valid unicode")),
     }
 }
 
@@ -176,6 +182,9 @@ mod tests {
         });
 
         let err = parse_llm_message_content(&response).expect_err("should fail");
-        assert!(err.to_string().contains("LLM JSON response must be an object"));
+        assert!(
+            err.to_string()
+                .contains("LLM JSON response must be an object")
+        );
     }
 }

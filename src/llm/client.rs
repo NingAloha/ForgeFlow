@@ -71,7 +71,13 @@ pub fn call_llm_json(system_prompt: &str, user_prompt: &str) -> Result<Value> {
 }
 
 fn read_non_empty_env(name: &str) -> Result<String> {
-    let raw = env::var(name).with_context(|| format!("missing {name}"))?;
+    let raw = match env::var(name) {
+        Ok(raw) => raw,
+        Err(env::VarError::NotPresent) => return Err(anyhow!("missing {name}")),
+        Err(env::VarError::NotUnicode(_)) => {
+            return Err(anyhow!("{name} is not valid unicode"));
+        }
+    };
     let value = raw.trim();
     if value.is_empty() {
         anyhow::bail!("{name} must not be empty");
@@ -89,7 +95,9 @@ fn read_optional_api_base() -> Result<String> {
             Ok(value.to_string())
         }
         Err(env::VarError::NotPresent) => Ok(DEFAULT_API_BASE.to_string()),
-        Err(env::VarError::NotUnicode(_)) => Err(anyhow!("missing MODEL_BASE_URL")),
+        Err(env::VarError::NotUnicode(_)) => {
+            Err(anyhow!("MODEL_BASE_URL is not valid unicode"))
+        }
     }
 }
 

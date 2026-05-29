@@ -50,8 +50,9 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let capability_capture =
-        match sieves::requirements::boundary::capture_capability_from_context(&merged_candidate) {
+    let core_approach_capture =
+        match sieves::requirements::boundary::capture_core_approach_from_context(&merged_candidate)
+        {
             Ok(v) => v,
             Err(err) => {
                 eprintln!("{err}");
@@ -70,14 +71,14 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let capability = match capability_capture
+    let core_approach = match core_approach_capture
         .get("boundary")
-        .and_then(|v| v.get("capability"))
+        .and_then(|v| v.get("core_approach"))
         .and_then(Value::as_str)
     {
         Some(v) => v.to_string(),
         None => {
-            eprintln!("capability capture response missing boundary.capability");
+            eprintln!("core_approach capture response missing boundary.core_approach");
             std::process::exit(1);
         }
     };
@@ -89,8 +90,8 @@ fn main() {
         .unwrap_or("");
 
     let preview =
-        sieves::requirements::boundary::build_boundary_preview(domain, &problem, &capability);
-    if !sieves::requirements::boundary::is_candidate_complete(domain, &problem, &capability) {
+        sieves::requirements::boundary::build_boundary_preview(domain, &problem, &core_approach);
+    if !sieves::requirements::boundary::is_candidate_complete(domain, &problem, &core_approach) {
         println!("{preview}");
         return;
     }
@@ -134,6 +135,11 @@ fn main() {
         }
     };
     boundary_obj.insert("problem".to_string(), Value::String(problem));
+    boundary_obj.insert(
+        "core_approach".to_string(),
+        Value::String(core_approach.clone()),
+    );
+    boundary_obj.remove("capability");
 
     let runtime_text = match serde_json::to_string_pretty(&runtime) {
         Ok(text) => format!("{text}\n"),
@@ -150,6 +156,7 @@ fn main() {
     let slice = match sieves::requirements::io::read_requirements_context_slice(&[
         "boundary.domain",
         "boundary.problem",
+        "boundary.core_approach",
     ]) {
         Ok(v) => v,
         Err(err) => {
@@ -168,9 +175,14 @@ fn main() {
         .and_then(|v| v.get("problem"))
         .and_then(Value::as_str)
         .unwrap_or("");
+    let core_approach = slice
+        .get("boundary")
+        .and_then(|v| v.get("core_approach"))
+        .and_then(Value::as_str)
+        .unwrap_or("");
 
     println!(
         "{}",
-        sieves::requirements::boundary::build_boundary_preview(domain, problem, &capability)
+        sieves::requirements::boundary::build_boundary_preview(domain, problem, core_approach)
     );
 }
